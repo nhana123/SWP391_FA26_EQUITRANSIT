@@ -17,6 +17,7 @@ import {
   VerifyPage,
 } from '../features/auth/pages';
 import { ManagerQueuePage } from '../features/assessment/pages';
+import { ManagerStaffPage } from '../features/assessment/staff';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OpenDraftPage, OrderEditor, OrderPage } from '../features/transport-orders/pages';
 import { clearSession, useSession } from '../shared/api/session';
@@ -119,7 +120,10 @@ const customerLinks: WorkspaceLink[] = [
   { to: '/customer/requests', label: 'Requests' },
   { to: '/customer/account', label: 'Account' },
 ];
-const managerLinks: WorkspaceLink[] = [{ to: '/manager/requests', label: 'Requests' }];
+const managerLinks: WorkspaceLink[] = [
+  { to: '/manager/requests', label: 'Requests' },
+  { to: '/manager/staff', label: 'Case Staff' },
+];
 function CustomerLayout() {
   return <WorkspaceLayout portal="Customer" links={customerLinks} />;
 }
@@ -265,6 +269,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="requests" replace /> },
               { path: 'requests', element: <ManagerQueuePage /> },
+              { path: 'staff', element: <ManagerStaffPage /> },
             ],
           },
         ],
