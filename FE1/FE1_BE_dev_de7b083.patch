@@ -1,0 +1,342 @@
+diff --git a/README.md b/README.md
+index c9442ff..b47fe6e 100644
+--- a/README.md
++++ b/README.md
+@@ -1,13 +1,19 @@
+ # EquiTransit frontend — FE1
+ 
+ React + TypeScript strict + Vite. Implements FE-01–FE-12 against backend `dev`
+-commit `a5133b24cafa94023af163545340a7db22b529a1` (F01–F05, including DTO audit fixes).
++commit `de7b083a21c18bb0be2ea41e7c93a720c5c1670f` (F01–F05, including auth/OpenAPI audit fixes).
+ 
+ The latest backend requires preferred departure and import type at submission,
+ as well as horse, international route, addresses, named timezones and deadline.
+ Drafts may remain partial. Microchip/passport, receiver phone and route timezone
+ patterns match the updated `ApiPatterns`; optional blanks are sent as null.
+ 
++Registration phone now follows the same PHONE pattern (8–15 digits, optional +,
++first digit nonzero). Public email inputs retain email keyboard/autofill without
++an ASCII-only restriction; backend `@Email` remains the authority for grammar.
++Confirm password is bounded to 72 characters. JWT lifetime still comes from the
++actual login response; documentation examples do not change runtime TTL.
++
+ ## Run
+ 
+ Use Node 24 LTS, then:
+diff --git a/docs/APPLY_BE_UPDATE.md b/docs/APPLY_BE_UPDATE.md
+new file mode 100644
+index 0000000..242ba35
+--- /dev/null
++++ b/docs/APPLY_BE_UPDATE.md
+@@ -0,0 +1,44 @@
++# Apply the BE dev compatibility update
++
++Update date: 15 October 2026.
++Backend baseline: `de7b083a21c18bb0be2ea41e7c93a720c5c1670f` (PR26/PR27).
++
++The ZIP contains the complete updated source and `FE1_BE_dev_de7b083.patch`.
++For an existing FE checkout, extract the ZIP into a temporary folder and copy
++only the patch file into your FE repository root. This preserves your local
++changes in other files. The patch changes auth UI, auth/browser tests and docs;
++dependencies and backend/database files are unchanged.
++
++In the VS Code PowerShell terminal at the FE repository root:
++
++```powershell
++git apply --check .\FE1_BE_dev_de7b083.patch
++```
++
++If this exits without an error, apply it:
++
++```powershell
++git apply .\FE1_BE_dev_de7b083.patch
++npm.cmd run typecheck
++npm.cmd run lint
++npm.cmd test
++npm.cmd run build
++```
++
++If `--check` reports a mismatch, stop before applying and compare the named
++files with your own edits. Do not force the patch or overwrite the entire repo.
++Changes are designed against the original delivered FE1 source. No dependency
++change is required, so an existing node_modules install can be reused.
++
++Run browser tests if Chromium is already installed:
++
++```powershell
++npm.cmd run test:e2e
++```
++
++Review `git diff` and commit the implementation/docs on your FE feature branch.
++Keep `.env`, node_modules, dist and the copied patch out of the commit. Suggested
++summary: `fix(fe1): align auth validation with backend dev`.
++
++The complete source in this ZIP is useful for a fresh checkout. For an existing
++checkout, use the checked patch instead of copying all files over local work.
+diff --git a/docs/FE2_HANDOFF.md b/docs/FE2_HANDOFF.md
+index 71740c6..ac64f54 100644
+--- a/docs/FE2_HANDOFF.md
++++ b/docs/FE2_HANDOFF.md
+@@ -1,6 +1,15 @@
+ # FE2 handoff
+ 
+-Backend contract baseline: `a5133b24cafa94023af163545340a7db22b529a1`.
++Backend contract baseline: `de7b083a21c18bb0be2ea41e7c93a720c5c1670f`.
++
++PR26 removes the custom ASCII filter from all public auth email DTOs and applies
++PHONE/nullable-text validation to registration. Public email controls now delegate
++grammar to the backend instead of native browser ASCII-only email validation.
++PR27 changes OpenAPI representation of nullable draft services (`anyOf` reference
++or null), not runtime JSON. Keep `services: null` valid on draft payloads; F05
++confirmation still requires a complete nonnull service-preferences object.
++HealthResponse has the same `{status: "UP", application: "EquiTransit"}` runtime
++body. Customer/login fields, role vocabulary and endpoint paths remain unchanged.
+ 
+ The DTO audit changes require departure/importType at submission. Formats now
+ include MICROCHIP 9–15 uppercase letters/digits/hyphens, PASSPORT 5–20,
+diff --git a/docs/VALIDATION.md b/docs/VALIDATION.md
+index 7393662..a5ba829 100644
+--- a/docs/VALIDATION.md
++++ b/docs/VALIDATION.md
+@@ -1,14 +1,14 @@
+ # Implementation validation
+ 
+-Date: 14 October 2026. Backend dev baseline:
+-`a5133b24cafa94023af163545340a7db22b529a1`.
++Updated: 15 October 2026. Backend dev baseline:
++`de7b083a21c18bb0be2ea41e7c93a720c5c1670f`.
+ 
+ | Check                            | Actual result                                                                                                                |
+ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+ | ESLint                           | Passed                                                                                                                       |
+ | TypeScript strict                | Passed                                                                                                                       |
+-| Vitest                           | 18 tests passed in 6 files                                                                                                   |
+-| Playwright                       | 2 browser tests passed                                                                                                       |
++| Vitest                           | 21 tests passed in 6 files                                                                                                   |
++| Playwright                       | 3 browser tests passed                                                                                                       |
+ | Production Vite build            | Passed; app chunk approximately 482 kB / 146 kB gzip                                                                         |
+ | Visual inspection                | Registration desktop/mobile, horse form and journey form inspected; no horizontal overflow or browser page errors in capture |
+ | Real API / SQL integration       | Not run: backend unavailable at 127.0.0.1:8080                                                                               |
+@@ -20,6 +20,13 @@ fallbacks. GitHub write failure is a connection permission limitation, not a cod
+ build failure. This is an implementation for review, not a claim that the issues
+ have been reviewed/merged or real integration acceptance is complete.
+ 
++Auth regression coverage now checks international email reaching API validation,
++invalid optional phone retaining the form without dispatch, valid phone/null
++address payloads, and the same behavior in a real browser. Existing horse/draft
++tests remain passing. The six files touched by this update were compared with the
++user's D:/Code/SWP FE checkout and matched the previously delivered baseline.
++The local BE checkout HEAD also matched the remote dev SHA above.
++
+ ## Import the source package into the existing FE repository
+ 
+ Clone/fetch the existing repository, create a feature branch from `dev-fe`, and
+diff --git a/src/features/auth/pages.test.tsx b/src/features/auth/pages.test.tsx
+index 6948c98..9060756 100644
+--- a/src/features/auth/pages.test.tsx
++++ b/src/features/auth/pages.test.tsx
+@@ -1,5 +1,5 @@
+ import { StrictMode } from 'react';
+-import { describe, expect, it, vi } from 'vitest';
++import { beforeEach, describe, expect, it, vi } from 'vitest';
+ import { render, screen } from '@testing-library/react';
+ import userEvent from '@testing-library/user-event';
+ import { MemoryRouter } from 'react-router-dom';
+@@ -8,7 +8,63 @@ import { authApi } from './api';
+ import { captureTokenLink } from '../../shared/lib/token';
+ import { getSession } from '../../shared/api/session';
+ vi.mock('./api', () => ({ authApi: { verify: vi.fn(), register: vi.fn() } }));
++beforeEach(() => vi.clearAllMocks());
++
++async function fillRegistration(email = 'test@example.invalid') {
++  const user = userEvent.setup();
++  await user.type(screen.getByLabelText('Full name'), 'Test Customer');
++  await user.type(screen.getByLabelText('Email address'), email);
++  await user.type(screen.getByLabelText('Password'), 'TestPassword123!');
++  await user.type(screen.getByLabelText('Confirm password'), 'TestPassword123!');
++  return user;
++}
+ describe('account flows', () => {
++  it('passes international email to backend validation without an ASCII-only browser gate', async () => {
++    vi.mocked(authApi.register).mockResolvedValue({ message: 'created' });
++    render(
++      <MemoryRouter>
++        <RegisterPage />
++      </MemoryRouter>,
++    );
++    const user = await fillRegistration('khách@example.invalid');
++    expect(screen.getByLabelText('Email address')).toHaveAttribute('inputmode', 'email');
++    await user.click(screen.getByRole('button', { name: 'Create Account' }));
++    expect(authApi.register).toHaveBeenCalledWith(
++      expect.objectContaining({ email: 'khách@example.invalid' }),
++    );
++  });
++  it('retains the form and rejects invalid optional phone before dispatching registration', async () => {
++    render(
++      <MemoryRouter>
++        <RegisterPage />
++      </MemoryRouter>,
++    );
++    const user = await fillRegistration();
++    await user.type(screen.getByLabelText('Phone number (optional)'), '090 123 4567');
++    await user.click(screen.getByRole('button', { name: 'Create Account' }));
++    expect(authApi.register).not.toHaveBeenCalled();
++    expect(await screen.findByText(/Use 8–15 digits/)).toBeInTheDocument();
++    expect(screen.getByLabelText('Phone number (optional)')).toHaveValue('090 123 4567');
++    expect(screen.getByLabelText('Phone number (optional)')).toHaveAttribute(
++      'aria-invalid',
++      'true',
++    );
++  });
++  it('sends a valid optional phone and null for a whitespace-only optional address', async () => {
++    vi.mocked(authApi.register).mockResolvedValue({ message: 'created' });
++    render(
++      <MemoryRouter>
++        <RegisterPage />
++      </MemoryRouter>,
++    );
++    const user = await fillRegistration();
++    await user.type(screen.getByLabelText('Phone number (optional)'), '+84901234567');
++    await user.type(screen.getByLabelText('Address (optional)'), '   ');
++    await user.click(screen.getByRole('button', { name: 'Create Account' }));
++    expect(authApi.register).toHaveBeenCalledWith(
++      expect.objectContaining({ phone: '+84901234567', address: null }),
++    );
++  });
+   it('never consumes verification token from an effect or StrictMode mount', async () => {
+     history.replaceState(null, '', '/verify-email?token=test-token');
+     captureTokenLink();
+diff --git a/src/features/auth/pages.tsx b/src/features/auth/pages.tsx
+index 6636c88..a4e9277 100644
+--- a/src/features/auth/pages.tsx
++++ b/src/features/auth/pages.tsx
+@@ -13,6 +13,7 @@ import {
+ } from '../../shared/lib/validation';
+ import { getCapturedToken, clearCapturedToken } from '../../shared/lib/token';
+ import { useAction } from '../../shared/lib/useAction';
++import { apiPatterns } from '../../shared/api/patterns';
+ 
+ function AuthCard({
+   title,
+@@ -35,12 +36,15 @@ function AuthCard({
+   );
+ }
+ function EmailField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
++  // Native type=email can reject international addresses accepted by BE @Email.
++  // Keep the email keyboard/autofill; the backend owns email grammar validation.
+   return (
+     <Field label="Email address">
+       {(id) => (
+         <input
+           id={id}
+-          type="email"
++          type="text"
++          inputMode="email"
+           autoComplete="email"
+           required
+           maxLength={255}
+@@ -93,6 +97,7 @@ function PasswordFields({
+             type="password"
+             autoComplete="new-password"
+             required
++            maxLength={72}
+             value={confirm}
+             aria-invalid={!!errors.confirmPassword}
+             aria-describedby={errors.confirmPassword ? `${id}-error` : undefined}
+@@ -116,16 +121,18 @@ export function RegisterPage() {
+   function submit(e: FormEvent) {
+     e.preventDefault();
+     const validation = passwordErrors(password, confirm);
+-    if ([...email].some((c) => c.charCodeAt(0) > 127))
+-      validation.email = 'Use an ASCII email address.';
+     if (!fullName.trim()) validation.fullName = 'Enter your full name.';
++    const suppliedPhone = optional(phone);
++    if (suppliedPhone && !apiPatterns.phone.test(suppliedPhone))
++      validation.phone =
++        'Use 8–15 digits, optionally starting with +. The first digit must not be zero.';
+     setErrors(validation);
+     if (Object.keys(validation).length) return;
+     void action.run(async () => {
+       await authApi.register({
+         email: email.trim(),
+         fullName: fullName.trim(),
+-        phone: optional(phone),
++        phone: suppliedPhone,
+         address: optional(address),
+         password,
+         confirmPassword: confirm,
+@@ -153,7 +160,11 @@ export function RegisterPage() {
+             )}
+           </Field>
+           <EmailField value={email} onChange={setEmail} />
+-          <Field label="Phone number (optional)">
++          <Field
++            label="Phone number (optional)"
++            error={errors.phone}
++            hint="Example: +84901234567. Leave blank if unknown."
++          >
+             {(id) => (
+               <input
+                 id={id}
+@@ -161,6 +172,8 @@ export function RegisterPage() {
+                 maxLength={30}
+                 autoComplete="tel"
+                 value={phone}
++                aria-invalid={!!errors.phone}
++                aria-describedby={errors.phone ? `${id}-error` : undefined}
+                 onChange={(e) => setPhone(e.target.value)}
+               />
+             )}
+@@ -184,11 +197,6 @@ export function RegisterPage() {
+             errors={errors}
+           />
+         </div>
+-        {errors.email && (
+-          <p role="alert" className="field-error">
+-            {errors.email}
+-          </p>
+-        )}
+         <button className="primary wide" disabled={action.pending}>
+           {action.pending ? 'Creating account…' : 'Create Account'}
+         </button>
+diff --git a/tests/e2e/public.spec.ts b/tests/e2e/public.spec.ts
+index ad343e5..327a75e 100644
+--- a/tests/e2e/public.spec.ts
++++ b/tests/e2e/public.spec.ts
+@@ -1,4 +1,36 @@
+ import { test, expect } from '@playwright/test';
++test('registration accepts international email for API validation and blocks invalid phone locally', async ({
++  page,
++}) => {
++  const bodies: unknown[] = [];
++  await page.route('**/api/auth/register', async (route) => {
++    bodies.push(route.request().postDataJSON());
++    await route.fulfill({
++      status: 201,
++      contentType: 'application/json',
++      body: JSON.stringify({ message: 'Account created' }),
++    });
++  });
++  await page.goto('/register');
++  await page.getByLabel('Full name').fill('Test Customer');
++  await page.getByLabel('Email address').fill('khách@example.invalid');
++  await page.getByLabel('Password', { exact: true }).fill('TestPassword123!');
++  await page.getByLabel('Confirm password').fill('TestPassword123!');
++  await page.getByLabel('Phone number (optional)').fill('090 123 4567');
++  await page.getByRole('button', { name: 'Create Account' }).click();
++  await expect(page.getByText(/Use 8–15 digits/)).toBeVisible();
++  expect(bodies).toHaveLength(0);
++  await page.getByLabel('Phone number (optional)').fill('+84901234567');
++  await page.getByRole('button', { name: 'Create Account' }).click();
++  await expect(page.getByRole('heading', { name: 'Verify your email' })).toBeVisible();
++  expect(bodies).toEqual([
++    expect.objectContaining({
++      email: 'khách@example.invalid',
++      phone: '+84901234567',
++      address: null,
++    }),
++  ]);
++});
+ test('registration and token links work without making a false booking', async ({ page }) => {
+   await page.route('**/api/auth/register', (route) =>
+     route.fulfill({
