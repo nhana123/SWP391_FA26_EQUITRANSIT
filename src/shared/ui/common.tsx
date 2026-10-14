@@ -52,18 +52,16 @@ export function Loading() {
 export function PageHeading({
   title,
   description,
-  eyebrow = 'STABLE OPERATIONS · CUSTOMER',
   children,
 }: {
   title: string;
   description: string;
-  eyebrow?: string;
   children?: ReactNode;
 }) {
   return (
     <header className="page-heading">
       <div>
-        <small className="eyebrow">{eyebrow}</small>
+        <small className="eyebrow">STABLE OPERATIONS · CUSTOMER</small>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
