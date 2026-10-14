@@ -16,6 +16,7 @@ import {
   VerificationSentPage,
   VerifyPage,
 } from '../features/auth/pages';
+import { ManagerQueuePage } from '../features/assessment/pages';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OpenDraftPage, OrderEditor, OrderPage } from '../features/transport-orders/pages';
 import { clearSession, useSession } from '../shared/api/session';
@@ -112,7 +113,20 @@ export function RoleGate({ roles }: { roles: Role[] }) {
     );
   return <Outlet />;
 }
+type WorkspaceLink = { to: string; label: string };
+const customerLinks: WorkspaceLink[] = [
+  { to: '/customer/horses', label: 'My Horses' },
+  { to: '/customer/requests', label: 'Requests' },
+  { to: '/customer/account', label: 'Account' },
+];
+const managerLinks: WorkspaceLink[] = [{ to: '/manager/requests', label: 'Requests' }];
 function CustomerLayout() {
+  return <WorkspaceLayout portal="Customer" links={customerLinks} />;
+}
+function ManagerLayout() {
+  return <WorkspaceLayout portal="Manager" links={managerLinks} />;
+}
+function WorkspaceLayout({ portal, links }: { portal: string; links: WorkspaceLink[] }) {
   const [menu, setMenu] = useState(false);
   const location = useLocation();
   const focusRef = useRef<HTMLElement>(null);
@@ -126,17 +140,13 @@ function CustomerLayout() {
       </a>
       <aside className={menu ? 'sidebar open' : 'sidebar'}>
         <Brand />
-        <small>Customer PORTAL</small>
-        <nav aria-label="Customer navigation">
-          <NavLink to="/customer/horses" onClick={() => setMenu(false)}>
-            My Horses
-          </NavLink>
-          <NavLink to="/customer/requests" onClick={() => setMenu(false)}>
-            Requests
-          </NavLink>
-          <NavLink to="/customer/account" onClick={() => setMenu(false)}>
-            Account
-          </NavLink>
+        <small>{portal} PORTAL</small>
+        <nav aria-label={`${portal} navigation`}>
+          {links.map((link) => (
+            <NavLink key={link.to} to={link.to} onClick={() => setMenu(false)}>
+              {link.label}
+            </NavLink>
+          ))}
         </nav>
         <div className="support">
           <strong>Transit Support</strong>
@@ -170,6 +180,7 @@ function StaffLanding() {
   const session = useSession();
   if (!session) return <Navigate to="/login" replace />;
   if (session.role === 'CUSTOMER') return <Navigate to="/customer/horses" replace />;
+  if (session.role === 'MANAGER') return <Navigate to="/manager/requests" replace />;
   return (
     <section className="auth-card">
       <h1>{session.role} access</h1>
@@ -241,6 +252,19 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <OpenDraftPage /> },
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <OrderPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RoleGate roles={['MANAGER']} />,
+        children: [
+          {
+            path: '/manager',
+            element: <ManagerLayout />,
+            children: [
+              { index: true, element: <Navigate to="requests" replace /> },
+              { path: 'requests', element: <ManagerQueuePage /> },
             ],
           },
         ],
