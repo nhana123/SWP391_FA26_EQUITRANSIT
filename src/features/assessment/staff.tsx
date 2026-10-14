@@ -1,14 +1,8 @@
 import type { ReactNode } from 'react';
-import {
-  ErrorNotice,
-  Field,
-  Loading,
-  Notice,
-  PageHeading,
-  Pagination,
-} from '../../shared/ui/common';
+import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { caseRoles, type CaseRole, type CaseStaff } from './contracts';
 import { useStaffDirectory, useStaffDirectoryParams } from './hooks';
+import { ManagerHeading } from './layout';
 
 export const caseRoleLabels: Record<CaseRole, string> = {
   SPECIALIST: 'Specialist',
@@ -55,10 +49,7 @@ export function StaffDirectory({
         </div>
       ) : (
         <div className="table-scroll" aria-busy={query.isPlaceholderData}>
-          <table>
-            <caption className="sr-only">
-              {caseRoleLabels[role]} directory: {totalElements} active staff
-            </caption>
+          <table aria-label={`${caseRoleLabels[role]} directory: ${totalElements} active staff`}>
             <thead>
               <tr>
                 <th scope="col">Name</th>
@@ -100,8 +91,7 @@ export function ManagerStaffPage() {
   const { role, page, setRole, setPage } = useStaffDirectoryParams();
   return (
     <>
-      <PageHeading
-        eyebrow="REQUEST ASSESSMENT · MANAGER"
+      <ManagerHeading
         title="Case Staff"
         description="Active Specialists and Coordinators with their current case workload."
       />

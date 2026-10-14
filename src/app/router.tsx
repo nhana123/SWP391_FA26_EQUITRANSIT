@@ -16,6 +16,7 @@ import {
   VerificationSentPage,
   VerifyPage,
 } from '../features/auth/pages';
+import { ManagerLayout } from '../features/assessment/layout';
 import { ManagerQueuePage } from '../features/assessment/pages';
 import { ManagerStaffPage } from '../features/assessment/staff';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
@@ -114,23 +115,7 @@ export function RoleGate({ roles }: { roles: Role[] }) {
     );
   return <Outlet />;
 }
-type WorkspaceLink = { to: string; label: string };
-const customerLinks: WorkspaceLink[] = [
-  { to: '/customer/horses', label: 'My Horses' },
-  { to: '/customer/requests', label: 'Requests' },
-  { to: '/customer/account', label: 'Account' },
-];
-const managerLinks: WorkspaceLink[] = [
-  { to: '/manager/requests', label: 'Requests' },
-  { to: '/manager/staff', label: 'Case Staff' },
-];
 function CustomerLayout() {
-  return <WorkspaceLayout portal="Customer" links={customerLinks} />;
-}
-function ManagerLayout() {
-  return <WorkspaceLayout portal="Manager" links={managerLinks} />;
-}
-function WorkspaceLayout({ portal, links }: { portal: string; links: WorkspaceLink[] }) {
   const [menu, setMenu] = useState(false);
   const location = useLocation();
   const focusRef = useRef<HTMLElement>(null);
@@ -144,13 +129,17 @@ function WorkspaceLayout({ portal, links }: { portal: string; links: WorkspaceLi
       </a>
       <aside className={menu ? 'sidebar open' : 'sidebar'}>
         <Brand />
-        <small>{portal} PORTAL</small>
-        <nav aria-label={`${portal} navigation`}>
-          {links.map((link) => (
-            <NavLink key={link.to} to={link.to} onClick={() => setMenu(false)}>
-              {link.label}
-            </NavLink>
-          ))}
+        <small>Customer PORTAL</small>
+        <nav aria-label="Customer navigation">
+          <NavLink to="/customer/horses" onClick={() => setMenu(false)}>
+            My Horses
+          </NavLink>
+          <NavLink to="/customer/requests" onClick={() => setMenu(false)}>
+            Requests
+          </NavLink>
+          <NavLink to="/customer/account" onClick={() => setMenu(false)}>
+            Account
+          </NavLink>
         </nav>
         <div className="support">
           <strong>Transit Support</strong>
@@ -184,7 +173,6 @@ function StaffLanding() {
   const session = useSession();
   if (!session) return <Navigate to="/login" replace />;
   if (session.role === 'CUSTOMER') return <Navigate to="/customer/horses" replace />;
-  if (session.role === 'MANAGER') return <Navigate to="/manager/requests" replace />;
   return (
     <section className="auth-card">
       <h1>{session.role} access</h1>

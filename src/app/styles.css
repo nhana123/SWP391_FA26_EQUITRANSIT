@@ -373,17 +373,6 @@ small {
 .table-scroll {
   overflow: auto;
 }
-.table-scroll[aria-busy='true'] {
-  opacity: 0.6;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
 table {
   border-collapse: collapse;
   width: 100%;

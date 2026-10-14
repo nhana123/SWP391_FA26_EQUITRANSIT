@@ -1,14 +1,8 @@
 import { displayDate } from '../../shared/lib/validation';
-import {
-  ErrorNotice,
-  Field,
-  Loading,
-  Notice,
-  PageHeading,
-  Pagination,
-} from '../../shared/ui/common';
+import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { reviewStates, type ReviewState } from './contracts';
 import { useManagerQueue } from './hooks';
+import { ManagerHeading } from './layout';
 
 export const reviewStateLabels: Record<ReviewState, string> = {
   SUBMITTED: 'Awaiting assessment',
@@ -28,8 +22,7 @@ export function ManagerQueuePage() {
   const { state, page, query, setState, setPage } = useManagerQueue();
   return (
     <>
-      <PageHeading
-        eyebrow="REQUEST ASSESSMENT · MANAGER"
+      <ManagerHeading
         title="Transport Requests"
         description="Review submitted requests by assessment state."
       />
@@ -64,11 +57,11 @@ export function ManagerQueuePage() {
           </div>
         ) : (
           <div className="table-scroll" aria-busy={query.isPlaceholderData}>
-            <table>
-              <caption className="sr-only">
-                {reviewStateLabels[state]}: {query.data.totalElements} request
-                {query.data.totalElements === 1 ? '' : 's'}
-              </caption>
+            <table
+              aria-label={`${reviewStateLabels[state]}: ${query.data.totalElements} request${
+                query.data.totalElements === 1 ? '' : 's'
+              }`}
+            >
               <thead>
                 <tr>
                   <th scope="col">Request</th>
