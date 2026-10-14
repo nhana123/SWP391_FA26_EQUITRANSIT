@@ -1,0 +1,105 @@
+import { z } from 'zod';
+import { clearSession, getSession } from './session';
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+    public code?: string,
+    public fields: Record<string, string> = {},
+  ) {
+    super(message);
+  }
+  get uncertain() {
+    return this.status === 0 || this.status >= 500;
+  }
+}
+const safeErrorSchema = z.object({
+  message: z.string().optional(),
+  code: z.string().optional(),
+  fields: z.record(z.string(), z.string()).optional(),
+});
+const base = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+export async function request<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  options: {
+    method?: 'GET' | 'POST' | 'PUT';
+    body?: unknown;
+    signal?: AbortSignal;
+    public?: boolean;
+  } = {},
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const abort = () => controller.abort();
+  options.signal?.addEventListener('abort', abort, { once: true });
+  if (options.signal?.aborted) controller.abort();
+  const session = options.public ? null : getSession();
+  try {
+    const response = await fetch(base + path, {
+      method: options.method || 'GET',
+      signal: controller.signal,
+      credentials: 'omit',
+      headers: {
+        Accept: 'application/json',
+        ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(session ? { Authorization: `${session.tokenType} ${session.accessToken}` } : {}),
+      },
+      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    });
+    const data: unknown = await response.json().catch(() => null);
+    if (!options.public && getSession()?.generation !== session?.generation)
+      throw new DOMException('Session changed', 'AbortError');
+    if (!response.ok) {
+      if (response.status === 401 && !options.public) clearSession();
+      const parsed = safeErrorSchema.safeParse(data);
+      // Never reflect backend text in authentication errors; it can contain credentials.
+      const messages: Record<number, string> = {
+        400: 'Please check the supplied information.',
+        401: 'Sign-in failed or your session has expired.',
+        403: 'You do not have permission for this action.',
+        404: 'This record is unavailable.',
+        409: 'The request conflicts with current data.',
+        429: 'Too many requests. Please try again later.',
+      };
+      const publicMessage =
+        path === '/api/auth/register' && response.status === 409
+          ? 'This email is already registered. Sign in or request a new verification link.'
+          : messages[response.status] || 'The request could not be completed.';
+      throw new ApiError(
+        response.status,
+        options.public
+          ? publicMessage
+          : parsed.success
+            ? parsed.data.message ||
+              messages[response.status] ||
+              'The request could not be completed.'
+            : messages[response.status] || 'The request could not be completed.',
+        parsed.success ? parsed.data.code : undefined,
+        parsed.success && !options.public ? parsed.data.fields : {},
+      );
+    }
+    const parsed = schema.safeParse(data);
+    if (!parsed.success)
+      throw new ApiError(
+        502,
+        'The API response does not match the expected contract. Please contact the project team.',
+      );
+    return parsed.data;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (
+      options.signal?.aborted ||
+      (getSession()?.generation !== session?.generation && !options.public)
+    )
+      throw new DOMException('Cancelled', 'AbortError');
+    throw new ApiError(
+      0,
+      'Connection interrupted. The action may have completed; check current data before trying again.',
+    );
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', abort);
+  }
+}
