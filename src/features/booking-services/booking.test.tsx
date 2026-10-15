@@ -72,10 +72,10 @@ describe('booking shell (FE-20)', () => {
     await user.click(transport);
     await user.click(transport);
     expect(bookingApi.confirm).not.toHaveBeenCalled();
-    expect(screen.queryByText(/unconfirmed changes/)).toBeNull();
+    expect(screen.queryByText(/You have unconfirmed changes/)).toBeNull();
     await user.click(transport);
     await user.click(screen.getByLabelText('Arranged by EquiTransit'));
-    expect(screen.getByText(/unconfirmed changes/)).toBeInTheDocument();
+    expect(screen.getByText(/You have unconfirmed changes/)).toBeInTheDocument();
     expect(bookingApi.confirm).not.toHaveBeenCalled();
   });
 });
