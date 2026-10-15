@@ -37,6 +37,19 @@ export function validatePreferences(p: Preferences, disclosure?: Disclosure): Fi
     errors.quarantinePackage = 'Quarantine is not required, so no package can be requested.';
   if (p.escortNotes !== null && p.escortNotes.length > 1000)
     errors.escortNotes = 'Use at most 1000 characters.';
+  // Mirrors BE ServicePreferencePolicy.insurance and the declaredValue bounds.
+  if (p.insurance === 'EXISTING') {
+    const ref = p.existingPolicyReference?.trim() ?? '';
+    if (!ref) errors.existingPolicyReference = 'Enter your existing policy reference.';
+    else if (ref.length > 100) errors.existingPolicyReference = 'Use at most 100 characters.';
+  }
+  if (p.declaredValue !== null) {
+    if (p.insurance === null || p.insurance === 'NONE')
+      errors.declaredValue = 'Declare a value only when insurance is requested.';
+    else if (!validDeclaredValue(p.declaredValue))
+      errors.declaredValue =
+        'Use a positive amount with up to 16 digits and 2 decimals, e.g. 50000.00.';
+  }
   providerErrors(
     errors,
     p.roadProviderName,
@@ -52,6 +65,22 @@ export function validatePreferences(p: Preferences, disclosure?: Disclosure): Fi
     'veterinaryProviderContact',
   );
   return errors;
+}
+
+/**
+ * Declared value stays text end to end: digits with at most 2 decimals and
+ * 16 integer digits, greater than zero. No exponent, sign or float parsing.
+ */
+export function validDeclaredValue(value: string) {
+  return /^\d{1,16}(\.\d{1,2})?$/.test(value) && /[1-9]/.test(value);
+}
+
+/** Choosing a coverage clears inputs that BE rejects for it. */
+export function insurancePatch(value: NonNullable<Preferences['insurance']>): Partial<Preferences> {
+  if (value === 'NONE')
+    return { insurance: value, existingPolicyReference: null, declaredValue: null };
+  if (value !== 'EXISTING') return { insurance: value, existingPolicyReference: null };
+  return { insurance: value };
 }
 
 /** Blank text inputs become null, never an empty string. */
