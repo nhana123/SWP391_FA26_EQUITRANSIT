@@ -16,8 +16,13 @@ import {
   VerificationSentPage,
   VerifyPage,
 } from '../features/auth/pages';
+import { ManagerCasePage } from '../features/assessment/case';
+import { ManagerLayout } from '../features/assessment/layout';
+import { ManagerQueuePage } from '../features/assessment/pages';
+import { ManagerStaffPage } from '../features/assessment/staff';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
-import { OpenDraftPage, OrderEditor, OrderPage } from '../features/transport-orders/pages';
+import { OrderEditor } from '../features/transport-orders/pages';
+import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -170,6 +175,7 @@ function StaffLanding() {
   const session = useSession();
   if (!session) return <Navigate to="/login" replace />;
   if (session.role === 'CUSTOMER') return <Navigate to="/customer/horses" replace />;
+  if (session.role === 'MANAGER') return <Navigate to="/manager/requests" replace />;
   return (
     <section className="auth-card">
       <h1>{session.role} access</h1>
@@ -238,9 +244,24 @@ export const router = createBrowserRouter([
               { path: 'horses/new', element: <HorseEditor /> },
               { path: 'horses/:id', element: <HorseDetailPage /> },
               { path: 'horses/:id/edit', element: <HorseEditPage /> },
-              { path: 'requests', element: <OpenDraftPage /> },
+              { path: 'requests', element: <RequestsPage /> },
               { path: 'requests/new', element: <OrderEditor /> },
-              { path: 'requests/:id', element: <OrderPage /> },
+              { path: 'requests/:id', element: <RequestDetailPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RoleGate roles={['MANAGER']} />,
+        children: [
+          {
+            path: '/manager',
+            element: <ManagerLayout />,
+            children: [
+              { index: true, element: <Navigate to="requests" replace /> },
+              { path: 'requests', element: <ManagerQueuePage /> },
+              { path: 'requests/:id', element: <ManagerCasePage /> },
+              { path: 'staff', element: <ManagerStaffPage /> },
             ],
           },
         ],
