@@ -20,3 +20,9 @@
   border-left: 3px solid #d9a441;
   background: #fff8ea;
 }
+.stall-reasons {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
