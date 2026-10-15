@@ -175,6 +175,7 @@ function StaffLanding() {
   const session = useSession();
   if (!session) return <Navigate to="/login" replace />;
   if (session.role === 'CUSTOMER') return <Navigate to="/customer/horses" replace />;
+  if (session.role === 'MANAGER') return <Navigate to="/manager/requests" replace />;
   return (
     <section className="auth-card">
       <h1>{session.role} access</h1>
