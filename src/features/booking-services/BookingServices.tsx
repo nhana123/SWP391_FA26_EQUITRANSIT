@@ -12,6 +12,7 @@ import {
   type Preferences,
   type SectionCode,
 } from './contracts';
+import { HorseCareSection, QuarantineSection, VeterinarySection } from './care-sections';
 import { validatePreferences } from './form';
 import { AirStallSection, TransportationSection, type SectionProps } from './sections';
 import './booking.css';
@@ -34,9 +35,9 @@ function NotYetAvailable() {
 const sectionViews: Record<SectionCode, ComponentType<SectionProps>> = {
   TRANSPORTATION: TransportationSection,
   AIR_STALL: AirStallSection,
-  HORSE_CARE: NotYetAvailable,
-  VETERINARY: NotYetAvailable,
-  QUARANTINE: NotYetAvailable,
+  HORSE_CARE: HorseCareSection,
+  VETERINARY: VeterinarySection,
+  QUARANTINE: QuarantineSection,
   INSURANCE: NotYetAvailable,
   ADDITIONAL_CHARGES: NotYetAvailable,
 };
@@ -53,7 +54,7 @@ function BookingEditor({ disclosure, order }: { disclosure: Disclosure } & Servi
   const [prefs, setPrefs] = useState<Preferences>(saved);
   const [open, setOpen] = useState<SectionCode | null>(null);
   const dirty = !samePreferences(prefs, saved);
-  const errors = validatePreferences(prefs);
+  const errors = validatePreferences(prefs, disclosure);
   const props: SectionProps = {
     order,
     disclosure,
