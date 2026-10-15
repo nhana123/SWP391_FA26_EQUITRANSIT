@@ -1,3 +1,9 @@
 .table-scroll[aria-busy='true'] {
   opacity: 0.6;
 }
+.staff-picker {
+  margin: 20px 0;
+}
+.staff-picker button[aria-pressed='true'] {
+  font-weight: 600;
+}

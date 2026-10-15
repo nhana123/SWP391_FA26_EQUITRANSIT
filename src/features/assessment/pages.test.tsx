@@ -55,8 +55,10 @@ describe('manager queue', () => {
       .getAllByRole('option')
       .map((o) => o.getAttribute('value'));
     expect(options).toEqual(['SUBMITTED', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED']);
-    // No detail route exists yet (FE-16); rows must not link to a dead page.
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ET-TEST-1' })).toHaveAttribute(
+      'href',
+      '/manager/requests/1',
+    );
   });
 
   it('resets to page 0 and never shows the previous state rows on filter change', async () => {

@@ -52,3 +52,124 @@ export const caseStaffPageSchema = z.object({
   totalPages: z.number().int().nonnegative(),
 });
 export type CaseStaffPage = z.infer<typeof caseStaffPageSchema>;
+
+// Mirrors BE DecisionCode.
+export const decisionCodes = ['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const;
+export const decisionCodeSchema = z.enum(decisionCodes);
+export type DecisionCode = z.infer<typeof decisionCodeSchema>;
+
+export const caseDecisionSchema = z.object({
+  decisionId: idSchema,
+  revisionId: idSchema,
+  managerId: idSchema,
+  decision: decisionCodeSchema,
+  reason: z.string().nullable(),
+  decidedAt: z.string(),
+});
+export type CaseDecision = z.infer<typeof caseDecisionSchema>;
+
+export const caseAssignmentSchema = z.object({
+  assignmentId: idSchema,
+  staffId: idSchema,
+  role: caseRoleSchema,
+  assignedAt: z.string(),
+  endedAt: z.string().nullable(),
+  assignedBy: idSchema.nullable(),
+  dueAt: z.string().nullable(),
+  assignmentNote: z.string().nullable(),
+});
+export type CaseAssignment = z.infer<typeof caseAssignmentSchema>;
+
+// Only the snapshot fields this screen renders are validated; the captured
+// revision is shown as-is and never re-read from the live horse/order.
+const text = z.string().nullable().optional();
+const amount = z.number().nullable().optional();
+export const snapshotSchema = z.object({
+  schemaVersion: z.number().int(),
+  request: z.object({
+    originCountryCode: text,
+    destinationCountryCode: text,
+    originAddress: text,
+    destinationAddress: text,
+    originTimezone: text,
+    destinationTimezone: text,
+    preferredDepartureAt: text,
+    deliveryDeadline: text,
+    dateFlexibilityNotes: text,
+    importType: text,
+    receiverName: text,
+    receiverAuthority: text,
+    eventName: text,
+    eventStartAt: text,
+    eventTimezone: text,
+    transitAirports: z.array(z.string()).nullable().optional(),
+    specialNeeds: text,
+  }),
+  horse: z
+    .object({
+      name: z.string(),
+      microchipId: text,
+      passportNumber: text,
+      sexCode: text,
+      weightKg: amount,
+      heightCm: amount,
+      bodyWidthCm: amount,
+      measuredAt: text,
+      handlingNotes: text,
+      feedWaterRequirements: text,
+      veterinaryInstructions: text,
+    })
+    .nullable(),
+  services: z.array(
+    z.object({
+      serviceCode: z.string(),
+      optionCode: text,
+      arrangedBy: text,
+      providerName: text,
+    }),
+  ),
+});
+export type OrderSnapshot = z.infer<typeof snapshotSchema>;
+
+export const revisionSchema = z.object({
+  revisionId: idSchema,
+  orderId: idSchema,
+  revisionNo: z.number().int().positive(),
+  changeReason: z.string().nullable(),
+  submittedAt: z.string(),
+  snapshot: snapshotSchema,
+});
+
+export const caseSchema = z.object({
+  orderId: idSchema,
+  orderNumber: z.string(),
+  orderStatus: orderStatusSchema,
+  recordVersion: versionSchema,
+  currentRevisionId: idSchema.nullable(),
+  revision: revisionSchema.nullable(),
+  decision: caseDecisionSchema.nullable(),
+  assignments: z.array(caseAssignmentSchema),
+});
+export type ManagerCase = z.infer<typeof caseSchema>;
+
+export const assessmentReceiptSchema = z.object({
+  orderId: idSchema,
+  orderStatus: orderStatusSchema,
+  recordVersion: versionSchema,
+  decision: caseDecisionSchema.nullable(),
+  assignments: z.array(caseAssignmentSchema),
+});
+export type AssessmentReceipt = z.infer<typeof assessmentReceiptSchema>;
+
+/** Exact BE AssessmentRequest; assignment fields must be null unless APPROVED. */
+export type AssessmentCommand = {
+  revisionId: number;
+  recordVersion: string;
+  operationId: string;
+  decision: DecisionCode;
+  reason: string | null;
+  specialistId: number | null;
+  coordinatorId: number | null;
+  dueAt: string | null;
+  assignmentNote: string | null;
+};
