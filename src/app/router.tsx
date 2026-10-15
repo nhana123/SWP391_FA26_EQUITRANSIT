@@ -33,14 +33,19 @@ import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
 import type { Role } from '../shared/api/contracts';
 
-function Brand() {
+// Signed-in users stay in their workspace; /staff redirects non-customers.
+function workspaceHome(role: Role) {
+  return role === 'CUSTOMER' ? '/customer/horses' : '/staff';
+}
+function Brand({ to = '/' }: { to?: string }) {
   return (
-    <Link className="brand" to="/">
+    <Link className="brand" to={to}>
       EquiTransit
     </Link>
   );
 }
 function PublicLayout() {
+  const session = useSession();
   return (
     <>
       <a className="skip" href="#main">
@@ -50,10 +55,23 @@ function PublicLayout() {
         <Brand />
         <nav aria-label="Main navigation">
           <Link to="/">Home</Link>
-          <Link to="/login">Login</Link>
-          <Link className="button primary" to="/register">
-            Sign Up
-          </Link>
+          {session ? (
+            <>
+              <Link className="button primary" to={workspaceHome(session.role)}>
+                My Workspace
+              </Link>
+              <button type="button" onClick={clearSession}>
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link className="button primary" to="/register">
+                Sign Up
+              </Link>
+            </>
+          )}
         </nav>
       </header>
       <main id="main" className="public-main">
@@ -135,7 +153,7 @@ function CustomerLayout() {
         Skip to content
       </a>
       <aside className={menu ? 'sidebar open' : 'sidebar'}>
-        <Brand />
+        <Brand to="/customer/horses" />
         <small>Customer PORTAL</small>
         <nav aria-label="Customer navigation">
           <NavLink to="/customer/horses" onClick={() => setMenu(false)}>

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { router } from '../../app/router';
 import { queryClient } from '../../shared/api/query';
-import { startSession } from '../../shared/api/session';
+import { getSession, startSession } from '../../shared/api/session';
 import type { Role } from '../../shared/api/contracts';
 
 // Guards FE2 entry points: if the shared router is replaced by a snapshot that
@@ -72,6 +73,28 @@ describe('FE2 routes are wired into the app router', () => {
     expect(memory.state.location.pathname).toBe('/manager/requests');
   });
 
+  it('customer logo stays in the workspace and keeps the session', async () => {
+    const memory = open('/customer/account', 'CUSTOMER');
+    await userEvent
+      .setup()
+      .click(within(screen.getByRole('complementary')).getByRole('link', { name: 'EquiTransit' }));
+    expect(memory.state.location.pathname).toBe('/customer/horses');
+    expect(getSession()).not.toBeNull();
+  });
+
+  it('public home shows workspace and log out, not Login, when signed in', async () => {
+    open('/', 'CUSTOMER');
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    expect(within(nav).getByRole('link', { name: 'My Workspace' })).toHaveAttribute(
+      'href',
+      '/customer/horses',
+    );
+    expect(within(nav).getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Login' })).not.toBeInTheDocument();
+    await userEvent.setup().click(within(nav).getByRole('button', { name: 'Log Out' }));
+    expect(getSession()).toBeNull();
+    expect(within(nav).getByRole('link', { name: 'Login' })).toBeInTheDocument();
+  });
   it.each(['SPECIALIST', 'COORDINATOR'] as const)(
     '/staff/cases renders the FE-19 list for %s',
     async (role) => {
