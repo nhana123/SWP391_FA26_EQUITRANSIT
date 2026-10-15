@@ -7,6 +7,7 @@ import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice, PageHeading, Pagination } from '../../shared/ui/common';
 import { ordersApi } from './api';
 import { OrderPage } from './pages';
+import { RevisionsSection } from './revisions';
 import { orderStatusApi } from './status-api';
 import { orderStatusLabels, type CustomerAssessment } from './status-contracts';
 import './status.css';
@@ -199,6 +200,7 @@ export function RequestDetailPage() {
     <>
       {query.data && <AssessmentPanel order={query.data} />}
       <OrderPage />
+      {query.data && <RevisionsSection order={query.data} />}
     </>
   );
 }
