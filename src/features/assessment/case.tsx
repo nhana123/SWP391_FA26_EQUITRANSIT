@@ -19,10 +19,10 @@ const outcomeLabels: Record<CaseDecision['decision'], string> = {
   REJECTED: reviewStateLabels.REJECTED,
 };
 
-const show = (value: string | number | null | undefined) =>
+export const show = (value: string | number | null | undefined) =>
   value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
 
-function Details({ rows }: { rows: [string, ReactNode][] }) {
+export function Details({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl className="details">
       {rows.map(([label, value]) => (
@@ -35,7 +35,7 @@ function Details({ rows }: { rows: [string, ReactNode][] }) {
   );
 }
 
-function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
+export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
   const r = snapshot.request;
   const h = snapshot.horse;
   return (
