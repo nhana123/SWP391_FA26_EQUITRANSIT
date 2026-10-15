@@ -21,6 +21,13 @@ vi.mock('./api', () => ({
     assignments: vi.fn(() => new Promise(() => {})),
   },
 }));
+vi.mock('../assigned-cases/api', () => ({
+  ASSIGNED_PAGE_SIZE: 20,
+  assignedCasesApi: {
+    list: vi.fn(() => new Promise(() => {})),
+    get: vi.fn(() => new Promise(() => {})),
+  },
+}));
 vi.mock('../transport-orders/status-api', () => ({
   ORDER_PAGE_SIZE: 20,
   orderStatusApi: {
@@ -64,6 +71,15 @@ describe('FE2 routes are wired into the app router', () => {
     expect(await screen.findByRole('heading', { name: 'Transport Requests' })).toBeInTheDocument();
     expect(memory.state.location.pathname).toBe('/manager/requests');
   });
+
+  it.each(['SPECIALIST', 'COORDINATOR'] as const)(
+    '/staff/cases renders the FE-19 list for %s',
+    async (role) => {
+      open('/staff/cases', role);
+      expect(await screen.findByRole('heading', { name: 'My Cases' })).toBeInTheDocument();
+      expect(screen.getByRole('navigation', { name: 'Staff navigation' })).toBeInTheDocument();
+    },
+  );
 
   it('/customer/requests renders the FE-13 request list', async () => {
     open('/customer/requests', 'CUSTOMER');
