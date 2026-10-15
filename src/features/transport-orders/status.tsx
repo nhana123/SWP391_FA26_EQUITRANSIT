@@ -6,7 +6,8 @@ import type { Order } from '../../shared/api/contracts';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice, PageHeading, Pagination } from '../../shared/ui/common';
 import { ordersApi } from './api';
-import { OrderPage } from './pages';
+import { BookingServices } from '../booking-services/BookingServices';
+import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { orderStatusApi } from './status-api';
 import { orderStatusLabels, type CustomerAssessment } from './status-contracts';
@@ -196,11 +197,19 @@ export function RequestDetailPage() {
     queryFn: ({ signal }) => ordersApi.get(id, signal),
     enabled: valid,
   });
+  if (!valid) return <Notice>This request is unavailable.</Notice>;
+  if (query.isPending) return <Loading />;
+  if (query.error) return <ErrorNotice error={query.error} />;
   return (
     <>
-      {query.data && <AssessmentPanel order={query.data} />}
-      <OrderPage />
-      {query.data && <RevisionsSection order={query.data} />}
+      <AssessmentPanel order={query.data} />
+      {/* FE1's editor, unchanged, with FE2 booking in its documented slot. */}
+      <OrderEditor
+        key={id}
+        order={query.data}
+        servicesSlot={(slot) => <BookingServices {...slot} />}
+      />
+      <RevisionsSection order={query.data} />
     </>
   );
 }
