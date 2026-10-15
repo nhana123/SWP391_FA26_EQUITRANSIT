@@ -14,6 +14,7 @@ import {
 } from './contracts';
 import { HorseCareSection, QuarantineSection, VeterinarySection } from './care-sections';
 import { validatePreferences } from './form';
+import { InsuranceSection } from './insurance-section';
 import { AirStallSection, TransportationSection, type SectionProps } from './sections';
 import './booking.css';
 
@@ -38,7 +39,7 @@ const sectionViews: Record<SectionCode, ComponentType<SectionProps>> = {
   HORSE_CARE: HorseCareSection,
   VETERINARY: VeterinarySection,
   QUARANTINE: QuarantineSection,
-  INSURANCE: NotYetAvailable,
+  INSURANCE: InsuranceSection,
   ADDITIONAL_CHARGES: NotYetAvailable,
 };
 
