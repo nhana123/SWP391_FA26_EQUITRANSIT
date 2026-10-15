@@ -176,6 +176,15 @@ export function OrderEditor({
   const isDraft = !current || current.orderStatus === 'DRAFT';
   const conflict = action.error instanceof ApiError && action.error.status === 409;
   const uncertain = action.error instanceof ApiError && action.error.uncertain;
+  const fieldError = (key: keyof DraftForm) =>
+    errors[key] ||
+    (action.error instanceof ApiError
+      ? action.error.fields[key] ||
+        Object.entries(action.error.fields).find(([field]) => field.startsWith(`${key}[`))?.[1]
+      : undefined);
+  const hasFieldErrors =
+    Object.keys(errors).length > 0 ||
+    (action.error instanceof ApiError && Object.keys(action.error.fields).length > 0);
   function change(key: keyof DraftForm, value: string) {
     if (!frozenSubmit) {
       setSavedMessage('');
@@ -305,6 +314,21 @@ export function OrderEditor({
           </button>
         )}
       </ErrorNotice>
+      {hasFieldErrors && (
+        <div className="notice error" role="alert">
+          <p>Review the highlighted fields. Your entries have been kept.</p>
+          <div className="actions">
+            <button type="button" onClick={() => setStep(0)}>
+              Review Journey
+            </button>
+            {fieldError('horseId') && (
+              <button type="button" onClick={() => setStep(1)}>
+                Review Horse
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {latest && (
         <fieldset
           className="card"
@@ -314,6 +338,18 @@ export function OrderEditor({
           <h2>Current server data</h2>
           <p>Status: {latest.orderStatus}. Your unsaved entries remain below.</p>
           <dl className="details">
+            <div>
+              <dt>Selected horse ID</dt>
+              <dd>{latest.draft.horseId || 'Not selected'}</dd>
+            </div>
+            <div>
+              <dt>Import type</dt>
+              <dd>{latest.draft.importType || 'Not recorded'}</dd>
+            </div>
+            <div>
+              <dt>Transit airports</dt>
+              <dd>{latest.draft.transitAirports?.join(', ') || 'Not recorded'}</dd>
+            </div>
             {journeyFields
               .filter((f) => (latest.draft[f.key] || '') !== form[f.key])
               .map((f) => (
@@ -323,7 +359,7 @@ export function OrderEditor({
                 </div>
               ))}
           </dl>
-          <button type="button" onClick={() => void reload()}>
+          <button type="button" disabled={action.pending} onClick={() => void reload()}>
             Reload form with server data
           </button>
         </fieldset>
@@ -382,10 +418,7 @@ export function OrderEditor({
                 <Field
                   key={f.key}
                   label={f.label}
-                  error={
-                    errors[f.key] ||
-                    (action.error instanceof ApiError ? action.error.fields[f.key] : undefined)
-                  }
+                  error={fieldError(f.key)}
                   hint={
                     'hint' in f
                       ? f.hint
@@ -401,17 +434,19 @@ export function OrderEditor({
                       maxLength={'max' in f ? f.max : 35}
                       value={form[f.key]}
                       onChange={(e) => change(f.key, e.target.value)}
-                      aria-invalid={!!errors[f.key]}
-                      aria-describedby={errors[f.key] ? `${id}-error` : undefined}
+                      aria-invalid={!!fieldError(f.key)}
+                      aria-describedby={fieldError(f.key) ? `${id}-error` : undefined}
                     />
                   )}
                 </Field>
               ))}
-              <Field label="Import type" error={errors.importType}>
+              <Field label="Import type" error={fieldError('importType')}>
                 {(id) => (
                   <select
                     id={id}
                     value={form.importType}
+                    aria-invalid={!!fieldError('importType')}
+                    aria-describedby={fieldError('importType') ? `${id}-error` : undefined}
                     onChange={(e) => change('importType', e.target.value)}
                   >
                     <option value="">Not recorded</option>
@@ -421,12 +456,17 @@ export function OrderEditor({
                   </select>
                 )}
               </Field>
-              <Field label="Transit airports (comma separated)" error={errors.transitAirports}>
+              <Field
+                label="Transit airports (comma separated)"
+                error={fieldError('transitAirports')}
+              >
                 {(id) => (
                   <input
                     id={id}
                     value={form.transitAirports}
                     maxLength={50}
+                    aria-invalid={!!fieldError('transitAirports')}
+                    aria-describedby={fieldError('transitAirports') ? `${id}-error` : undefined}
                     onChange={(e) => change('transitAirports', e.target.value)}
                   />
                 )}
@@ -438,7 +478,7 @@ export function OrderEditor({
           <HorsePicker
             value={form.horseId}
             onChange={(id) => change('horseId', id)}
-            error={errors.horseId}
+            error={fieldError('horseId')}
           />
         )}
       </fieldset>
@@ -488,25 +528,35 @@ export function OrderEditor({
                 <dt>{f.label}</dt>
                 <dd>
                   {form[f.key] || 'Not recorded'}
-                  {errors[f.key] && <span className="field-error">{errors[f.key]}</span>}
+                  {fieldError(f.key) && <span className="field-error">{fieldError(f.key)}</span>}
                 </dd>
               </div>
             ))}
             <div>
               <dt>Import type</dt>
-              <dd>{form.importType || 'Not recorded'}</dd>
+              <dd>
+                {form.importType || 'Not recorded'}
+                {fieldError('importType') && (
+                  <span className="field-error">{fieldError('importType')}</span>
+                )}
+              </dd>
             </div>
             <div>
               <dt>Transit airports</dt>
-              <dd>{form.transitAirports || 'Not recorded'}</dd>
+              <dd>
+                {form.transitAirports || 'Not recorded'}
+                {fieldError('transitAirports') && (
+                  <span className="field-error">{fieldError('transitAirports')}</span>
+                )}
+              </dd>
             </div>
           </dl>
-          {errors.horseId && (
+          {fieldError('horseId') && (
             <p className="field-error" role="alert">
-              {errors.horseId}
+              {fieldError('horseId')}
             </p>
           )}
-          {Object.keys(errors).length > 0 && (
+          {hasFieldErrors && (
             <p role="alert">Review the highlighted fields in Journey and Horse.</p>
           )}
           <p>
