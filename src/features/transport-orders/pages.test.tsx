@@ -13,6 +13,13 @@ import type { Order } from '../../shared/api/contracts';
 vi.mock('./api', () => ({
   ordersApi: { get: vi.fn(), update: vi.fn(), submit: vi.fn(), create: vi.fn() },
 }));
+vi.mock('../horses/api', () => ({
+  horsesApi: {
+    list: vi
+      .fn()
+      .mockResolvedValue({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+  },
+}));
 const form = draftForm();
 Object.assign(form, {
   horseId: '1',
@@ -40,6 +47,7 @@ const order: Order = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  queryClient.clear();
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role: 'CUSTOMER' });
 });
 function mount() {
@@ -52,6 +60,32 @@ function mount() {
   );
 }
 describe('draft conflict and submit retry', () => {
+  it('shows backend validation at import type, airport item and horse while keeping edits', async () => {
+    vi.mocked(ordersApi.update).mockRejectedValue(
+      new ApiError(400, 'Check input', undefined, {
+        importType: 'Choose a supported import type.',
+        'transitAirports[0]': 'This airport is unavailable.',
+        horseId: 'Choose an available horse.',
+      }),
+    );
+    mount();
+    const user = userEvent.setup();
+    await user.clear(screen.getByLabelText('Pickup address'));
+    await user.type(screen.getByLabelText('Pickup address'), 'Keep my stable');
+    await user.click(screen.getByRole('button', { name: 'Save Draft' }));
+    expect(await screen.findByText('Choose a supported import type.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Import type')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Transit airports (comma separated)')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByText('This airport is unavailable.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pickup address')).toHaveValue('Keep my stable');
+    await user.click(screen.getByRole('button', { name: 'Review Horse' }));
+    expect(await screen.findByText('Choose an available horse.')).toBeInTheDocument();
+    expect(ordersApi.update).toHaveBeenCalledTimes(1);
+  });
+
   it('retains edits on 409 and never silently retries with another version', async () => {
     vi.mocked(ordersApi.update).mockRejectedValue(
       new ApiError(409, 'Version changed', 'ORDER_VERSION_CONFLICT'),
