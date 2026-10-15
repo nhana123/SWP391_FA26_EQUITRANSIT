@@ -13,7 +13,7 @@ import {
   type SectionCode,
 } from './contracts';
 import { validatePreferences } from './form';
-import { TransportationSection, type SectionProps } from './sections';
+import { AirStallSection, TransportationSection, type SectionProps } from './sections';
 import './booking.css';
 
 const fallbackTitles: Record<SectionCode, string> = {
@@ -33,7 +33,7 @@ function NotYetAvailable() {
 // One component per booking section; later features replace placeholders.
 const sectionViews: Record<SectionCode, ComponentType<SectionProps>> = {
   TRANSPORTATION: TransportationSection,
-  AIR_STALL: NotYetAvailable,
+  AIR_STALL: AirStallSection,
   HORSE_CARE: NotYetAvailable,
   VETERINARY: NotYetAvailable,
   QUARANTINE: NotYetAvailable,
@@ -48,13 +48,14 @@ export const samePreferences = (a: Preferences, b: Preferences) =>
  * All seven sections edit one shared, full preference object for the horse
  * already chosen in the request. Opening or closing a section never saves.
  */
-function BookingEditor({ disclosure }: { disclosure: Disclosure } & ServicesSlotProps) {
+function BookingEditor({ disclosure, order }: { disclosure: Disclosure } & ServicesSlotProps) {
   const saved = toPreferences(disclosure.selected);
   const [prefs, setPrefs] = useState<Preferences>(saved);
   const [open, setOpen] = useState<SectionCode | null>(null);
   const dirty = !samePreferences(prefs, saved);
   const errors = validatePreferences(prefs);
   const props: SectionProps = {
+    order,
     disclosure,
     prefs,
     update: (patch) => setPrefs((p) => ({ ...p, ...patch })),

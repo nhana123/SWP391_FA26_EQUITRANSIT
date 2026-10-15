@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import type { Order } from '../../shared/api/contracts';
 import type { FieldErrors } from '../../shared/lib/validation';
 import { Field } from '../../shared/ui/common';
-import type { Disclosure, Preferences } from './contracts';
+import type { Disclosure, Preferences, StallFit } from './contracts';
 import { arrangementPatch, textOrNull, type Arrangement } from './form';
 
 export type SectionProps = {
+  order: Order;
   disclosure: Disclosure;
   prefs: Preferences;
   update: (patch: Partial<Preferences>) => void;
@@ -120,6 +123,107 @@ export function TransportationSection(props: SectionProps) {
         disabled={disabled}
       />
       {prefs.roadArrangement === 'CUSTOMER' && <ProviderFields {...props} kind="road" />}
+    </>
+  );
+}
+
+type StallOption = StallFit['option'];
+const stallNames: Record<StallOption, string> = {
+  SHARED_ONE: 'Shared stall (1 slot)',
+  WIDE: 'Wide stall (1.5 slots)',
+  PRIVATE: 'Private stall (whole 3-slot stall)',
+};
+const reasonText: Record<string, string> = {
+  FIT_POLICY_PENDING: 'No approved carrier policy is available yet for this option.',
+  FIT_POLICY_AMBIGUOUS: 'Approved carrier policies disagree; our team must review them.',
+  FIT_POLICY_CONFIGURATION_INVALID: 'The carrier policy for this option needs review.',
+  HORSE_MEASUREMENTS_REQUIRED: "Your horse's weight, height and body width must be recorded.",
+  HORSE_EXCEEDS_APPROVED_LIMITS: 'Your horse exceeds the approved limits for this option.',
+};
+
+/** Only what the BE allows: never an unsuitable option or an unconfirmed one-slot. */
+export function visibleStalls(stalls: StallFit[]) {
+  return stalls.filter(
+    (s) => s.status !== 'UNSUITABLE' && (s.option !== 'SHARED_ONE' || s.status === 'ELIGIBLE'),
+  );
+}
+
+export function AirStallSection({
+  order,
+  disclosure,
+  prefs,
+  update,
+  errors,
+  disabled,
+}: SectionProps) {
+  const options = visibleStalls(disclosure.airStalls);
+  const savedMissing = prefs.airStall !== null && !options.some((o) => o.option === prefs.airStall);
+  const needsMeasurements = disclosure.airStalls.some((s) =>
+    s.reasons.includes('HORSE_MEASUREMENTS_REQUIRED'),
+  );
+  const horseId = order.draft.horseId;
+  return (
+    <>
+      <p className="notice" role="note">
+        Slot size is a configuration you request. Airline space is{' '}
+        {disclosure.carrierConfirmation === 'NOT_CONFIRMED' ? 'not confirmed' : 'not shown here'}{' '}
+        until our team books it with the carrier.
+      </p>
+      {savedMissing && (
+        <p className="field-error" role="alert">
+          Your saved choice ({stallNames[prefs.airStall!]}) is not available for this horse now.
+          Choose another option or no preference.
+        </p>
+      )}
+      {errors.airStall && (
+        <p className="field-error" role="alert">
+          {errors.airStall}
+        </p>
+      )}
+      <fieldset disabled={disabled}>
+        <legend>Air stall preference</legend>
+        <label className="horse-choice">
+          <input
+            type="radio"
+            name="airStall"
+            checked={prefs.airStall === null}
+            onChange={() => update({ airStall: null })}
+          />
+          <span>No air stall preference yet</span>
+        </label>
+        {options.map((s) => (
+          <label key={s.option} className="horse-choice stall-choice">
+            <input
+              type="radio"
+              name="airStall"
+              checked={prefs.airStall === s.option}
+              onChange={() => update({ airStall: s.option })}
+            />
+            <span>
+              <strong>{stallNames[s.option]}</strong>
+              <small>
+                {s.status === 'ELIGIBLE'
+                  ? "Fits the approved limits for your horse's recorded measurements."
+                  : 'Requested — pending assessment. Not confirmed as suitable.'}
+              </small>
+              {s.status === 'PENDING' && s.reasons.length > 0 && (
+                <ul className="stall-reasons">
+                  {s.reasons.map((r) => (
+                    <li key={r}>{reasonText[r] ?? r}</li>
+                  ))}
+                </ul>
+              )}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {options.length === 0 && <p>No air stall option can be offered yet for this horse.</p>}
+      {needsMeasurements && horseId !== null && (
+        <p>
+          <Link to={`/customer/horses/${horseId}/edit`}>Record your horse&apos;s measurements</Link>
+          . Missing measurements are never treated as zero.
+        </p>
+      )}
     </>
   );
 }
