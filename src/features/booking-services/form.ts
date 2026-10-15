@@ -1,6 +1,6 @@
 import { apiPatterns } from '../../shared/api/patterns';
 import type { FieldErrors } from '../../shared/lib/validation';
-import type { Preferences } from './contracts';
+import type { Disclosure, Preferences } from './contracts';
 
 export type Arrangement = 'EQUITRANSIT' | 'CUSTOMER';
 
@@ -31,8 +31,12 @@ function providerErrors(
 }
 
 /** Client checks mirroring BE rules; the BE re-validates on confirm. */
-export function validatePreferences(p: Preferences): FieldErrors {
+export function validatePreferences(p: Preferences, disclosure?: Disclosure): FieldErrors {
   const errors: FieldErrors = {};
+  if (disclosure?.quarantine.applicability === 'NOT_REQUIRED' && p.quarantinePackage !== null)
+    errors.quarantinePackage = 'Quarantine is not required, so no package can be requested.';
+  if (p.escortNotes !== null && p.escortNotes.length > 1000)
+    errors.escortNotes = 'Use at most 1000 characters.';
   providerErrors(
     errors,
     p.roadProviderName,
