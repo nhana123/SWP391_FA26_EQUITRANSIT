@@ -16,6 +16,7 @@ import {
   VerificationSentPage,
   VerifyPage,
 } from '../features/auth/pages';
+import { ManagerCasePage } from '../features/assessment/case';
 import { ManagerLayout } from '../features/assessment/layout';
 import { ManagerQueuePage } from '../features/assessment/pages';
 import { ManagerStaffPage } from '../features/assessment/staff';
@@ -258,6 +259,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="requests" replace /> },
               { path: 'requests', element: <ManagerQueuePage /> },
+              { path: 'requests/:id', element: <ManagerCasePage /> },
               { path: 'staff', element: <ManagerStaffPage /> },
             ],
           },

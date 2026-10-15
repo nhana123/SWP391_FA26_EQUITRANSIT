@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { reviewStates, type ReviewState } from './contracts';
@@ -73,7 +74,9 @@ export function ManagerQueuePage() {
               <tbody>
                 {query.data.items.map((c) => (
                   <tr key={c.orderId}>
-                    <td>{c.orderNumber}</td>
+                    <td>
+                      <Link to={`/manager/requests/${c.orderId}`}>{c.orderNumber}</Link>
+                    </td>
                     <td>
                       {c.originCountryCode} → {c.destinationCountryCode}
                     </td>

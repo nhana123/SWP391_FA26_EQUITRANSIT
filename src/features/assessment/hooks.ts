@@ -13,7 +13,40 @@ export const assessmentKeys = {
   staffAll: (generation: string) => [...assessmentKeys.all(generation), 'staff'] as const,
   staff: (generation: string, role: CaseRole, page: number) =>
     [...assessmentKeys.all(generation), 'staff', { role, page }] as const,
+  case: (generation: string, id: number) =>
+    [...assessmentKeys.all(generation), 'case', id] as const,
+  decisions: (generation: string, id: number, page: number) =>
+    [...assessmentKeys.case(generation, id), 'decisions', { page }] as const,
+  assignments: (generation: string, id: number, page: number) =>
+    [...assessmentKeys.case(generation, id), 'assignments', { page }] as const,
 };
+
+export function useAssignmentHistory(id: number, page: number) {
+  const session = useSession()!;
+  return useQuery({
+    queryKey: assessmentKeys.assignments(session.generation, id, page),
+    queryFn: ({ signal }) => assessmentApi.assignments(id, page, signal),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useManagerCase(id: number) {
+  const session = useSession()!;
+  return useQuery({
+    queryKey: assessmentKeys.case(session.generation, id),
+    queryFn: ({ signal }) => assessmentApi.getCase(id, signal),
+    enabled: Number.isSafeInteger(id) && id > 0,
+  });
+}
+
+export function useDecisionHistory(id: number, page: number) {
+  const session = useSession()!;
+  return useQuery({
+    queryKey: assessmentKeys.decisions(session.generation, id, page),
+    queryFn: ({ signal }) => assessmentApi.decisions(id, page, signal),
+    placeholderData: keepPreviousData,
+  });
+}
 
 function parsePage(value: string | null) {
   const page = Number(value);
