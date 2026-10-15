@@ -16,6 +16,11 @@ import {
   VerificationSentPage,
   VerifyPage,
 } from '../features/auth/pages';
+import {
+  AssignedCasePage,
+  AssignedCasesLayout,
+  AssignedCasesPage,
+} from '../features/assigned-cases/pages';
 import { ManagerCasePage } from '../features/assessment/case';
 import { ManagerLayout } from '../features/assessment/layout';
 import { ManagerQueuePage } from '../features/assessment/pages';
@@ -280,6 +285,19 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
               { path: 'staff', element: <ManagerStaffPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RoleGate roles={['SPECIALIST', 'COORDINATOR']} />,
+        children: [
+          {
+            path: '/staff/cases',
+            element: <AssignedCasesLayout />,
+            children: [
+              { index: true, element: <AssignedCasesPage /> },
+              { path: ':id', element: <AssignedCasePage /> },
             ],
           },
         ],
