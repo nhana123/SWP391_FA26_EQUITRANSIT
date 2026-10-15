@@ -1,13 +1,17 @@
 import { useState, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '../../shared/api/query';
-import { useSession } from '../../shared/api/session';
+import { queryClient, queryKeys } from '../../shared/api/query';
+import { getSession, useSession } from '../../shared/api/session';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
+import { ordersApi } from '../transport-orders/api';
 import type { ServicesSlotProps } from '../transport-orders/pages';
 import { bookingApi } from './api';
+import { AdditionalChargesSection } from './charges';
+import { ConfirmBar } from './confirm';
 import {
   sectionCodes,
   toPreferences,
+  type Confirmation,
   type Disclosure,
   type Preferences,
   type SectionCode,
@@ -28,11 +32,8 @@ const fallbackTitles: Record<SectionCode, string> = {
   ADDITIONAL_CHARGES: 'Additional Charges',
 };
 
-function NotYetAvailable() {
-  return <p className="muted">This section is not available in this release.</p>;
-}
+// One component per booking section.
 
-// One component per booking section; later features replace placeholders.
 const sectionViews: Record<SectionCode, ComponentType<SectionProps>> = {
   TRANSPORTATION: TransportationSection,
   AIR_STALL: AirStallSection,
@@ -40,7 +41,7 @@ const sectionViews: Record<SectionCode, ComponentType<SectionProps>> = {
   VETERINARY: VeterinarySection,
   QUARANTINE: QuarantineSection,
   INSURANCE: InsuranceSection,
-  ADDITIONAL_CHARGES: NotYetAvailable,
+  ADDITIONAL_CHARGES: AdditionalChargesSection,
 };
 
 export const samePreferences = (a: Preferences, b: Preferences) =>
@@ -50,12 +51,44 @@ export const samePreferences = (a: Preferences, b: Preferences) =>
  * All seven sections edit one shared, full preference object for the horse
  * already chosen in the request. Opening or closing a section never saves.
  */
-function BookingEditor({ disclosure, order }: { disclosure: Disclosure } & ServicesSlotProps) {
+function BookingEditor({
+  disclosure,
+  order,
+  onSaved,
+}: { disclosure: Disclosure } & ServicesSlotProps) {
+  const session = useSession()!;
   const saved = toPreferences(disclosure.selected);
   const [prefs, setPrefs] = useState<Preferences>(saved);
   const [open, setOpen] = useState<SectionCode | null>(null);
+  const [confirmedNotice, setConfirmedNotice] = useState('');
   const dirty = !samePreferences(prefs, saved);
   const errors = validatePreferences(prefs, disclosure);
+  const servicesKey = queryKeys.services(session.generation, order.orderId);
+
+  async function confirmed(result: Confirmation) {
+    // The receipt is history: re-read the current order and disclosure.
+    const fresh = await ordersApi.get(order.orderId);
+    const next = await queryClient.fetchQuery({
+      queryKey: servicesKey,
+      queryFn: ({ signal }) => bookingApi.get(order.orderId, signal),
+      staleTime: 0,
+    });
+    if (getSession()?.generation !== session.generation) return;
+    setPrefs(toPreferences(next.selected));
+    setConfirmedNotice(
+      result.revision
+        ? `Service choices confirmed in new revision ${result.revision.revisionNo}, which goes back for assessment.`
+        : 'Service choices saved to your draft.',
+    );
+    await queryClient.invalidateQueries({ queryKey: queryKeys.orders(session.generation) });
+    onSaved(fresh);
+  }
+  function reload() {
+    void queryClient.invalidateQueries({ queryKey: servicesKey });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.order(session.generation, order.orderId),
+    });
+  }
   const props: SectionProps = {
     order,
     disclosure,
@@ -70,6 +103,9 @@ function BookingEditor({ disclosure, order }: { disclosure: Disclosure } & Servi
         Choices here are requests for your horse in this order. They are not a quote, a payment or a
         confirmed booking.
       </Notice>
+      {confirmedNotice && !dirty && (
+        <Notice>{confirmedNotice} This is not a quote or a payment.</Notice>
+      )}
       {dirty && (
         <p className="booking-dirty" role="status">
           You have unconfirmed changes. Estimates shown are for your last confirmed choices.
@@ -100,6 +136,15 @@ function BookingEditor({ disclosure, order }: { disclosure: Disclosure } & Servi
           </section>
         );
       })}
+      <ConfirmBar
+        order={order}
+        disclosure={disclosure}
+        prefs={prefs}
+        dirty={dirty}
+        hasErrors={Object.keys(errors).length > 0}
+        onConfirmed={confirmed}
+        onReload={reload}
+      />
     </div>
   );
 }

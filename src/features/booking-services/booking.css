@@ -26,3 +26,19 @@
   font-size: 13px;
   color: var(--muted);
 }
+.confirm-bar {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid #edf1f6;
+}
+.charges td,
+.charges th {
+  padding: 10px;
+  white-space: nowrap;
+}
+.charges-all h4 {
+  margin: 18px 0 6px;
+}
+.charge-totals {
+  margin-top: 18px;
+}
