@@ -1,0 +1,3 @@
+.table-scroll[aria-busy='true'] {
+  opacity: 0.6;
+}

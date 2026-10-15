@@ -3,13 +3,16 @@ import { useSearchParams } from 'react-router-dom';
 import { queryKeys } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
 import { assessmentApi } from './api';
-import { reviewStateSchema, type ReviewState } from './contracts';
+import { caseRoleSchema, reviewStateSchema, type CaseRole, type ReviewState } from './contracts';
 
 // FE2 keys stay beneath the session namespace so logout clears every case.
 export const assessmentKeys = {
   all: (generation: string) => [...queryKeys.session(generation), 'manager-cases'] as const,
   queue: (generation: string, state: ReviewState, page: number) =>
     [...assessmentKeys.all(generation), 'queue', { state, page }] as const,
+  staffAll: (generation: string) => [...assessmentKeys.all(generation), 'staff'] as const,
+  staff: (generation: string, role: CaseRole, page: number) =>
+    [...assessmentKeys.all(generation), 'staff', { role, page }] as const,
 };
 
 function parsePage(value: string | null) {
@@ -38,5 +41,33 @@ export function useManagerQueue() {
     query,
     setState: (next: ReviewState) => setParams({ state: next, page: '0' }),
     setPage: (next: number) => setParams({ state, page: String(next) }),
+  };
+}
+
+/**
+ * Active staff for one preparation role. Workload is shown, availability is
+ * not: BE has no calendar yet. Refetches on focus because counts change.
+ */
+export function useStaffDirectory(role: CaseRole, page: number) {
+  const session = useSession()!;
+  return useQuery({
+    queryKey: assessmentKeys.staff(session.generation, role, page),
+    queryFn: ({ signal }) => assessmentApi.staff(role, page, signal),
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[4].role === role ? keepPreviousData(previous) : undefined,
+  });
+}
+
+/** Directory role/page live in the URL like the queue filter. */
+export function useStaffDirectoryParams() {
+  const [params, setParams] = useSearchParams();
+  const parsed = caseRoleSchema.safeParse(params.get('role'));
+  const role: CaseRole = parsed.success ? parsed.data : 'SPECIALIST';
+  const page = parsePage(params.get('page'));
+  return {
+    role,
+    page,
+    setRole: (next: CaseRole) => setParams({ role: next, page: '0' }),
+    setPage: (next: number) => setParams({ role, page: String(next) }),
   };
 }
