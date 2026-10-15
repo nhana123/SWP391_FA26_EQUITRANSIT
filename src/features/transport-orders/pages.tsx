@@ -168,6 +168,7 @@ export function OrderEditor({
   const [savedMessage, setSavedMessage] = useState('');
   const submitCommand = useRef<SubmitCommand | null>(null);
   const [frozenSubmit, setFrozenSubmit] = useState(false);
+  const [refreshPending, setRefreshPending] = useState(false);
   const action = useAction();
   const session = useSession()!;
   const navigate = useNavigate();
@@ -212,7 +213,23 @@ export function OrderEditor({
       if (!current) navigate(`/customer/requests/${saved.orderId}`, { replace: true });
     });
   }
+  async function refreshSubmission() {
+    if (!current) return;
+    const fresh = await ordersApi.get(current.orderId);
+    if (getSession()?.generation !== session.generation) return;
+    await adopt(fresh);
+    submitCommand.current = null;
+    setFrozenSubmit(false);
+    setRefreshPending(false);
+    setSavedMessage(
+      'Request submitted for assessment. No quote, payment or departure is confirmed.',
+    );
+  }
   function submit() {
+    if (refreshPending) {
+      void action.run(refreshSubmission);
+      return;
+    }
     if (!current || dirty || !isDraft) return;
     const validation = validateDraft(form, true);
     setErrors(validation);
@@ -226,13 +243,6 @@ export function OrderEditor({
     void action.run(async () => {
       try {
         await ordersApi.submit(current.orderId, command);
-        const fresh = await ordersApi.get(current.orderId);
-        submitCommand.current = null;
-        setFrozenSubmit(false);
-        await adopt(fresh);
-        setSavedMessage(
-          'Request submitted for assessment. No quote, payment or departure is confirmed.',
-        );
       } catch (e) {
         if (e instanceof ApiError && !e.uncertain) {
           submitCommand.current = null;
@@ -240,6 +250,9 @@ export function OrderEditor({
         }
         throw e;
       }
+      // A successful POST is confirmed. If GET fails, retry only that read.
+      setRefreshPending(true);
+      await refreshSubmission();
     });
   }
   async function checkCurrent() {
@@ -254,15 +267,22 @@ export function OrderEditor({
     }
   }
   async function reload() {
+    if (frozenSubmit && latest?.orderStatus === 'DRAFT') return;
     if (!latest || !window.confirm('Replace the unsaved form with current server data?')) return;
     submitCommand.current = null;
     setFrozenSubmit(false);
+    setRefreshPending(false);
     await adopt(latest);
     setLatest(null);
     action.setError(null);
     setErrors({});
   }
   const labels = ['Journey', 'Horse', 'Service preferences', 'Review & Submit'];
+  const fitError =
+    action.error instanceof ApiError &&
+    ['AIR_STALL_UNSUITABLE', 'AIR_STALL_ASSESSMENT_REQUIRED', 'HORSE_SNAPSHOT_STALE'].includes(
+      action.error.code || '',
+    );
   return (
     <>
       <PageHeading
@@ -286,7 +306,11 @@ export function OrderEditor({
         )}
       </ErrorNotice>
       {latest && (
-        <section className="card">
+        <fieldset
+          className="card"
+          aria-label="Current server data"
+          disabled={action.pending || (frozenSubmit && latest.orderStatus === 'DRAFT')}
+        >
           <h2>Current server data</h2>
           <p>Status: {latest.orderStatus}. Your unsaved entries remain below.</p>
           <dl className="details">
@@ -302,12 +326,36 @@ export function OrderEditor({
           <button type="button" onClick={() => void reload()}>
             Reload form with server data
           </button>
-        </section>
+        </fieldset>
       )}
       {!isDraft && (
         <Notice>
           This request has been submitted. Its captured revision is preserved. It cannot be edited
           here.
+        </Notice>
+      )}
+      {refreshPending && (
+        <Notice>
+          Submission was accepted, but the current request could not be loaded. Use Refresh
+          submitted request to load its current status without submitting again.
+        </Notice>
+      )}
+      {fitError && (
+        <Notice>
+          {action.error instanceof ApiError && action.error.code === 'AIR_STALL_UNSUITABLE'
+            ? 'The selected stall does not meet the approved fit limits. Review the saved measurements and service preferences.'
+            : action.error instanceof ApiError && action.error.code === 'HORSE_SNAPSHOT_STALE'
+              ? 'The horse profile changed after capture. Review the horse and current request; an explicit request update is required to refresh the captured information.'
+              : 'The selected one-slot stall needs complete measurements and an approved fit assessment. Review the horse profile and ask your team to assess the stall choice.'}
+          <div className="actions">
+            {current?.draft.horseId && (
+              <Link to={`/customer/horses/${current.draft.horseId}`}>Review horse profile</Link>
+            )}
+            <button type="button" onClick={() => setStep(2)}>
+              Review saved service preferences
+            </button>
+          </div>
+          <p>No stall choice, measurement or approval has been changed automatically.</p>
         </Notice>
       )}
       <nav className="steps" aria-label="Request steps">
@@ -480,9 +528,11 @@ export function OrderEditor({
           >
             {action.pending
               ? 'Submitting…'
-              : frozenSubmit
-                ? 'Retry the same submission'
-                : 'Submit for Review'}
+              : refreshPending
+                ? 'Refresh submitted request'
+                : frozenSubmit
+                  ? 'Retry the same submission'
+                  : 'Submit for Review'}
           </button>
         </section>
       )}
