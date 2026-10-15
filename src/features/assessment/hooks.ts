@@ -17,7 +17,18 @@ export const assessmentKeys = {
     [...assessmentKeys.all(generation), 'case', id] as const,
   decisions: (generation: string, id: number, page: number) =>
     [...assessmentKeys.case(generation, id), 'decisions', { page }] as const,
+  assignments: (generation: string, id: number, page: number) =>
+    [...assessmentKeys.case(generation, id), 'assignments', { page }] as const,
 };
+
+export function useAssignmentHistory(id: number, page: number) {
+  const session = useSession()!;
+  return useQuery({
+    queryKey: assessmentKeys.assignments(session.generation, id, page),
+    queryFn: ({ signal }) => assessmentApi.assignments(id, page, signal),
+    placeholderData: keepPreviousData,
+  });
+}
 
 export function useManagerCase(id: number) {
   const session = useSession()!;

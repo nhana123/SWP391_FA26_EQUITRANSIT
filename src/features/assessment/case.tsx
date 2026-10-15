@@ -6,6 +6,7 @@ import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
 import { HISTORY_PAGE_SIZE } from './api';
 import type { AssessmentReceipt, CaseDecision, ManagerCase, OrderSnapshot } from './contracts';
+import { AssignmentHistory, TeamManager } from './assignments';
 import { DecisionForm } from './decision';
 import { assessmentKeys, useDecisionHistory, useManagerCase } from './hooks';
 import { ManagerHeading } from './layout';
@@ -202,12 +203,21 @@ export function ManagerCasePage() {
   const session = useSession()!;
   const query = useManagerCase(id);
   const [receipt, setReceipt] = useState<AssessmentReceipt | null>(null);
+  const [teamChanged, setTeamChanged] = useState(false);
   const valid = Number.isSafeInteger(id) && id > 0;
 
+  // Receipts are history; re-read current case, queue, workload and history.
+  const refreshAll = () =>
+    queryClient.invalidateQueries({ queryKey: assessmentKeys.all(session.generation) });
   async function refreshAfterDecision(next: AssessmentReceipt) {
     setReceipt(next);
-    // Receipt is history; re-read current case, queue, workload and history.
-    await queryClient.invalidateQueries({ queryKey: assessmentKeys.all(session.generation) });
+    setTeamChanged(false);
+    await refreshAll();
+  }
+  async function refreshAfterTeamChange() {
+    setReceipt(null);
+    setTeamChanged(true);
+    await refreshAll();
   }
   function reload() {
     void queryClient.invalidateQueries({ queryKey: assessmentKeys.case(session.generation, id) });
@@ -246,6 +256,7 @@ export function ManagerCasePage() {
             ' Preparation has started; this is not payment, clearance or departure approval.'}
         </Notice>
       )}
+      {teamChanged && <Notice>Case team updated. The current team is shown below.</Notice>}
       <section className="card">
         <Details
           rows={[
@@ -263,7 +274,11 @@ export function ManagerCasePage() {
       ) : (
         <Notice>No submitted revision is available for this request.</Notice>
       )}
-      <TeamView current={current} />
+      {current.orderStatus === 'APPROVED' ? (
+        <TeamManager current={current} onChanged={refreshAfterTeamChange} onReload={reload} />
+      ) : (
+        <TeamView current={current} />
+      )}
       {decidable && (
         <DecisionForm
           key={revision.revisionId}
@@ -274,6 +289,7 @@ export function ManagerCasePage() {
         />
       )}
       <DecisionHistory id={current.orderId} />
+      <AssignmentHistory id={current.orderId} />
     </>
   );
 }

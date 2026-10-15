@@ -21,6 +21,9 @@ vi.mock('./api', () => ({
     getCase: vi.fn(),
     decide: vi.fn(),
     decisions: vi.fn(),
+    assign: vi.fn(),
+    endAssignment: vi.fn(),
+    assignments: vi.fn(),
   },
 }));
 
@@ -75,6 +78,7 @@ beforeEach(() => {
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role: 'MANAGER' });
   vi.mocked(assessmentApi.getCase).mockResolvedValue(caseOf());
   vi.mocked(assessmentApi.decisions).mockResolvedValue([]);
+  vi.mocked(assessmentApi.assignments).mockResolvedValue([]);
   vi.mocked(assessmentApi.staff).mockImplementation((role) =>
     Promise.resolve({
       items: [staff(role === 'SPECIALIST' ? 31 : 41, role)],
@@ -211,7 +215,7 @@ describe('manager case', () => {
       }),
     );
     mount();
-    const team = (await screen.findByRole('heading', { name: 'Current team' })).closest('section')!;
+    const team = (await screen.findByRole('heading', { name: 'Case team' })).closest('section')!;
     expect(within(team).getByText(/Staff ID 31/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Record decision' })).not.toBeInTheDocument();
   });

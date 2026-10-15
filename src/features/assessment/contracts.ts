@@ -173,3 +173,20 @@ export type AssessmentCommand = {
   dueAt: string | null;
   assignmentNote: string | null;
 };
+
+/** BE CaseAssignmentRequest: full replacement, omitted dueAt/note clear them. */
+export type AssignCommand = {
+  recordVersion: string;
+  operationId: string;
+  staffId: number;
+  reason: string;
+  dueAt: string | null;
+  assignmentNote: string | null;
+};
+
+/** BE EndCaseAssignmentRequest. */
+export type EndAssignmentCommand = {
+  recordVersion: string;
+  operationId: string;
+  reason: string;
+};

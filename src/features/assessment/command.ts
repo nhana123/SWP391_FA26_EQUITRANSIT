@@ -1,0 +1,55 @@
+import { useRef, useState } from 'react';
+import { ApiError } from '../../shared/api/client';
+import { useAction } from '../../shared/lib/useAction';
+
+/**
+ * One operationId per user action. An uncertain failure (network/5xx)
+ * freezes the command so a retry resends the identical UUID, version and
+ * input; any definite failure ends the action and the next submit is new.
+ */
+export function useCaseCommand<C extends { operationId: string }, R>(
+  send: (command: C) => Promise<R>,
+) {
+  const pending = useRef<C | null>(null);
+  const [frozen, setFrozen] = useState(false);
+  const action = useAction();
+  const conflict = action.error instanceof ApiError && action.error.status === 409;
+  const fields = action.error instanceof ApiError ? action.error.fields : {};
+
+  /** `build` runs only for a new action; it returns null when input is invalid. */
+  function submit(
+    build: () => Omit<C, 'operationId'> | null,
+    onSuccess: (result: R) => Promise<void>,
+  ) {
+    if (!pending.current) {
+      const input = build();
+      if (!input) return;
+      pending.current = { ...input, operationId: crypto.randomUUID() } as C;
+    }
+    const command = pending.current;
+    setFrozen(true);
+    void action.run(async () => {
+      try {
+        const result = await send(command);
+        pending.current = null;
+        setFrozen(false);
+        await onSuccess(result);
+      } catch (error) {
+        if (!(error instanceof ApiError && error.uncertain)) {
+          pending.current = null;
+          setFrozen(false);
+        }
+        throw error;
+      }
+    });
+  }
+  return {
+    submit,
+    frozen,
+    pending: action.pending,
+    error: action.error,
+    conflict,
+    fields,
+    locked: frozen || action.pending,
+  };
+}

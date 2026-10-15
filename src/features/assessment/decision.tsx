@@ -20,7 +20,19 @@ export const decisionLabels: Record<DecisionCode, string> = {
   REJECTED: 'Reject request',
 };
 
-const MAX_TEXT = 1000;
+export const MAX_TEXT = 1000;
+
+/** Optional case deadline: offset ISO date in the future (BE requireFuture). */
+export function dueAtError(value: string, now = Date.now()) {
+  const due = value.trim();
+  if (!due) return undefined;
+  if (!validOffsetDate(due)) return 'Use a date with offset, e.g. 2027-02-01T17:00:00+07:00.';
+  if (Date.parse(due) <= now) return 'The deadline must be in the future.';
+  return undefined;
+}
+
+/** A picked staff member; the name is unknown when only the StaffID is known. */
+export type PickedStaff = { staffId: number; fullName: string | null };
 
 type Form = {
   decision: DecisionCode | '';
@@ -45,10 +57,8 @@ export function validateDecision(form: Form, now = Date.now()): FieldErrors {
   if (form.decision === 'APPROVED') {
     if (!form.specialist) errors.specialist = 'Select a Specialist.';
     if (!form.coordinator) errors.coordinator = 'Select a Coordinator.';
-    const due = form.dueAt.trim();
-    if (due && !validOffsetDate(due))
-      errors.dueAt = 'Use a date with offset, e.g. 2027-02-01T17:00:00+07:00.';
-    else if (due && Date.parse(due) <= now) errors.dueAt = 'The deadline must be in the future.';
+    const due = dueAtError(form.dueAt, now);
+    if (due) errors.dueAt = due;
     if (form.assignmentNote.trim().length > MAX_TEXT)
       errors.assignmentNote = `Use at most ${MAX_TEXT} characters.`;
   } else if (form.decision) {
@@ -91,7 +101,7 @@ export function decisionCommand(
       };
 }
 
-function StaffPicker({
+export function StaffPicker({
   role,
   selected,
   onSelect,
@@ -99,7 +109,7 @@ function StaffPicker({
   disabled,
 }: {
   role: CaseRole;
-  selected: CaseStaff | null;
+  selected: PickedStaff | null;
   onSelect: (staff: CaseStaff) => void;
   error?: string;
   disabled: boolean;
@@ -110,7 +120,9 @@ function StaffPicker({
     <fieldset className="staff-picker" disabled={disabled}>
       <legend>{label}</legend>
       <p aria-live="polite">
-        {selected ? `Selected: ${selected.fullName}` : `No ${label.toLowerCase()} selected.`}
+        {selected
+          ? `Selected: ${selected.fullName ?? `Staff ID ${selected.staffId}`}`
+          : `No ${label.toLowerCase()} selected.`}
       </p>
       {error && (
         <p className="field-error" role="alert">
