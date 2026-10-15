@@ -82,8 +82,8 @@ describe('quarantine (FE-22)', () => {
       }),
     );
     expect(screen.queryByLabelText('Standard package')).toBeNull();
-    expect(screen.getByRole('alert')).toHaveTextContent('not required');
+    expect(screen.getByText(/not required, so no package can be requested/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Remove package' }));
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/so no package can be requested/)).toBeNull();
   });
 });
