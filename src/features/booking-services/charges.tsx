@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { displayDate } from '../../shared/lib/validation';
 import type { Charge, Disclosure, SectionCode } from './contracts';
+import { SectionRates } from './rates';
 import type { SectionProps } from './sections';
 
 const statusLabels: Record<string, string> = {
@@ -112,7 +113,12 @@ export function AdditionalChargesSection({ disclosure }: SectionProps) {
         Document coordination, airport and customs handling. Document processing is charged once and
         is not charged again when you submit documents.
       </p>
+      <h4>Saved estimate for your last confirmed choices</h4>
       <ChargeRows charges={extras} currency={disclosure.currency} />
+      <SectionRates
+        section="ADDITIONAL_CHARGES"
+        title="Current unit rates (today's catalog, not your quote)"
+      />
       <button type="button" aria-expanded={all} onClick={() => setAll(!all)}>
         {all ? 'Hide full breakdown' : 'Show all charges'}
       </button>

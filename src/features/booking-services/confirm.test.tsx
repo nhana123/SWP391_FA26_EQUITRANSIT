@@ -14,6 +14,7 @@ import { startSession } from '../../shared/api/session';
 import type { Order } from '../../shared/api/contracts';
 
 vi.mock('./api', () => ({ bookingApi: { get: vi.fn(), confirm: vi.fn() } }));
+vi.mock('./rates-api', () => ({ ratesApi: { get: vi.fn().mockResolvedValue([]) } }));
 vi.mock('../transport-orders/api', () => ({ ordersApi: { get: vi.fn() } }));
 
 beforeEach(() => {
