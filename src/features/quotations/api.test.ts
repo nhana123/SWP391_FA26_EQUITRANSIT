@@ -38,18 +38,16 @@ describe('quotation contracts and reads', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
   it('reads detail by order and quote, keeps decimal text and strips unknown private fields', async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        json({
-          ...quotation,
-          quote: { ...quotation.quote, total: '9007199254740993.01', supplierCost: 'private' },
-          purchaseCost: 'private',
-          margin: 'private',
-          internalNotes: 'private',
-          items: [{ ...quotation.items[0], evidenceFileKey: 'private' }],
-        }),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      json({
+        ...quotation,
+        quote: { ...quotation.quote, total: '9007199254740993.01', supplierCost: 'private' },
+        purchaseCost: 'private',
+        margin: 'private',
+        internalNotes: 'private',
+        items: [{ ...quotation.items[0], evidenceFileKey: 'private' }],
+      }),
+    );
     vi.stubGlobal('fetch', fetch);
     const result = await quotationsApi.get(9, 31);
     expect(fetch.mock.calls[0][0]).toContain('/9/quotes/31');

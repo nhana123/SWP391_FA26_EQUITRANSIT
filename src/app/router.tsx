@@ -29,6 +29,7 @@ import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../feat
 import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
 import { QuotationDetailPage, QuotationsPage } from '../features/quotations/pages';
+import { PrepareQuotationPage } from '../features/quotations/prepare';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -290,6 +291,7 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
+              { path: 'requests/:id/quotes/prepare', element: <PrepareQuotationPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <QuotationDetailPage /> },
               { path: 'staff', element: <ManagerStaffPage /> },
             ],
@@ -309,6 +311,7 @@ export const router = createBrowserRouter([
                 element: <RoleGate roles={['COORDINATOR']} />,
                 children: [
                   { path: ':id/quotes', element: <QuotationsPage /> },
+                  { path: ':id/quotes/prepare', element: <PrepareQuotationPage /> },
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
                 ],
               },

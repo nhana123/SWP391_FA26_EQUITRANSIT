@@ -13,6 +13,7 @@ import { ManagerHeading } from './layout';
 import { reviewStateLabels } from './pages';
 import { caseRoleLabels } from './staff';
 import { QuotationLink } from '../quotations/navigation';
+import { PrepareQuotationLink } from '../quotations/prepare-link';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -252,6 +253,7 @@ export function ManagerCasePage() {
       </ManagerHeading>
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
+        {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
       </div>
       {receipt && (
         <Notice>
