@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { idSchema } from '../../shared/api/contracts';
+import { queryClient } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
 import type { ManagerCase } from '../assessment/contracts';
+import { quotationKeys } from './hooks';
 import type { QuoteEvidence } from './mutation-contracts';
+import { QuoteForm } from './quote-form';
 import { quotationParent } from './navigation';
 import {
   EvidenceEditor,
@@ -19,19 +22,26 @@ import './prepare.css';
 function PreparationWorkspace({
   current,
   revisionId,
+  reloadCase,
 }: {
   current: ManagerCase;
   revisionId: number;
+  reloadCase: () => Promise<ManagerCase | undefined>;
 }) {
   const session = useSession()!;
-  // Observed parent version; receipts advance it, reload resets it explicitly.
+  const navigate = useNavigate();
+  // Observed parent version; receipts advance it, an explicit reload adopts
+  // the freshly read case. Writes never pick up a version on their own.
   const [parentVersion, setParentVersion] = useState(current.recordVersion);
   const [offers, setOffers] = useState<RecordedOffer[]>([]);
   const [evidence, setEvidence] = useState<QuoteEvidence[]>([]);
+  const [validUntil, setValidUntil] = useState('');
   const [notice, setNotice] = useState('');
+  const parent = quotationParent(session.role, current.orderId);
 
   async function reload() {
-    await refreshPreparationCase(session.generation, current.orderId);
+    const fresh = await reloadCase();
+    if (fresh) setParentVersion(fresh.recordVersion);
   }
   return (
     <>
@@ -45,19 +55,33 @@ function PreparationWorkspace({
           setParentVersion(receipt.recordVersion);
           setOffers((list) => [...list, offer]);
           setNotice(`Offer ${receipt.offerId} recorded. Use it as a source in the evidence below.`);
-          await reload();
+          await refreshPreparationCase(session.generation, current.orderId);
         }}
-        onReload={() => {
-          setParentVersion(current.recordVersion);
-          void reload();
-        }}
+        onReload={() => void reload()}
       />
       <EvidenceEditor
         rows={evidence}
         onChange={setEvidence}
         offers={offers}
-        quoteValidUntil={null}
+        quoteValidUntil={validUntil.trim() || null}
         disabled={false}
+      />
+      <QuoteForm
+        orderId={current.orderId}
+        revisionId={revisionId}
+        parentVersion={parentVersion}
+        evidence={evidence}
+        validUntil={validUntil}
+        onValidUntil={setValidUntil}
+        onCreated={async (quote) => {
+          // The receipt may be a replay: re-read lists, detail and the case.
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: quotationKeys.all(session.generation) }),
+            refreshPreparationCase(session.generation, current.orderId),
+          ]);
+          navigate(`${parent}/quotes/${quote.quote.quoteId}`);
+        }}
+        onReload={() => void reload()}
       />
     </>
   );
@@ -81,7 +105,7 @@ export function PrepareQuotationPage() {
       <div>
         <small className="eyebrow">QUOTATION WORKSPACE</small>
         <h1>Prepare quotation</h1>
-        <p>Record priced sources for the current approved revision.</p>
+        <p>Record priced sources and prepare a new version for the current approved revision.</p>
       </div>
       <Link to={`${parent}/quotes`}>Back to quotations</Link>
     </header>
@@ -119,7 +143,12 @@ export function PrepareQuotationPage() {
         Request {current.orderNumber}, revision ID {revisionId}. Sources and evidence apply to this
         revision only.
       </Notice>
-      <PreparationWorkspace key={revisionId} current={current} revisionId={revisionId} />
+      <PreparationWorkspace
+        key={revisionId}
+        current={current}
+        revisionId={revisionId}
+        reloadCase={async () => (await query.refetch()).data}
+      />
     </>
   );
 }

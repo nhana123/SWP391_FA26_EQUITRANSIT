@@ -150,3 +150,37 @@ export function validateEvidence(
     e.validUntil = 'Evidence must stay valid at least until the quotation expires.';
   return e;
 }
+
+export type ScheduleRow = { paymentStage: string; amountDue: string; dueAt: string };
+export type QuoteTermsInput = {
+  validUntil: string;
+  termsVersion: string;
+  terms: string;
+  cancellationTerms: string;
+  schedule: ScheduleRow[];
+};
+
+/** Quote-level rules from QuotePrepareRequest; the BE stays authoritative. */
+export function validateQuoteTerms(input: QuoteTermsInput, now = Date.now()): FieldErrors {
+  const e: FieldErrors = {};
+  const until = futureDate(input.validUntil, 'Valid until', now);
+  if (until) e.validUntil = until;
+  if (!input.termsVersion.trim() || input.termsVersion.trim().length > 50)
+    e.termsVersion = 'Enter the terms version (1–50 characters).';
+  if (!input.terms.trim() || input.terms.length > 10000)
+    e.terms = 'Enter the terms (1–10000 characters).';
+  if (!input.cancellationTerms.trim() || input.cancellationTerms.length > 10000)
+    e.cancellationTerms = 'Enter the cancellation terms (1–10000 characters).';
+  if (input.schedule.length < 1 || input.schedule.length > 12)
+    e.schedule = 'Add between 1 and 12 payment stages.';
+  input.schedule.forEach((row, i) => {
+    const n = i + 1;
+    if (!row.paymentStage.trim() || row.paymentStage.trim().length > 50)
+      e[`stage${n}`] = `Stage ${n}: enter a name (1–50 characters).`;
+    if (!moneyPattern.test(row.amountDue) || !positive(row.amountDue))
+      e[`amount${n}`] = `Stage ${n}: use a positive amount with up to 2 decimals.`;
+    const due = futureDate(row.dueAt, `Stage ${n} due date`, now);
+    if (due) e[`due${n}`] = due;
+  });
+  return e;
+}

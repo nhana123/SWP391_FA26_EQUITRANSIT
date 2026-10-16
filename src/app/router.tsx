@@ -31,6 +31,7 @@ import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
 import { QuotationDetailPage, QuotationsPage } from '../features/quotations/pages';
 import { PrepareQuotationPage } from '../features/quotations/prepare';
+import { ManagerQuotationDetailPage } from '../features/quotations/manager-actions';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -293,7 +294,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id', element: <ManagerCasePage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/prepare', element: <PrepareQuotationPage /> },
-              { path: 'requests/:id/quotes/:quoteId', element: <QuotationDetailPage /> },
+              { path: 'requests/:id/quotes/:quoteId', element: <ManagerQuotationDetailPage /> },
               { path: 'staff', element: <ManagerStaffPage /> },
               { path: 'service-prices', element: <ManagerPricesPage /> },
             ],
