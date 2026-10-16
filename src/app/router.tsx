@@ -25,6 +25,7 @@ import { ManagerCasePage } from '../features/assessment/case';
 import { ManagerLayout } from '../features/assessment/layout';
 import { ManagerQueuePage } from '../features/assessment/pages';
 import { ManagerStaffPage } from '../features/assessment/staff';
+import { ManagerPricesPage } from '../features/service-pricing/ManagerPricesPage';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
@@ -292,6 +293,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <QuotationDetailPage /> },
               { path: 'staff', element: <ManagerStaffPage /> },
+              { path: 'service-prices', element: <ManagerPricesPage /> },
             ],
           },
         ],

@@ -29,6 +29,13 @@ vi.mock('../assigned-cases/api', () => ({
     get: vi.fn(() => new Promise(() => {})),
   },
 }));
+vi.mock('../service-pricing/api', () => ({
+  TARIFF_PAGE_SIZE: 20,
+  tariffApi: {
+    products: vi.fn(() => new Promise(() => {})),
+    list: vi.fn(() => new Promise(() => {})),
+  },
+}));
 vi.mock('../transport-orders/status-api', () => ({
   ORDER_PAGE_SIZE: 20,
   orderStatusApi: {
@@ -55,6 +62,7 @@ describe('FE2 routes are wired into the app router', () => {
   it.each([
     ['/manager/requests', 'Transport Requests'],
     ['/manager/staff', 'Case Staff'],
+    ['/manager/service-prices', 'Service Prices'],
   ])('%s renders the Manager page', async (path, heading) => {
     open(path, 'MANAGER');
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
