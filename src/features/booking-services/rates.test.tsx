@@ -13,7 +13,9 @@ import { ApiError } from '../../shared/api/client';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
-vi.mock('./api', () => ({ bookingApi: { get: vi.fn(), confirm: vi.fn() } }));
+vi.mock('./api', () => ({
+  bookingApi: { get: vi.fn(), confirm: vi.fn(), preview: vi.fn(() => new Promise(() => {})) },
+}));
 vi.mock('./rates-api', () => ({ ratesApi: { get: vi.fn() } }));
 
 const rate = (patch: Partial<ServiceRate>): ServiceRate => ({

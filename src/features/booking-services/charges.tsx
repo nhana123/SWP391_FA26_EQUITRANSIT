@@ -36,7 +36,7 @@ const groupTitles: Record<SectionCode, string> = {
 // Server strings shown as-is: no parsing, rounding or arithmetic in the client.
 const shown = (value: string | null) => value ?? 'Pending';
 
-function ChargeRows({ charges, currency }: { charges: Charge[]; currency: string }) {
+export function ChargeRows({ charges, currency }: { charges: Charge[]; currency: string }) {
   return (
     <div className="table-scroll">
       <table className="charges">

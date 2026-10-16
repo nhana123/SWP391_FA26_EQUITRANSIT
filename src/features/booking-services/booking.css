@@ -63,3 +63,12 @@
   margin: 0;
   padding-left: 18px;
 }
+.live-preview {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px dashed #c9d6e3;
+  border-radius: 6px;
+}
+.live-preview h3 {
+  margin: 0 0 4px;
+}

@@ -9,6 +9,7 @@ import { bookingApi } from './api';
 import { AdditionalChargesSection } from './charges';
 import { RatesProvider } from './rates';
 import { ConfirmBar } from './confirm';
+import { LivePreview } from './preview';
 import {
   sectionCodes,
   toPreferences,
@@ -111,7 +112,8 @@ function BookingEditor({
         )}
         {dirty && (
           <p className="booking-dirty" role="status">
-            You have unconfirmed changes. Estimates shown are for your last confirmed choices.
+            You have unconfirmed changes. Saved estimates in the sections are for your last
+            confirmed choices; the live estimate below reflects your unsaved choices.
           </p>
         )}
         {sectionCodes.map((code) => {
@@ -139,6 +141,13 @@ function BookingEditor({
             </section>
           );
         })}
+        <LivePreview
+          orderId={order.orderId}
+          disclosure={disclosure}
+          prefs={prefs}
+          enabled={dirty && Object.keys(errors).length === 0}
+          onReload={reload}
+        />
         <ConfirmBar
           order={order}
           disclosure={disclosure}

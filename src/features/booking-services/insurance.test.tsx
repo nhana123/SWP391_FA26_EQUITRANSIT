@@ -11,7 +11,9 @@ import { testDisclosure, testOrder } from './testing';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
-vi.mock('./api', () => ({ bookingApi: { get: vi.fn(), confirm: vi.fn() } }));
+vi.mock('./api', () => ({
+  bookingApi: { get: vi.fn(), confirm: vi.fn(), preview: vi.fn(() => new Promise(() => {})) },
+}));
 vi.mock('./rates-api', () => ({ ratesApi: { get: vi.fn().mockResolvedValue([]) } }));
 
 beforeEach(() => {
