@@ -30,7 +30,8 @@ for (const role of ['CUSTOMER', 'MANAGER', 'COORDINATOR'] as const) {
       destinationCountryCode: 'GB',
       deliveryDeadline: null,
     };
-    await page.route('**/api/**', async (route) => {
+    // Vite also serves modules under /src/shared/api/. Only mock backend paths.
+    await page.route((url) => url.pathname.startsWith('/api/'), async (route) => {
       const request = route.request();
       const path = new URL(request.url()).pathname;
       if (path === '/api/auth/login')
