@@ -1,0 +1,28 @@
+.quotation-page-size {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.quotation-page-size select {
+  width: auto;
+  min-width: 80px;
+}
+.quotation-caption {
+  text-align: left;
+  padding-bottom: 12px;
+  font-weight: 600;
+}
+.quotation-terms p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.quotation-page .pagination {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .quotation-page-size {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -12,6 +12,7 @@ import { assessmentKeys, useDecisionHistory, useManagerCase } from './hooks';
 import { ManagerHeading } from './layout';
 import { reviewStateLabels } from './pages';
 import { caseRoleLabels } from './staff';
+import { QuotationLink } from '../quotations/navigation';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -249,6 +250,9 @@ export function ManagerCasePage() {
       >
         <Link to="/manager/requests">Back to requests</Link>
       </ManagerHeading>
+      <div className="actions">
+        <QuotationLink orderId={current.orderId} />
+      </div>
       {receipt && (
         <Notice>
           Decision recorded: {receipt.decision ? outcomeLabels[receipt.decision.decision] : '—'}.
