@@ -5,6 +5,7 @@ import type { FieldErrors } from '../../shared/lib/validation';
 import { Field } from '../../shared/ui/common';
 import type { Disclosure, Preferences, StallFit } from './contracts';
 import { arrangementPatch, textOrNull, type Arrangement } from './form';
+import { RateTag, SectionRates } from './rates';
 
 export type SectionProps = {
   order: Order;
@@ -29,6 +30,7 @@ export function ChoiceGroup<T extends string>({
   onChange,
   disabled,
   children,
+  notes,
 }: {
   legend: string;
   name: string;
@@ -38,22 +40,27 @@ export function ChoiceGroup<T extends string>({
   onChange: (value: T) => void;
   disabled: boolean;
   children?: ReactNode;
+  // Shown beside an option, outside its label text (e.g. the current unit rate).
+  notes?: Partial<Record<T, ReactNode>>;
 }) {
   return (
     <fieldset disabled={disabled}>
       <legend>{legend}</legend>
       {/* No option is pre-selected when the BE value is null. */}
       {options.map((option) => (
-        <label key={option} className="horse-choice">
-          <input
-            type="radio"
-            name={name}
-            value={option}
-            checked={value === option}
-            onChange={() => onChange(option)}
-          />
-          <span>{labels[option]}</span>
-        </label>
+        <div key={option} className="choice-row">
+          <label className="horse-choice">
+            <input
+              type="radio"
+              name={name}
+              value={option}
+              checked={value === option}
+              onChange={() => onChange(option)}
+            />
+            <span>{labels[option]}</span>
+          </label>
+          {notes?.[option]}
+        </div>
       ))}
       {children}
     </fieldset>
@@ -119,10 +126,15 @@ export function TransportationSection(props: SectionProps) {
         options={arrangementOptions(disclosure, 'TRANSPORTATION')}
         value={prefs.roadArrangement}
         labels={arrangementLabels}
+        notes={{
+          EQUITRANSIT: <RateTag product="ROAD_TRANSPORT" />,
+          CUSTOMER: <small className="rate-tag">Your provider; not charged by EquiTransit</small>,
+        }}
         onChange={(value) => update(arrangementPatch('road', value))}
         disabled={disabled}
       />
       {prefs.roadArrangement === 'CUSTOMER' && <ProviderFields {...props} kind="road" />}
+      <SectionRates section="TRANSPORTATION" />
     </>
   );
 }
@@ -168,6 +180,10 @@ export function AirStallSection({
         Slot size is a configuration you request. Airline space is{' '}
         {disclosure.carrierConfirmation === 'NOT_CONFIRMED' ? 'not confirmed' : 'not shown here'}{' '}
         until our team books it with the carrier.
+      </p>
+      <p>
+        Air stall rate: <RateTag product="AIR_STALL" />{' '}
+        <span className="muted">(charged as slots × air km once the route is known)</span>
       </p>
       {savedMissing && (
         <p className="field-error" role="alert">

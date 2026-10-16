@@ -42,3 +42,33 @@
 .charge-totals {
   margin-top: 18px;
 }
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.rate-tag {
+  color: var(--muted);
+  font-size: 13px;
+}
+.section-rates {
+  margin-top: 14px;
+  font-size: 14px;
+}
+.section-rates h4 {
+  margin: 0 0 6px;
+}
+.section-rates ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.live-preview {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px dashed #c9d6e3;
+  border-radius: 6px;
+}
+.live-preview h3 {
+  margin: 0 0 4px;
+}

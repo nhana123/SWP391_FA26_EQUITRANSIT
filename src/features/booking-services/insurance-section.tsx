@@ -1,6 +1,7 @@
 import { Field } from '../../shared/ui/common';
 import type { Preferences } from './contracts';
 import { insurancePatch, textOrNull } from './form';
+import { RateTag } from './rates';
 import { ChoiceGroup, type SectionProps } from './sections';
 
 type Coverage = NonNullable<Preferences['insurance']>;
@@ -35,6 +36,12 @@ export function InsuranceSection(props: SectionProps) {
         options={options}
         value={coverage}
         labels={labels}
+        notes={{
+          NONE: <small className="rate-tag">No premium</small>,
+          EXISTING: <small className="rate-tag">No new premium</small>,
+          MORTALITY: <RateTag product="INSURANCE_MORTALITY" />,
+          COMBINED: <RateTag product="INSURANCE_COMBINED" />,
+        }}
         onChange={(value) => update(insurancePatch(value))}
         disabled={disabled}
       />

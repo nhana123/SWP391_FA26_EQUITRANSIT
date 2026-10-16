@@ -7,7 +7,9 @@ import { ordersApi } from '../transport-orders/api';
 import type { ServicesSlotProps } from '../transport-orders/pages';
 import { bookingApi } from './api';
 import { AdditionalChargesSection } from './charges';
+import { RatesProvider } from './rates';
 import { ConfirmBar } from './confirm';
+import { LivePreview } from './preview';
 import {
   sectionCodes,
   toPreferences,
@@ -98,54 +100,65 @@ function BookingEditor({
     disabled: false,
   };
   return (
-    <div className="booking">
-      <Notice>
-        Choices here are requests for your horse in this order. They are not a quote, a payment or a
-        confirmed booking.
-      </Notice>
-      {confirmedNotice && !dirty && (
-        <Notice>{confirmedNotice} This is not a quote or a payment.</Notice>
-      )}
-      {dirty && (
-        <p className="booking-dirty" role="status">
-          You have unconfirmed changes. Estimates shown are for your last confirmed choices.
-        </p>
-      )}
-      {sectionCodes.map((code) => {
-        const title =
-          disclosure.sections.find((s) => s.code === code)?.title ?? fallbackTitles[code];
-        const View = sectionViews[code];
-        const expanded = open === code;
-        return (
-          <section key={code} className="booking-section" aria-labelledby={`section-${code}`}>
-            <h3 id={`section-${code}`}>
-              <button
-                type="button"
-                aria-expanded={expanded}
-                aria-controls={`panel-${code}`}
-                onClick={() => setOpen(expanded ? null : code)}
-              >
-                {title}
-              </button>
-            </h3>
-            {expanded && (
-              <div id={`panel-${code}`} className="booking-panel">
-                <View {...props} />
-              </div>
-            )}
-          </section>
-        );
-      })}
-      <ConfirmBar
-        order={order}
-        disclosure={disclosure}
-        prefs={prefs}
-        dirty={dirty}
-        hasErrors={Object.keys(errors).length > 0}
-        onConfirmed={confirmed}
-        onReload={reload}
-      />
-    </div>
+    <RatesProvider orderId={order.orderId}>
+      <div className="booking">
+        <Notice>
+          Choices here are requests for your horse in this order. They are not a quote, a payment or
+          a confirmed booking. Rates shown next to options are today&apos;s catalog unit rates, not
+          your quote.
+        </Notice>
+        {confirmedNotice && !dirty && (
+          <Notice>{confirmedNotice} This is not a quote or a payment.</Notice>
+        )}
+        {dirty && (
+          <p className="booking-dirty" role="status">
+            You have unconfirmed changes. Saved estimates in the sections are for your last
+            confirmed choices; the live estimate below reflects your unsaved choices.
+          </p>
+        )}
+        {sectionCodes.map((code) => {
+          const title =
+            disclosure.sections.find((s) => s.code === code)?.title ?? fallbackTitles[code];
+          const View = sectionViews[code];
+          const expanded = open === code;
+          return (
+            <section key={code} className="booking-section" aria-labelledby={`section-${code}`}>
+              <h3 id={`section-${code}`}>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={`panel-${code}`}
+                  onClick={() => setOpen(expanded ? null : code)}
+                >
+                  {title}
+                </button>
+              </h3>
+              {expanded && (
+                <div id={`panel-${code}`} className="booking-panel">
+                  <View {...props} />
+                </div>
+              )}
+            </section>
+          );
+        })}
+        <LivePreview
+          orderId={order.orderId}
+          disclosure={disclosure}
+          prefs={prefs}
+          enabled={dirty && Object.keys(errors).length === 0}
+          onReload={reload}
+        />
+        <ConfirmBar
+          order={order}
+          disclosure={disclosure}
+          prefs={prefs}
+          dirty={dirty}
+          hasErrors={Object.keys(errors).length > 0}
+          onConfirmed={confirmed}
+          onReload={reload}
+        />
+      </div>
+    </RatesProvider>
   );
 }
 

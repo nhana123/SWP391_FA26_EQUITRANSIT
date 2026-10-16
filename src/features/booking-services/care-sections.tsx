@@ -1,6 +1,7 @@
 import { Field } from '../../shared/ui/common';
 import type { Preferences } from './contracts';
 import { arrangementPatch, textOrNull } from './form';
+import { RateTag, SectionRates } from './rates';
 import { ChoiceGroup, ProviderFields, type SectionProps } from './sections';
 
 const offered = (props: SectionProps, code: string) =>
@@ -12,30 +13,35 @@ function CountField({
   hint,
   field,
   props,
+  product,
 }: {
   label: string;
   hint: string;
   field: 'groomingDays' | 'boardingNights';
   props: SectionProps;
+  product: 'GROOMING' | 'BOARDING';
 }) {
   const value = props.prefs[field];
   return (
-    <Field label={label} hint={hint} error={props.errors[field]}>
-      {(id) => (
-        <input
-          id={id}
-          inputMode="numeric"
-          maxLength={3}
-          value={value === null ? '' : String(value)}
-          onChange={(e) => {
-            const raw = e.target.value.trim();
-            if (raw === '') props.update({ [field]: null } as Partial<Preferences>);
-            else if (/^\d{1,3}$/.test(raw))
-              props.update({ [field]: Number(raw) } as Partial<Preferences>);
-          }}
-        />
-      )}
-    </Field>
+    <div>
+      <Field label={label} hint={hint} error={props.errors[field]}>
+        {(id) => (
+          <input
+            id={id}
+            inputMode="numeric"
+            maxLength={3}
+            value={value === null ? '' : String(value)}
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              if (raw === '') props.update({ [field]: null } as Partial<Preferences>);
+              else if (/^\d{1,3}$/.test(raw))
+                props.update({ [field]: Number(raw) } as Partial<Preferences>);
+            }}
+          />
+        )}
+      </Field>
+      <RateTag product={product} />
+    </div>
   );
 }
 
@@ -50,20 +56,24 @@ export function HorseCareSection(props: SectionProps) {
       <fieldset className="form-grid" disabled={disabled}>
         <legend>Additional care</legend>
         {options.includes('ENHANCED') && (
-          <label className="horse-choice">
-            <input
-              type="checkbox"
-              checked={prefs.enhancedCare === true}
-              onChange={(e) => update({ enhancedCare: e.target.checked })}
-            />
-            <span>Enhanced care (optional, charged separately)</span>
-          </label>
+          <div className="choice-row">
+            <label className="horse-choice">
+              <input
+                type="checkbox"
+                checked={prefs.enhancedCare === true}
+                onChange={(e) => update({ enhancedCare: e.target.checked })}
+              />
+              <span>Enhanced care (optional, charged separately)</span>
+            </label>
+            <RateTag product="ENHANCED_CARE" />
+          </div>
         )}
         {options.includes('GROOMING') && (
           <CountField
             label="Grooming days"
             hint="Leave empty if not needed."
             field="groomingDays"
+            product="GROOMING"
             props={props}
           />
         )}
@@ -72,6 +82,7 @@ export function HorseCareSection(props: SectionProps) {
             label="Extra boarding nights"
             hint="Nights outside quarantine only; quarantine days are counted separately."
             field="boardingNights"
+            product="BOARDING"
             props={props}
           />
         )}
@@ -91,6 +102,7 @@ export function HorseCareSection(props: SectionProps) {
             )}
           </Field>
         )}
+        {options.includes('ESCORT') && <RateTag product="ESCORT" />}
       </fieldset>
     </>
   );
@@ -116,11 +128,22 @@ export function VeterinarySection(props: SectionProps) {
           EQUITRANSIT: 'Arranged by EquiTransit',
           CUSTOMER: 'I will arrange my own veterinarian',
         }}
+        notes={{
+          CUSTOMER: (
+            <small className="rate-tag">Your veterinarian; not charged by EquiTransit</small>
+          ),
+        }}
         onChange={(value) => update(arrangementPatch('veterinary', value))}
         disabled={disabled}
       />
       {prefs.veterinaryArrangement === 'CUSTOMER' && (
         <ProviderFields {...props} kind="veterinary" />
+      )}
+      {prefs.veterinaryArrangement !== 'CUSTOMER' && (
+        <SectionRates
+          section="VETERINARY"
+          title="Current veterinary unit rates (required counts are set by assessment)"
+        />
       )}
     </>
   );
@@ -168,6 +191,10 @@ export function QuarantineSection(props: SectionProps) {
           options={packages}
           value={prefs.quarantinePackage}
           labels={packageLabels}
+          notes={{
+            STANDARD: <RateTag product="QUARANTINE_STANDARD" />,
+            ENHANCED: <RateTag product="QUARANTINE_ENHANCED" />,
+          }}
           onChange={(value) => update({ quarantinePackage: value })}
           disabled={disabled}
         >
