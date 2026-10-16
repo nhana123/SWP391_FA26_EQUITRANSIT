@@ -29,7 +29,23 @@ export type QuotePrepareInput = {
 };
 export type QuotePrepareCommand = QuotePrepareInput & QuoteCommand;
 
+/** BE QuoteAction. Manager: APPROVE/ISSUE/REJECT/EXPIRE; customer actions are #60. */
+export type QuoteAction = 'APPROVE' | 'ISSUE' | 'ACCEPT' | 'REJECT' | 'EXPIRE';
+export type QuoteActionCommand = QuoteCommand & { action: QuoteAction };
+
 export const quoteMutationsApi = {
+  // QuoteActionRequest has no reason field: nothing extra is sent.
+  act: (
+    orderId: number,
+    quoteId: number,
+    { recordVersion, operationId, action }: QuoteActionCommand,
+  ) => {
+    if (!idSchema.safeParse(quoteId).success) throw new ApiError(400, 'Invalid quotation ID.');
+    return request(`${orderPath(orderId)}/quotes/${quoteId}/actions`, quoteResponseSchema, {
+      method: 'POST',
+      body: { command: { recordVersion, operationId }, action },
+    });
+  },
   // Every preparation is a new version; there is no in-place quote update.
   prepare: (orderId: number, { recordVersion, operationId, ...input }: QuotePrepareCommand) =>
     request(`${orderPath(orderId)}/quotes`, quoteResponseSchema, {
