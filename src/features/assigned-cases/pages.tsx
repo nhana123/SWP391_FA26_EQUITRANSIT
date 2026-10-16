@@ -9,6 +9,7 @@ import type { ManagerCase } from '../assessment/contracts';
 import { caseRoleLabels } from '../assessment/staff';
 import { useAssignedCase, useAssignedCases } from './hooks';
 import { QuotationLink } from '../quotations/navigation';
+import { PrepareQuotationLink } from '../quotations/prepare-link';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -223,6 +224,7 @@ export function AssignedCasePage() {
       </StaffHeading>
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
+        {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
       </div>
       <Notice>
         Read-only preparation view. Document review, planning, reservations and departure are not
