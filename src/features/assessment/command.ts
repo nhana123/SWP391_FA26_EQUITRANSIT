@@ -9,6 +9,8 @@ import { useAction } from '../../shared/lib/useAction';
  */
 export function useCaseCommand<C extends { operationId: string }, R>(
   send: (command: C) => Promise<R>,
+  // Extra codes the BE asks to retry with the same operation (e.g. a lock timeout).
+  retryCodes: readonly string[] = [],
 ) {
   const pending = useRef<C | null>(null);
   const [frozen, setFrozen] = useState(false);
@@ -35,7 +37,10 @@ export function useCaseCommand<C extends { operationId: string }, R>(
         setFrozen(false);
         await onSuccess(result);
       } catch (error) {
-        if (!(error instanceof ApiError && error.uncertain)) {
+        const retrySame =
+          error instanceof ApiError &&
+          (error.uncertain || (error.code !== undefined && retryCodes.includes(error.code)));
+        if (!retrySame) {
           pending.current = null;
           setFrozen(false);
         }
