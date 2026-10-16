@@ -8,6 +8,7 @@ import { Details, show, SnapshotView } from '../assessment/case';
 import type { ManagerCase } from '../assessment/contracts';
 import { caseRoleLabels } from '../assessment/staff';
 import { useAssignedCase, useAssignedCases } from './hooks';
+import { QuotationLink } from '../quotations/navigation';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -220,6 +221,9 @@ export function AssignedCasePage() {
       >
         <Link to="/staff/cases">Back to my cases</Link>
       </StaffHeading>
+      <div className="actions">
+        <QuotationLink orderId={current.orderId} />
+      </div>
       <Notice>
         Read-only preparation view. Document review, planning, reservations and departure are not
         available in this release.

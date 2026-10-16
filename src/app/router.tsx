@@ -28,6 +28,7 @@ import { ManagerStaffPage } from '../features/assessment/staff';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
+import { QuotationDetailPage, QuotationsPage } from '../features/quotations/pages';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -272,6 +273,8 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <RequestsPage /> },
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <RequestDetailPage /> },
+              { path: 'requests/:id/quotes', element: <QuotationsPage /> },
+              { path: 'requests/:id/quotes/:quoteId', element: <QuotationDetailPage /> },
             ],
           },
         ],
@@ -286,6 +289,8 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="requests" replace /> },
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
+              { path: 'requests/:id/quotes', element: <QuotationsPage /> },
+              { path: 'requests/:id/quotes/:quoteId', element: <QuotationDetailPage /> },
               { path: 'staff', element: <ManagerStaffPage /> },
             ],
           },
@@ -300,6 +305,13 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <AssignedCasesPage /> },
               { path: ':id', element: <AssignedCasePage /> },
+              {
+                element: <RoleGate roles={['COORDINATOR']} />,
+                children: [
+                  { path: ':id/quotes', element: <QuotationsPage /> },
+                  { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
+                ],
+              },
             ],
           },
         ],
