@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -121,5 +121,119 @@ describe('Manager quotation actions (#59)', () => {
     expect(await p.findByText(/A pricing source changed/)).toBeInTheDocument();
     expect(p.getByRole('button', { name: 'Refresh quotation' })).toBeInTheDocument();
     expect(quoteMutationsApi.act).toHaveBeenCalledTimes(2);
+  }, 20_000);
+});
+
+describe('Manager confirmation snapshot (#59 regression)', () => {
+  const backgroundRefresh = async (next: QuoteResponse) => {
+    vi.mocked(quotationsApi.get).mockResolvedValue(next);
+    await act(() => queryClient.refetchQueries());
+  };
+
+  it('blocks confirmation when a background refresh changes the reviewed version', async () => {
+    vi.mocked(quoteMutationsApi.act).mockResolvedValue(quote({ status: 'APPROVED' }));
+    const user = mount(quote({ status: 'DRAFT' }));
+    const p = await panel();
+    await user.click(p.getByRole('button', { name: 'Approve' }));
+    await backgroundRefresh({ ...quote({ status: 'DRAFT' }), recordVersion: '00000000000000a3' });
+    const dialog = p.getByRole('dialog', { name: 'Confirm Approve' });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/changed since you opened/);
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm approve' });
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(quoteMutationsApi.act).not.toHaveBeenCalled();
+    // Reviewing again starts from the current data and only then sends the newer version.
+    await user.click(within(dialog).getByRole('button', { name: 'Close and review again' }));
+    await user.click(await p.findByRole('button', { name: 'Approve' }));
+    await user.click(p.getByRole('button', { name: 'Confirm approve' }));
+    await waitFor(() => expect(quoteMutationsApi.act).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(quoteMutationsApi.act).mock.calls[0][2].recordVersion).toBe(
+      '00000000000000a3',
+    );
+  }, 20_000);
+
+  it('a stale-version rejection ends the action; the next attempt is a new operation', async () => {
+    vi.mocked(quoteMutationsApi.act)
+      .mockRejectedValueOnce(new ApiError(409, 'Stale.', 'ORDER_VERSION_CONFLICT'))
+      .mockResolvedValueOnce(quote({ status: 'APPROVED' }));
+    const user = mount(quote({ status: 'DRAFT' }));
+    const p = await panel();
+    await user.click(p.getByRole('button', { name: 'Approve' }));
+    await user.click(p.getByRole('button', { name: 'Confirm approve' }));
+    expect(await p.findByText(/The request changed/)).toBeInTheDocument();
+    vi.mocked(quotationsApi.get).mockResolvedValue({
+      ...quote({ status: 'DRAFT' }),
+      recordVersion: '00000000000000a4',
+    });
+    await user.click(p.getByRole('button', { name: 'Refresh quotation' }));
+    expect(p.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(p.getByRole('button', { name: 'Approve' })).toBeEnabled());
+    await user.click(p.getByRole('button', { name: 'Approve' }));
+    await user.click(p.getByRole('button', { name: 'Confirm approve' }));
+    await waitFor(() => expect(quoteMutationsApi.act).toHaveBeenCalledTimes(2));
+    const [first, second] = vi.mocked(quoteMutationsApi.act).mock.calls;
+    expect(first[2].recordVersion).toBe('00000000000000a2');
+    expect(second[2].recordVersion).toBe('00000000000000a4');
+    expect(second[2].operationId).not.toBe(first[2].operationId);
+  }, 20_000);
+
+  it('blocks a non-expiry action when validity elapses while the dialog is open', async () => {
+    const user = mount(
+      quote({ status: 'APPROVED', validUntil: new Date(Date.now() + 1500).toISOString() }),
+    );
+    const p = await panel();
+    await user.click(p.getByRole('button', { name: 'Issue to customer' }));
+    const dialog = p.getByRole('dialog', { name: 'Confirm Issue to customer' });
+    expect(
+      await within(dialog).findByText(/reached its validity deadline/, {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: 'Confirm issue to customer' }),
+    ).toBeDisabled();
+    expect(quoteMutationsApi.act).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Close and review again' }));
+    expect(await p.findByRole('button', { name: 'Mark as expired' })).toBeInTheDocument();
+    expect(p.queryByRole('button', { name: 'Issue to customer' })).toBeNull();
+  }, 20_000);
+
+  it('sends exactly one command on a double-click', async () => {
+    let resolve!: (value: QuoteResponse) => void;
+    vi.mocked(quoteMutationsApi.act).mockReturnValue(new Promise((r) => (resolve = r)));
+    const user = mount(quote({ status: 'DRAFT' }));
+    const p = await panel();
+    await user.click(p.getByRole('button', { name: 'Reject' }));
+    await user.dblClick(p.getByRole('button', { name: 'Confirm reject' }));
+    expect(quoteMutationsApi.act).toHaveBeenCalledTimes(1);
+    await act(async () => resolve(quote({ status: 'REJECTED' })));
+    expect(await p.findByText(/Q-9-2 rejected/)).toBeInTheDocument();
+    expect(quoteMutationsApi.act).toHaveBeenCalledTimes(1);
+  }, 20_000);
+
+  it('an uncertain retry keeps UUID, version, body and endpoint despite a background refresh', async () => {
+    vi.mocked(quoteMutationsApi.act)
+      .mockRejectedValueOnce(new ApiError(503, 'Unavailable'))
+      .mockResolvedValueOnce(quote({ status: 'APPROVED' }));
+    const user = mount(quote({ status: 'DRAFT' }));
+    const p = await panel();
+    await user.click(p.getByRole('button', { name: 'Approve' }));
+    await user.click(p.getByRole('button', { name: 'Confirm approve' }));
+    const retry = await p.findByRole('button', { name: 'Retry the same action' });
+    expect(p.getByText(/The result is uncertain/)).toBeInTheDocument();
+    // The first attempt may have been applied; a refresh must not rewrite the command.
+    await backgroundRefresh({
+      ...quote({ status: 'APPROVED' }),
+      recordVersion: '00000000000000a5',
+    });
+    expect(p.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await user.click(retry);
+    await waitFor(() => expect(quoteMutationsApi.act).toHaveBeenCalledTimes(2));
+    const [first, second] = vi.mocked(quoteMutationsApi.act).mock.calls;
+    expect(second).toEqual(first);
+    expect(second[0]).toBe(9);
+    expect(second[1]).toBe(31);
+    expect(second[2].recordVersion).toBe('00000000000000a2');
+    expect(await p.findByText(/Q-9-2 approved/)).toBeInTheDocument();
+    // Success re-reads current state.
+    await waitFor(() => expect(vi.mocked(quotationsApi.get).mock.calls.length).toBeGreaterThan(2));
   }, 20_000);
 });

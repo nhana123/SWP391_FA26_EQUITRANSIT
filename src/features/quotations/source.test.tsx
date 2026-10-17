@@ -53,7 +53,8 @@ function mount(role: Role = 'MANAGER') {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return userEvent.setup();
+  // No per-keystroke macrotask: the offer form types ~70 characters per test.
+  return userEvent.setup({ delay: null });
 }
 async function fillOffer(user: ReturnType<typeof userEvent.setup>, purchase = '800.00') {
   const form = await screen.findByRole('form', { name: 'Record supplier offer' });
@@ -116,7 +117,7 @@ describe('supplier offer source (#57)', () => {
     await waitFor(() => expect(quoteMutationsApi.recordOffer).toHaveBeenCalledTimes(2));
     const second = vi.mocked(quoteMutationsApi.recordOffer).mock.calls[1][1];
     expect(second.recordVersion).toBe('00000000000000c2');
-  }, 20_000);
+  });
 
   it('only airfare can bundle charges', async () => {
     const user = mount();
@@ -140,7 +141,7 @@ describe('supplier offer source (#57)', () => {
     expect(await f.findByText(/The request changed/)).toBeInTheDocument();
     expect(f.getByLabelText('Provider name')).toHaveValue('Test Air Cargo');
     expect(f.getByRole('button', { name: 'Reload case' })).toBeInTheDocument();
-  }, 20_000);
+  });
 
   it('works for an assigned Coordinator through the staff case', async () => {
     mount('COORDINATOR');
