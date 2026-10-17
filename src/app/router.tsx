@@ -32,6 +32,7 @@ import { RequestDetailPage, RequestsPage } from '../features/transport-orders/st
 import { QuotationDetailPage, QuotationsPage } from '../features/quotations/pages';
 import { PrepareQuotationPage } from '../features/quotations/prepare';
 import { ManagerQuotationDetailPage } from '../features/quotations/manager-actions';
+import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -277,7 +278,7 @@ export const router = createBrowserRouter([
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <RequestDetailPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
-              { path: 'requests/:id/quotes/:quoteId', element: <QuotationDetailPage /> },
+              { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
             ],
           },
         ],

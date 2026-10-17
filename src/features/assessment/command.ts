@@ -50,6 +50,12 @@ export function useCaseCommand<C extends { operationId: string }, R>(
   }
   return {
     submit,
+    // A definite rejection can be reviewed explicitly before starting a new action.
+    // Uncertain commands must retain their original UUID/version/body.
+    reset: () => {
+      if (pending.current || action.pending) return;
+      action.setError(null);
+    },
     frozen,
     pending: action.pending,
     error: action.error,
