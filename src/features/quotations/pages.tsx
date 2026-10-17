@@ -326,7 +326,7 @@ export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
   );
 }
 
-export function QuotationDetailPage() {
+export function QuotationDetailPage({ error }: { error?: unknown } = {}) {
   const params = useParams();
   const orderId = Number(params.id);
   const quoteId = Number(params.quoteId);
@@ -348,8 +348,8 @@ export function QuotationDetailPage() {
       <QuotationHeading title="Quotation details">
         <Link to={`${parent}/quotes`}>Back to quotations</Link>
       </QuotationHeading>
-      {query.error ? (
-        <QuotationError error={query.error} retry={() => void query.refetch()} />
+      {error || query.error ? (
+        <QuotationError error={error || query.error} retry={() => void query.refetch()} />
       ) : query.isPending ? (
         <Loading />
       ) : hidden ? (
