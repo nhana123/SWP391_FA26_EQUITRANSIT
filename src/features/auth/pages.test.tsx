@@ -11,7 +11,7 @@ vi.mock('./api', () => ({ authApi: { verify: vi.fn(), register: vi.fn() } }));
 beforeEach(() => vi.clearAllMocks());
 
 async function fillRegistration(email = 'test@example.invalid') {
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.type(screen.getByLabelText('Full name'), 'Test Customer');
   await user.type(screen.getByLabelText('Email address'), email);
   await user.type(screen.getByLabelText('Password'), 'TestPassword123!');
@@ -89,7 +89,7 @@ describe('account flows', () => {
         <RegisterPage />
       </MemoryRouter>,
     );
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.type(screen.getByLabelText('Full name'), 'Test Customer');
     await user.type(screen.getByLabelText('Email address'), 'test@example.invalid');
     await user.type(screen.getByLabelText('Password'), 'TestPassword123!');
