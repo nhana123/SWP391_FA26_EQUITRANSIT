@@ -15,6 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:acceptance:preflight": "node --experimental-strip-types --env-file-if-exists=.env.acceptance.local scripts/f06-preflight.ts",
+    "test:acceptance": "node --experimental-strip-types --env-file-if-exists=.env.acceptance.local scripts/f06-run.ts",
+    "test:acceptance:list": "playwright test --config playwright.acceptance.config.ts --list --reporter=list",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
