@@ -31,6 +31,7 @@ import {
   CreateStaffPage,
   StaffAdministrationDetailPage,
 } from '../features/staff-administration/pages';
+import { PaymentsPage } from '../features/payments/pages';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
@@ -44,6 +45,11 @@ import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
 import { NotificationBell, NotificationsPage } from '../features/activity-customer/notifications';
 import { EmailPreferencesPage } from '../features/activity-customer/preferences';
 import { ManagerAuditPage, ManagerFinancialPage } from '../features/activity-reports/pages';
+import {
+  CustomerHandoverPage,
+  ManagerSettlementPage,
+  StaffActualCostsPage,
+} from '../features/settlement/pages';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -309,6 +315,8 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <RequestsPage /> },
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <RequestDetailPage /> },
+              { path: 'requests/:id/handover', element: <CustomerHandoverPage /> },
+              { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
             ],
@@ -325,6 +333,8 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="requests" replace /> },
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
+              { path: 'requests/:id/settlement', element: <ManagerSettlementPage /> },
+              { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/prepare', element: <PrepareQuotationPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <ManagerQuotationDetailPage /> },
@@ -350,6 +360,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <AssignedCasesPage /> },
               { path: ':id', element: <AssignedCasePage /> },
+              { path: ':id/actual-costs', element: <StaffActualCostsPage /> },
               {
                 element: <RoleGate roles={['COORDINATOR']} />,
                 children: [

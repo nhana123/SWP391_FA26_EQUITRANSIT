@@ -12,6 +12,7 @@ import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { NotificationBell } from '../activity-customer/notifications';
+import { SettlementPreviewLink } from '../settlement/navigation';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -227,6 +228,7 @@ export function AssignedCasePage() {
       </StaffHeading>
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
+        <SettlementPreviewLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
