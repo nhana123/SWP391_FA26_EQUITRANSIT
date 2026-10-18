@@ -13,6 +13,7 @@ import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
+import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { ComplianceLink } from '../compliance/link';
 import { NotificationBell } from '../activity-customer/notifications';
 import { SettlementPreviewLink } from '../settlement/navigation';
@@ -238,6 +239,7 @@ export function AssignedCasePage() {
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
+      <OrderTimeline orderId={current.orderId} />
       <Notice>
         Read-only preparation view. Document review, planning, reservations and departure are not
         available in this release.

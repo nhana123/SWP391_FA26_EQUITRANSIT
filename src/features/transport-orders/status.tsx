@@ -11,6 +11,7 @@ import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { QuotationLink } from '../quotations/navigation';
 import { ComplianceLink } from '../compliance/link';
+import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import { PaymentLink } from '../payments/pages';
 import { orderStatusApi } from './status-api';
@@ -213,6 +214,7 @@ export function RequestDetailPage() {
         <SettlementPreviewLink orderId={query.data.orderId} />
         <PaymentLink orderId={query.data.orderId} />
       </div>
+      <OrderTimeline orderId={query.data.orderId} />
       {/* FE1's editor, unchanged, with FE2 booking in its documented slot. */}
       <OrderEditor
         key={id}

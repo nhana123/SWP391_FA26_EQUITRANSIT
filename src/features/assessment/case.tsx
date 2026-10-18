@@ -18,6 +18,7 @@ import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
+import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
@@ -265,6 +266,7 @@ export function ManagerCasePage() {
         <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
+      <OrderTimeline orderId={current.orderId} />
       {receipt && (
         <Notice>
           Decision recorded: {receipt.decision ? outcomeLabels[receipt.decision.decision] : '—'}.

@@ -18,6 +18,7 @@ import {
   type Gate,
   type Readiness,
 } from './contracts';
+import { TaskQueue } from '../activity-operations/TaskQueue';
 import './departure.css';
 
 export const departureKeys = {
@@ -527,11 +528,7 @@ export function DriverLayout() {
     </div>
   );
 }
+/** Driver home: the live assigned road legs; each opens its departure. */
 export function DriverHome() {
-  return (
-    <Notice>
-      Open a departure from your assigned task. Your task list will appear here once it is
-      available.
-    </Notice>
-  );
+  return <TaskQueue />;
 }
