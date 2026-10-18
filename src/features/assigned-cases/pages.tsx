@@ -12,6 +12,8 @@ import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { ComplianceLink } from '../compliance/link';
+import { NotificationBell } from '../activity-customer/notifications';
+import { SettlementPreviewLink } from '../settlement/navigation';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -81,6 +83,7 @@ export function AssignedCasesLayout() {
             Menu
           </button>
           <span>Case preparation</span>
+          <NotificationBell />
           <button type="button" onClick={clearSession}>
             Log Out
           </button>
@@ -226,6 +229,7 @@ export function AssignedCasePage() {
       </StaffHeading>
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
+        <SettlementPreviewLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />

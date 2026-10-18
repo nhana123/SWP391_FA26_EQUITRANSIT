@@ -54,19 +54,27 @@ function mount(role: Role = 'MANAGER') {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  // No per-keystroke macrotask: the offer form types ~70 characters per test.
   return userEvent.setup({ delay: null });
+}
+/**
+ * Focus and paste each value: one real input event per field instead of one
+ * render per keystroke. ~70 typed keys per call made these tests approach the
+ * 5s timeout under full-suite load.
+ */
+async function fill(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, text: string) {
+  await user.click(field);
+  await user.paste(text);
 }
 async function fillOffer(user: ReturnType<typeof userEvent.setup>, purchase = '800.00') {
   const form = await screen.findByRole('form', { name: 'Record supplier offer' });
   const f = within(form);
-  await user.type(f.getByLabelText('Provider name'), 'Test Air Cargo');
-  await user.type(f.getByLabelText('Offer reference'), 'OFFER-1');
-  await user.type(f.getByLabelText('Quantity'), '1');
-  await user.type(f.getByLabelText(/Purchase unit price/), purchase);
-  await user.type(f.getByLabelText(/Retail unit price/), '1000.00');
-  await user.type(f.getByLabelText('Offer valid until'), '2099-01-31T12:00:00Z');
-  await user.type(f.getByLabelText('Evidence reference'), 'docs/offer-1.pdf');
+  await fill(user, f.getByLabelText('Provider name'), 'Test Air Cargo');
+  await fill(user, f.getByLabelText('Offer reference'), 'OFFER-1');
+  await fill(user, f.getByLabelText('Quantity'), '1');
+  await fill(user, f.getByLabelText(/Purchase unit price/), purchase);
+  await fill(user, f.getByLabelText(/Retail unit price/), '1000.00');
+  await fill(user, f.getByLabelText('Offer valid until'), '2099-01-31T12:00:00Z');
+  await fill(user, f.getByLabelText('Evidence reference'), 'docs/offer-1.pdf');
   return f;
 }
 

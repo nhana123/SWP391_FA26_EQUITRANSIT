@@ -11,6 +11,8 @@ import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { QuotationLink } from '../quotations/navigation';
 import { ComplianceLink } from '../compliance/link';
+import { SettlementPreviewLink } from '../settlement/navigation';
+import { PaymentLink } from '../payments/pages';
 import { orderStatusApi } from './status-api';
 import { orderStatusLabels, type CustomerAssessment } from './status-contracts';
 import './status.css';
@@ -208,6 +210,8 @@ export function RequestDetailPage() {
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />
         <ComplianceLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
+        <SettlementPreviewLink orderId={query.data.orderId} />
+        <PaymentLink orderId={query.data.orderId} />
       </div>
       {/* FE1's editor, unchanged, with FE2 booking in its documented slot. */}
       <OrderEditor

@@ -1,0 +1,67 @@
+.activity-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+.activity-metrics > div {
+  padding: 1rem;
+  border: 1px solid var(--line, #d8dfd9);
+  border-radius: 0.5rem;
+}
+.activity-metrics dt {
+  font-weight: 600;
+}
+.activity-metrics dd {
+  margin: 0.5rem 0;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+.activity-metrics small {
+  display: block;
+}
+.activity-notifications {
+  list-style: none;
+  padding: 0;
+}
+.activity-notifications > li {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line, #d8dfd9);
+  overflow-wrap: anywhere;
+}
+.activity-bell {
+  position: relative;
+}
+.activity-peek {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  width: min(24rem, 85vw);
+  padding: 1rem;
+  border: 1px solid var(--line, #d8dfd9);
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 0.5rem 1.5rem #0002;
+  overflow-wrap: anywhere;
+}
+.activity-peek h2 {
+  font-size: 1.1rem;
+}
+.activity-snapshot {
+  max-width: 36rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.public-header:has(.activity-bell) {
+  height: auto;
+  min-height: 88px;
+  flex-wrap: wrap;
+}
+.public-header:has(.activity-bell) nav {
+  flex-wrap: wrap;
+}
+.activity-preference input[type='checkbox'] {
+  width: auto;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+}
