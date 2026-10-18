@@ -36,6 +36,10 @@ vi.mock('../service-pricing/api', () => ({
     list: vi.fn(() => new Promise(() => {})),
   },
 }));
+vi.mock('../resources/api', () => ({
+  RESOURCE_PAGE_SIZE: 20,
+  resourcesApi: { list: vi.fn(() => new Promise(() => {})), probe: vi.fn() },
+}));
 vi.mock('../transport-orders/status-api', () => ({
   ORDER_PAGE_SIZE: 20,
   orderStatusApi: {
@@ -63,6 +67,7 @@ describe('FE2 routes are wired into the app router', () => {
     ['/manager/requests', 'Transport Requests'],
     ['/manager/staff', 'Case Staff'],
     ['/manager/service-prices', 'Service Prices'],
+    ['/manager/resources', 'Transport Resources'],
   ])('%s renders the Manager page', async (path, heading) => {
     open(path, 'MANAGER');
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
@@ -111,6 +116,24 @@ describe('FE2 routes are wired into the app router', () => {
       expect(screen.getByRole('navigation', { name: 'Staff navigation' })).toBeInTheDocument();
     },
   );
+
+  it.each([
+    ['/manager/requests/7/availability', 'MANAGER'],
+    ['/staff/cases/7/availability', 'COORDINATOR'],
+  ] as const)('%s renders the #79 availability probe for %s', async (path, role) => {
+    open(path, role);
+    expect(
+      await screen.findByRole('heading', { name: 'Check resource availability' }),
+    ).toBeInTheDocument();
+  });
+
+  it('a Specialist cannot open the availability probe', async () => {
+    open('/staff/cases/7/availability', 'SPECIALIST');
+    expect(await screen.findByText(/do not have access to this workspace/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Check resource availability' }),
+    ).not.toBeInTheDocument();
+  });
 
   it('/customer/requests renders the FE-13 request list', async () => {
     open('/customer/requests', 'CUSTOMER');

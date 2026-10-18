@@ -9,6 +9,7 @@ const links = [
   { to: '/manager/requests', label: 'Requests' },
   { to: '/manager/staff', label: 'Case Staff' },
   { to: '/manager/service-prices', label: 'Service Prices' },
+  { to: '/manager/resources', label: 'Transport Resources' },
 ];
 
 export function ManagerLayout() {
