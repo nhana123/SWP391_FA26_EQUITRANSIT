@@ -17,6 +17,7 @@ export function useServiceRates(orderId: number) {
   return useQuery({
     queryKey: [...queryKeys.services(session.generation, orderId), 'rates'],
     queryFn: ({ signal }) => ratesApi.get(orderId, signal),
+    retry: false,
   });
 }
 
@@ -26,8 +27,13 @@ type RatesState = {
 };
 const RatesContext = createContext<RatesState>({ status: 'loading', byProduct: new Map() });
 
-export function RatesProvider({ orderId, children }: { orderId: number; children: ReactNode }) {
-  const query = useServiceRates(orderId);
+export function RatesProvider({
+  query,
+  children,
+}: {
+  query: ReturnType<typeof useServiceRates>;
+  children: ReactNode;
+}) {
   const value: RatesState = {
     status: query.isPending ? 'loading' : query.error ? 'error' : 'ready',
     byProduct: new Map((query.data ?? []).map((r) => [r.product, r])),

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ApiError } from '../../shared/api/client';
 import { queryKeys } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
-import { ErrorNotice, Loading } from '../../shared/ui/common';
+import { Loading } from '../../shared/ui/common';
+import { ServiceError } from './errors';
 import { bookingApi } from './api';
 import { ChargeRows, ChargeTotals } from './charges';
 import type { Disclosure, Preferences } from './contracts';
@@ -55,27 +55,23 @@ export function useServicePreview(
     enabled: enabled && !settling,
     // Errors need the customer's attention, not a silent loop.
     retry: false,
+    refetchOnWindowFocus: false,
     staleTime: 30_000,
   });
   return { query, settling };
 }
 
 export function LivePreview({
-  orderId,
-  disclosure,
-  prefs,
+  preview,
   enabled,
   onReload,
 }: {
-  orderId: number;
-  disclosure: Disclosure;
-  prefs: Preferences;
+  preview: ReturnType<typeof useServicePreview>;
   enabled: boolean;
   onReload: () => void;
 }) {
-  const { query, settling } = useServicePreview(orderId, disclosure, prefs, enabled);
+  const { query, settling } = preview;
   if (!enabled) return null;
-  const status = query.error instanceof ApiError ? query.error.status : undefined;
   return (
     <section className="live-preview" aria-labelledby="live-preview-heading" aria-live="polite">
       <h3 id="live-preview-heading">Live estimate for your unsaved choices</h3>
@@ -86,22 +82,7 @@ export function LivePreview({
       {settling || query.isFetching ? (
         <Loading />
       ) : query.error ? (
-        <ErrorNotice error={query.error}>
-          {status === 409 ? (
-            <>
-              <p>Your request or horse profile changed. Reload to estimate against current data.</p>
-              <button type="button" onClick={onReload}>
-                Reload request
-              </button>
-            </>
-          ) : status === 400 || status === 422 ? (
-            <p>Some choices cannot be estimated yet. Check the highlighted sections.</p>
-          ) : status !== 404 ? (
-            <button type="button" onClick={() => void query.refetch()}>
-              Try again
-            </button>
-          ) : null}
-        </ErrorNotice>
+        <ServiceError error={query.error} reload={onReload} retry={() => void query.refetch()} />
       ) : query.data ? (
         <>
           <ChargeRows

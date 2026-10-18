@@ -5,7 +5,7 @@ import { idSchema } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
 import { displayDate, type FieldErrors } from '../../shared/lib/validation';
-import { ErrorNotice, Field } from '../../shared/ui/common';
+import { Field } from '../../shared/ui/common';
 import { assessmentApi } from '../assessment/api';
 import { useCaseCommand } from '../assessment/command';
 import { assessmentKeys } from '../assessment/hooks';
@@ -13,6 +13,8 @@ import { assignedCasesApi } from '../assigned-cases/api';
 import { assignedKeys } from '../assigned-cases/hooks';
 import {
   airfareInclusions,
+  bundleCoverages,
+  bundleCoverageLabels,
   chargeLabels,
   chargeUnits,
   quoteChargeCodes,
@@ -21,8 +23,10 @@ import {
   type QuoteChargeCode,
   type QuoteEvidence,
   type SupplierOfferReceipt,
+  type BundleCoverage,
 } from './mutation-contracts';
 import { quoteMutationsApi, type SupplierOfferCommand } from './mutations';
+import { CommercialError, commercialWriteBlocked } from './commercial-errors';
 
 /**
  * Current case for quotation preparation: Manager reads the manager case,
@@ -40,6 +44,7 @@ export function usePreparationCase(orderId: number) {
       manager ? assessmentApi.getCase(orderId, signal) : assignedCasesApi.get(orderId, signal),
     enabled: (manager || session.role === 'COORDINATOR') && idSchema.safeParse(orderId).success,
     staleTime: 0,
+    retry: false,
   });
 }
 
@@ -58,6 +63,7 @@ export type RecordedOffer = {
   retailUnitPrice: string;
   unitCode: string;
   validUntil: string;
+  bundleCoverage?: BundleCoverage;
 };
 
 const emptyOffer = {
@@ -71,6 +77,7 @@ const emptyOffer = {
   evidenceFileKey: '',
   includesStall: false,
   includedCharges: [] as QuoteChargeCode[],
+  bundleCoverage: 'UNKNOWN' as BundleCoverage,
 };
 
 const offerHelp: Record<string, string> = {
@@ -90,26 +97,43 @@ export function SupplierOfferForm({
   parentVersion,
   onRecorded,
   onReload,
+  onFailure = () => {},
+  disabled = false,
 }: {
   orderId: number;
   revisionId: number;
   parentVersion: string;
   onRecorded: (receipt: SupplierOfferReceipt, offer: RecordedOffer) => Promise<void>;
-  onReload: () => void;
+  onReload: () => void | Promise<void>;
+  onFailure?: (error: unknown) => void;
+  disabled?: boolean;
 }) {
   const [form, setForm] = useState(emptyOffer);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const command = useCaseCommand((body: SupplierOfferCommand) =>
-    quoteMutationsApi.recordOffer(orderId, body),
-  );
+  const [clientErrors, setErrors] = useState<FieldErrors>({});
+  const command = useCaseCommand(async (body: SupplierOfferCommand) => {
+    try {
+      return await quoteMutationsApi.recordOffer(orderId, body);
+    } catch (error) {
+      onFailure(error);
+      throw error;
+    }
+  });
+  const errors = { ...clientErrors, ...command.fields };
+  const blocked = disabled || commercialWriteBlocked(command.error);
+  const locked = command.locked || blocked;
   const code = command.error instanceof ApiError ? command.error.code : undefined;
   const set = (patch: Partial<typeof emptyOffer>) => {
-    if (!command.locked) setForm((f) => ({ ...f, ...patch }));
+    if (!locked) {
+      command.reset();
+      setErrors({});
+      setForm((f) => ({ ...f, ...patch }));
+    }
   };
   const airfare = form.serviceCode === 'AIRFARE';
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (command.conflict || (blocked && !command.frozen)) return;
     command.submit(
       () => {
         const input = {
@@ -125,6 +149,7 @@ export function SupplierOfferForm({
           evidenceFileKey: form.evidenceFileKey.trim(),
           includesStall: airfare && form.includesStall,
           includedCharges: airfare ? form.includedCharges : [],
+          bundleCoverage: airfare ? form.bundleCoverage : 'UNKNOWN',
         };
         const next = validateOffer(input);
         setErrors(next);
@@ -138,6 +163,7 @@ export function SupplierOfferForm({
           retailUnitPrice: form.retailUnitPrice.trim(),
           unitCode: chargeUnits[form.serviceCode],
           validUntil: form.validUntil.trim(),
+          bundleCoverage: airfare ? form.bundleCoverage : 'UNKNOWN',
         };
         setForm(emptyOffer);
         await onRecorded(receipt, recorded);
@@ -151,24 +177,29 @@ export function SupplierOfferForm({
         Internal only. The purchase price is never shown to customers and is not kept after
         recording. An offer is a priced source, not a reservation.
       </p>
-      <ErrorNotice error={command.error}>
+      <CommercialError error={command.error} backTo="/staff">
         {code && offerHelp[code] && <p>{offerHelp[code]}</p>}
-        {(code === 'ORDER_VERSION_CONFLICT' ||
-          code === 'QUOTE_REVISION_CONFLICT' ||
-          command.frozen) && (
-          <button type="button" onClick={onReload}>
+        {(command.conflict || command.frozen) && (
+          <button
+            type="button"
+            onClick={() =>
+              void Promise.resolve(onReload())
+                .then(command.reset)
+                .catch(() => {})
+            }
+          >
             Reload case
           </button>
         )}
-      </ErrorNotice>
+      </CommercialError>
       {command.frozen && !command.pending && (
         <p role="status">
           The connection was interrupted. The offer may have been recorded. Retry sends exactly the
           same offer, or reload the case to check.
         </p>
       )}
-      <fieldset className="form-grid" disabled={command.locked}>
-        <Field label="Service">
+      <fieldset className="form-grid" disabled={locked}>
+        <Field label="Service" error={errors.serviceCode}>
           {(id) => (
             <select
               id={id}
@@ -179,7 +210,7 @@ export function SupplierOfferForm({
                   serviceCode,
                   ...(serviceCode === 'AIRFARE'
                     ? {}
-                    : { includesStall: false, includedCharges: [] }),
+                    : { includesStall: false, includedCharges: [], bundleCoverage: 'UNKNOWN' }),
                 });
               }}
             >
@@ -191,7 +222,11 @@ export function SupplierOfferForm({
             </select>
           )}
         </Field>
-        <Field label="Unit" hint="Fixed by the service so the offer matches its quote line.">
+        <Field
+          label="Unit"
+          hint="Fixed by the service so the offer matches its quote line."
+          error={errors.unitCode}
+        >
           {(id) => <input id={id} value={chargeUnits[form.serviceCode]} readOnly />}
         </Field>
         <Field label="Provider name" error={errors.providerName}>
@@ -286,8 +321,35 @@ export function SupplierOfferForm({
         </Field>
       </fieldset>
       {airfare && (
-        <fieldset disabled={command.locked}>
+        <fieldset disabled={locked}>
           <legend>Included in this airfare (avoids charging twice)</legend>
+          <Field label="Bundle coverage" error={errors.bundleCoverage}>
+            {(id) => (
+              <select
+                id={id}
+                value={form.bundleCoverage}
+                onChange={(e) => set({ bundleCoverage: e.target.value as BundleCoverage })}
+              >
+                {bundleCoverages.map((coverage) => (
+                  <option key={coverage} value={coverage}>
+                    {bundleCoverageLabels[coverage]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <p>
+            Only verified entire-route coverage can waive the whole stall or handling charge. No
+            physical booking is created.
+          </p>
+          {form.bundleCoverage !== 'ENTIRE_ROUTE' &&
+            (form.includesStall || form.includedCharges.length > 0) && (
+              <p className="notice" role="status">
+                Coverage needs review: partial or unknown inclusions do not waive the entire route.
+                Only uncovered scope may be assessed separately; review the server's quotation
+                blockers.
+              </p>
+            )}
           <label className="horse-choice">
             <input
               type="checkbox"
@@ -320,7 +382,11 @@ export function SupplierOfferForm({
         </p>
       )}
       <div className="actions">
-        <button className="primary" type="submit" disabled={command.pending}>
+        <button
+          className="primary"
+          type="submit"
+          disabled={command.pending || command.conflict || (blocked && !command.frozen)}
+        >
           {command.pending
             ? 'Recording…'
             : command.frozen
@@ -356,12 +422,14 @@ export function EvidenceEditor({
   offers,
   quoteValidUntil,
   disabled,
+  serverFields = {},
 }: {
   rows: QuoteEvidence[];
   onChange: (rows: QuoteEvidence[]) => void;
   offers: RecordedOffer[];
   quoteValidUntil: string | null;
   disabled: boolean;
+  serverFields?: FieldErrors;
 }) {
   const update = (i: number, patch: Partial<QuoteEvidence>) =>
     onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -373,9 +441,20 @@ export function EvidenceEditor({
         escort. Clinical, quarantine, fit and distance data come from the assigned specialists and
         cannot be entered here. Anything without evidence stays pending.
       </p>
+      <p>
+        Bundle inclusions apply automatically only to verified entire-route coverage. For partial or
+        unknown coverage, review blockers and price only evidenced uncovered scope. The server keeps
+        captured quotation prices.
+      </p>
       {rows.length === 0 && <p>No evidence added.</p>}
       {rows.map((row, i) => {
-        const errors = validateEvidence(row, quoteValidUntil);
+        const prefix = `assessments[${i}].`;
+        const serverErrors = Object.fromEntries(
+          Object.entries(serverFields)
+            .filter(([key]) => key.startsWith(prefix))
+            .map(([key, value]) => [key.slice(prefix.length), value]),
+        );
+        const errors = { ...validateEvidence(row, quoteValidUntil), ...serverErrors };
         const priced = row.status === 'PRICED';
         return (
           <fieldset key={i} className="evidence-row" disabled={disabled}>
@@ -383,7 +462,7 @@ export function EvidenceEditor({
               Evidence {i + 1}: {chargeLabels[row.code]}
             </legend>
             <div className="form-grid">
-              <Field label="Charge">
+              <Field label="Charge" error={errors.code}>
                 {(id) => (
                   <select
                     id={id}
@@ -398,7 +477,7 @@ export function EvidenceEditor({
                   </select>
                 )}
               </Field>
-              <Field label="Outcome">
+              <Field label="Outcome" error={errors.status}>
                 {(id) => (
                   <select
                     id={id}
@@ -442,7 +521,7 @@ export function EvidenceEditor({
                   <Field
                     label="Offer"
                     hint="An offer recorded above, or enter its ID."
-                    error={errors.source}
+                    error={errors.source ?? errors.offerId}
                   >
                     {(id) => (
                       <input
@@ -463,7 +542,11 @@ export function EvidenceEditor({
                         </option>
                       ))}
                   </datalist>
-                  <Field label="Tariff ID" hint="Use instead of an offer when priced by tariff.">
+                  <Field
+                    label="Tariff ID"
+                    hint="Use instead of an offer when priced by tariff."
+                    error={errors.tariffId}
+                  >
                     {(id) => (
                       <input
                         id={id}
@@ -541,6 +624,7 @@ export function RecordedOffers({ offers }: { offers: RecordedOffer[] }) {
               <th scope="col">Provider</th>
               <th scope="col">Retail unit price</th>
               <th scope="col">Valid until</th>
+              <th scope="col">Bundle coverage</th>
             </tr>
           </thead>
           <tbody>
@@ -553,6 +637,7 @@ export function RecordedOffers({ offers }: { offers: RecordedOffer[] }) {
                   {o.retailUnitPrice} USD <span className="muted">{o.unitCode}</span>
                 </td>
                 <td>{displayDate(o.validUntil)}</td>
+                <td>{bundleCoverageLabels[o.bundleCoverage ?? 'UNKNOWN']}</td>
               </tr>
             ))}
           </tbody>

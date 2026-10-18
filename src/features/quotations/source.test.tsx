@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -17,7 +17,8 @@ import type { ManagerCase } from '../assessment/contracts';
 import { ApiError } from '../../shared/api/client';
 import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
-import { startSession } from '../../shared/api/session';
+import { getSession, startSession } from '../../shared/api/session';
+import { assessmentKeys } from '../assessment/hooks';
 
 vi.mock('./mutations', () => ({ quoteMutationsApi: { recordOffer: vi.fn() } }));
 vi.mock('../assessment/api', () => ({ assessmentApi: { getCase: vi.fn() } }));
@@ -70,6 +71,140 @@ async function fillOffer(user: ReturnType<typeof userEvent.setup>, purchase = '8
 }
 
 describe('supplier offer source (#57)', () => {
+  it('retains the filled offer on a background case 503 and unlocks only after retry', async () => {
+    const user = mount();
+    const f = await fillOffer(user);
+    vi.mocked(assessmentApi.getCase).mockRejectedValue(new ApiError(503, 'Schema pending.'));
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: assessmentKeys.case(getSession()!.generation, 9),
+        exact: true,
+      });
+    });
+    expect(await screen.findByText(/Deployment blocked/)).toBeInTheDocument();
+    expect(f.getByLabelText('Provider name')).toHaveValue('Test Air Cargo');
+    expect(f.getByRole('button', { name: 'Record offer' })).toBeDisabled();
+    vi.mocked(assessmentApi.getCase).mockResolvedValue(approvedCase());
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(f.getByRole('button', { name: 'Record offer' })).toBeEnabled());
+    expect(f.getByLabelText('Provider name')).toHaveValue('Test Air Cargo');
+  });
+  it.each(['ENTIRE_ROUTE', 'PARTIAL_ROUTE', 'UNKNOWN'] as const)(
+    'records and retains %s bundle coverage without changing the inclusions',
+    async (coverage) => {
+      vi.mocked(quoteMutationsApi.recordOffer).mockResolvedValue({
+        offerId: 55,
+        recordVersion: '00000000000000c2',
+      });
+      const user = mount();
+      const f = await fillOffer(user);
+      expect(f.getByLabelText('Bundle coverage')).toHaveValue('UNKNOWN');
+      await user.selectOptions(f.getByLabelText('Bundle coverage'), coverage);
+      await user.click(f.getByLabelText('Air stall'));
+      await user.click(f.getByLabelText('Airport handling'));
+      if (coverage === 'ENTIRE_ROUTE') expect(f.queryByText(/Coverage needs review/)).toBeNull();
+      else expect(f.getByText(/Coverage needs review/)).toBeInTheDocument();
+      await user.click(f.getByRole('button', { name: 'Record offer' }));
+      await waitFor(() => expect(quoteMutationsApi.recordOffer).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(quoteMutationsApi.recordOffer).mock.calls[0][1]).toMatchObject({
+        bundleCoverage: coverage,
+        includesStall: true,
+        includedCharges: ['AIRPORT_HANDLING'],
+      });
+      const table = await screen.findByRole('table', { name: 'Recorded offers' });
+      expect(
+        within(table).getByText(
+          coverage === 'ENTIRE_ROUTE'
+            ? 'Entire route'
+            : coverage === 'PARTIAL_ROUTE'
+              ? 'Partial route'
+              : 'Unknown — needs review',
+        ),
+      ).toBeInTheDocument();
+      expect(f.getByLabelText('Bundle coverage')).toHaveValue('UNKNOWN');
+      expect(within(table).queryByText(/800\.00/)).toBeNull();
+    },
+  );
+
+  it('keeps the bundle and UUID identical after an uncertain failure', async () => {
+    vi.mocked(quoteMutationsApi.recordOffer).mockRejectedValue(new ApiError(0, 'Interrupted.'));
+    const user = mount();
+    const f = await fillOffer(user);
+    await user.selectOptions(f.getByLabelText('Bundle coverage'), 'PARTIAL_ROUTE');
+    await user.click(f.getByLabelText('Air stall'));
+    await user.click(f.getByRole('button', { name: 'Record offer' }));
+    const retry = await f.findByRole('button', { name: 'Retry the same offer' });
+    expect(f.getByLabelText('Bundle coverage')).toBeDisabled();
+    await user.click(retry);
+    await waitFor(() => expect(quoteMutationsApi.recordOffer).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(quoteMutationsApi.recordOffer).mock.calls[1]).toEqual(
+      vi.mocked(quoteMutationsApi.recordOffer).mock.calls[0],
+    );
+  });
+
+  it.each([403, 404])(
+    'locks both staff forms and offers a safe return after offer %s',
+    async (status) => {
+      vi.mocked(quoteMutationsApi.recordOffer).mockRejectedValue(
+        new ApiError(status, 'Unavailable.'),
+      );
+      const user = mount();
+      const f = await fillOffer(user);
+      await user.click(f.getByRole('button', { name: 'Record offer' }));
+      expect(await screen.findByRole('link', { name: 'Back to requests' })).toHaveAttribute(
+        'href',
+        '/manager/requests',
+      );
+      expect(screen.queryByRole('form')).toBeNull();
+      expect(quoteMutationsApi.recordOffer).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('preserves form and displays a deployment blocker after 503 with identical retry', async () => {
+    vi.mocked(quoteMutationsApi.recordOffer).mockRejectedValue(
+      new ApiError(503, 'Schema pending.'),
+    );
+    const user = mount();
+    const f = await fillOffer(user);
+    await user.click(f.getByRole('button', { name: 'Record offer' }));
+    expect(await f.findByText(/Deployment blocked/)).toBeInTheDocument();
+    expect(f.getByLabelText('Provider name')).toHaveValue('Test Air Cargo');
+    expect(f.getByLabelText('Provider name')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Prepare new quotation version' })).toBeDisabled();
+    await user.click(f.getByRole('button', { name: 'Retry the same offer' }));
+    await waitFor(() => expect(quoteMutationsApi.recordOffer).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(quoteMutationsApi.recordOffer).mock.calls[1]).toEqual(
+      vi.mocked(quoteMutationsApi.recordOffer).mock.calls[0],
+    );
+  });
+
+  it('shows server validation beside the bundle field without discarding input', async () => {
+    vi.mocked(quoteMutationsApi.recordOffer).mockRejectedValue(
+      new ApiError(400, 'Check coverage.', undefined, {
+        bundleCoverage: 'Review coverage evidence.',
+      }),
+    );
+    const user = mount();
+    const f = await fillOffer(user);
+    await user.selectOptions(f.getByLabelText('Bundle coverage'), 'ENTIRE_ROUTE');
+    await user.click(f.getByRole('button', { name: 'Record offer' }));
+    expect(await f.findByText('Review coverage evidence.')).toBeInTheDocument();
+    expect(f.getByLabelText('Bundle coverage')).toHaveValue('ENTIRE_ROUTE');
+    expect(f.getByLabelText('Provider name')).toHaveValue('Test Air Cargo');
+  });
+
+  it('does not silently reclassify a 422 business blocker as success', async () => {
+    vi.mocked(quoteMutationsApi.recordOffer).mockRejectedValue(
+      new ApiError(422, 'Coverage must be reviewed.'),
+    );
+    const user = mount();
+    const f = await fillOffer(user);
+    await user.click(f.getByRole('button', { name: 'Record offer' }));
+    expect(await f.findByText('Coverage must be reviewed.')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Recorded offers' })).toBeNull();
+    expect(f.getByLabelText('Provider name')).toHaveValue('Test Air Cargo');
+  });
+
   it('records an offer with separate cost/retail, nested command and fixed unit', async () => {
     vi.mocked(quoteMutationsApi.recordOffer).mockResolvedValue({
       offerId: 55,
@@ -95,6 +230,7 @@ describe('supplier offer source (#57)', () => {
       evidenceFileKey: 'docs/offer-1.pdf',
       includesStall: true,
       includedCharges: [],
+      bundleCoverage: 'UNKNOWN',
     });
     const recorded = await screen.findByRole('table', { name: 'Recorded offers' });
     expect(within(recorded).getByText('55')).toBeInTheDocument();

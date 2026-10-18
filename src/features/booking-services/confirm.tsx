@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import type { Order } from '../../shared/api/contracts';
-import { ErrorNotice, Field } from '../../shared/ui/common';
+import { Field } from '../../shared/ui/common';
 import { useCaseCommand } from '../assessment/command';
 import { bookingApi } from './api';
 import type { Confirmation, ConfirmCommand, Disclosure, Preferences } from './contracts';
+import { ServiceError } from './errors';
 
 const MAX_REASON = 500;
 
@@ -20,6 +21,8 @@ export function ConfirmBar({
   hasErrors,
   onConfirmed,
   onReload,
+  onFailure,
+  disabled = false,
 }: {
   order: Order;
   disclosure: Disclosure;
@@ -27,17 +30,27 @@ export function ConfirmBar({
   dirty: boolean;
   hasErrors: boolean;
   onConfirmed: (confirmation: Confirmation) => Promise<void>;
-  onReload: () => void;
+  onReload: () => Promise<void>;
+  onFailure: (error: unknown) => void;
+  disabled?: boolean;
 }) {
   const draft = order.orderStatus === 'DRAFT';
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState<string>();
-  const command = useCaseCommand((body: ConfirmCommand) => bookingApi.confirm(order.orderId, body));
+  const command = useCaseCommand(async (body: ConfirmCommand) => {
+    try {
+      return await bookingApi.confirm(order.orderId, body);
+    } catch (error) {
+      onFailure(error);
+      throw error;
+    }
+  });
   const code = command.error instanceof ApiError ? command.error.code : undefined;
   const horseVersion = disclosure.horseRecordVersion;
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if ((disabled && !command.frozen) || command.conflict) return;
     command.submit(() => {
       const r = reason.trim();
       const error = draft
@@ -74,21 +87,26 @@ export function ConfirmBar({
           Fix the highlighted choices in the sections above before confirming.
         </p>
       )}
-      <ErrorNotice error={command.error}>
+      <ServiceError error={command.error}>
         {code === 'HORSE_SNAPSHOT_STALE' && (
           <p>
             Your horse profile changed after this request was submitted. Use “Revise request” below
             to capture the updated profile, then confirm your services again.
           </p>
         )}
-        {(code === 'ORDER_VERSION_CONFLICT' ||
-          code === 'HORSE_VERSION_CONFLICT' ||
-          command.frozen) && (
-          <button type="button" onClick={onReload}>
+        {(command.conflict || command.frozen) && (
+          <button
+            type="button"
+            onClick={() =>
+              void onReload()
+                .then(command.reset)
+                .catch(() => {})
+            }
+          >
             Reload request
           </button>
         )}
-      </ErrorNotice>
+      </ServiceError>
       {command.frozen && !command.pending && (
         <p role="status">
           The connection was interrupted. Your choices may have been saved. Retry sends exactly the
@@ -96,18 +114,22 @@ export function ConfirmBar({
         </p>
       )}
       {!draft && (
-        <fieldset disabled={command.locked}>
+        <fieldset disabled={command.locked || disabled}>
           <Field
             label="Reason for changing services"
             hint={`Required for a submitted request, up to ${MAX_REASON} characters. A new revision is created for assessment.`}
-            error={reasonError}
+            error={reasonError ?? command.fields.changeReason}
           >
             {(id) => (
               <textarea
                 id={id}
                 value={reason}
                 maxLength={MAX_REASON}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  command.reset();
+                  onFailure(null);
+                }}
                 aria-invalid={!!reasonError}
               />
             )}
@@ -117,7 +139,11 @@ export function ConfirmBar({
       <button
         className="primary"
         type="submit"
-        disabled={command.pending || (!command.frozen && (!dirty || !horseVersion))}
+        disabled={
+          command.pending ||
+          command.conflict ||
+          (!command.frozen && (disabled || hasErrors || !dirty || !horseVersion))
+        }
       >
         {command.pending
           ? 'Confirming…'

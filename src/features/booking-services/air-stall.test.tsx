@@ -31,6 +31,14 @@ beforeEach(() => {
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role: 'CUSTOMER' });
 });
 async function openAirStalls(disclosure: Disclosure) {
+  disclosure = {
+    ...disclosure,
+    sections: disclosure.sections.map((section) =>
+      section.code === 'AIR_STALL'
+        ? { ...section, options: disclosure.airStalls.map((stall) => stall.option) }
+        : section,
+    ),
+  };
   vi.mocked(bookingApi.get).mockResolvedValue(disclosure);
   const order = testOrder();
   render(

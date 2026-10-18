@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { type FieldErrors } from '../../shared/lib/validation';
-import { ErrorNotice, Field } from '../../shared/ui/common';
+import { Field } from '../../shared/ui/common';
 import { useCaseCommand } from '../assessment/command';
 import type { QuoteResponse } from './contracts';
 import {
@@ -13,6 +13,7 @@ import {
   type ScheduleRow,
 } from './mutation-contracts';
 import { quoteMutationsApi, type QuotePrepareCommand } from './mutations';
+import { CommercialError, commercialWriteBlocked } from './commercial-errors';
 
 const prepareHelp: Record<string, string> = {
   ORDER_VERSION_CONFLICT: 'The request changed. Reload the case and review before preparing again.',
@@ -40,6 +41,8 @@ export function QuoteForm({
   onValidUntil,
   onCreated,
   onReload,
+  onFailure = () => {},
+  disabled = false,
 }: {
   orderId: number;
   revisionId: number;
@@ -48,19 +51,39 @@ export function QuoteForm({
   validUntil: string;
   onValidUntil: (value: string) => void;
   onCreated: (quote: QuoteResponse) => Promise<void>;
-  onReload: () => void;
+  onReload: () => void | Promise<void>;
+  onFailure?: (error: unknown) => void;
+  disabled?: boolean;
 }) {
   const [termsVersion, setTermsVersion] = useState('');
   const [terms, setTerms] = useState('');
   const [cancellationTerms, setCancellationTerms] = useState('');
   const [schedule, setSchedule] = useState<ScheduleRow[]>([{ ...emptyRow }]);
   const [understood, setUnderstood] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const command = useCaseCommand((body: QuotePrepareCommand) =>
-    quoteMutationsApi.prepare(orderId, body),
+  const [clientErrors, setErrors] = useState<FieldErrors>({});
+  const command = useCaseCommand(async (body: QuotePrepareCommand) => {
+    try {
+      return await quoteMutationsApi.prepare(orderId, body);
+    } catch (error) {
+      onFailure(error);
+      throw error;
+    }
+  });
+  const serverErrors = Object.fromEntries(
+    Object.entries(command.fields).map(([key, value]) => {
+      const match = /^paymentSchedule\[(\d+)\]\.(paymentStage|amountDue|dueAt)$/.exec(key);
+      return [
+        match
+          ? `${({ paymentStage: 'stage', amountDue: 'amount', dueAt: 'due' } as Record<string, string>)[match[2]]}${Number(match[1]) + 1}`
+          : key,
+        value,
+      ];
+    }),
   );
+  const errors = { ...clientErrors, ...serverErrors };
   const code = command.error instanceof ApiError ? command.error.code : undefined;
-  const locked = command.locked;
+  const blocked = disabled || commercialWriteBlocked(command.error);
+  const locked = command.locked || blocked;
   const amounts = schedule.map((r) => r.amountDue.trim());
   // Informational only; the server compares the schedule with its own total.
   const scheduleSum = amounts.every((a) => moneyPattern.test(a)) ? sumMoney(amounts) : null;
@@ -70,6 +93,7 @@ export function QuoteForm({
   }
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (command.conflict || (blocked && !command.frozen)) return;
     command.submit(() => {
       const trimmed = {
         validUntil: validUntil.trim(),
@@ -108,16 +132,21 @@ export function QuoteForm({
         source stays pending and the total stays empty until resolved. Approval and issue are
         separate Manager steps.
       </p>
-      <ErrorNotice error={command.error}>
+      <CommercialError error={command.error} backTo="/staff">
         {code && prepareHelp[code] && <p>{prepareHelp[code]}</p>}
-        {(code === 'ORDER_VERSION_CONFLICT' ||
-          code === 'QUOTE_REVISION_CONFLICT' ||
-          command.frozen) && (
-          <button type="button" onClick={onReload}>
+        {(command.conflict || command.frozen) && (
+          <button
+            type="button"
+            onClick={() =>
+              void Promise.resolve(onReload())
+                .then(command.reset)
+                .catch(() => {})
+            }
+          >
             Reload case
           </button>
         )}
-      </ErrorNotice>
+      </CommercialError>
       {command.frozen && !command.pending && (
         <p role="status">
           The connection was interrupted. The version may have been created. Retry sends exactly the
@@ -259,7 +288,11 @@ export function QuoteForm({
         )}
       </fieldset>
       <div className="actions">
-        <button className="primary" type="submit" disabled={command.pending}>
+        <button
+          className="primary"
+          type="submit"
+          disabled={command.pending || command.conflict || (blocked && !command.frozen)}
+        >
           {command.pending
             ? 'Preparing…'
             : command.frozen

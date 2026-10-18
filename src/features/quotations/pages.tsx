@@ -39,7 +39,7 @@ export function QuotationError({ error, retry }: { error: unknown; retry: () => 
     403: 'You do not have permission to view quotations for this request.',
     404: 'This quotation or request is unavailable to your account.',
     409: 'The quotation changed. Refresh to review its current state.',
-    503: 'The quotation service is temporarily unavailable. Please try again later.',
+    503: 'Deployment blocked: the quotation service schema or migration is not ready. Please try again later.',
   };
   return (
     <div className="notice error" role="alert">
