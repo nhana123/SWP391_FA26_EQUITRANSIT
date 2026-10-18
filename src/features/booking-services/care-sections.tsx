@@ -122,6 +122,7 @@ export function VeterinarySection(props: SectionProps) {
       <ChoiceGroup
         legend="Who arranges veterinary services?"
         name="veterinaryArrangement"
+        error={props.errors.veterinaryArrangement}
         options={options}
         value={prefs.veterinaryArrangement}
         labels={{
@@ -139,12 +140,10 @@ export function VeterinarySection(props: SectionProps) {
       {prefs.veterinaryArrangement === 'CUSTOMER' && (
         <ProviderFields {...props} kind="veterinary" />
       )}
-      {prefs.veterinaryArrangement !== 'CUSTOMER' && (
-        <SectionRates
-          section="VETERINARY"
-          title="Current veterinary unit rates (required counts are set by assessment)"
-        />
-      )}
+      <SectionRates
+        section="VETERINARY"
+        title="Current veterinary unit rates (required counts are set by assessment)"
+      />
     </>
   );
 }
@@ -188,6 +187,7 @@ export function QuarantineSection(props: SectionProps) {
         <ChoiceGroup
           legend="Quarantine package preference"
           name="quarantinePackage"
+          error={errors.quarantinePackage}
           options={packages}
           value={prefs.quarantinePackage}
           labels={packageLabels}

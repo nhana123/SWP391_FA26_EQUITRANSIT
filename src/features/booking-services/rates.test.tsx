@@ -124,7 +124,7 @@ describe('unit prices inside service options (FE-26)', () => {
   });
 
   it('keeps choices usable when rates fail to load', async () => {
-    vi.mocked(ratesApi.get).mockRejectedValue(new ApiError(404, 'This record is unavailable.'));
+    vi.mocked(ratesApi.get).mockRejectedValue(new ApiError(502, 'Rates could not be loaded.'));
     const user = await open('Horse Care');
     expect(await screen.findAllByText('Price unavailable right now')).not.toHaveLength(0);
     await user.type(screen.getByLabelText('Grooming days'), '2');

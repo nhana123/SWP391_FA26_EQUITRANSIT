@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { ApiError } from '../../shared/api/client';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { idSchema } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
-import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
+import { Loading, Notice } from '../../shared/ui/common';
 import type { ManagerCase } from '../assessment/contracts';
 import { quotationKeys } from './hooks';
 import type { QuoteEvidence } from './mutation-contracts';
@@ -18,15 +19,18 @@ import {
   type RecordedOffer,
 } from './source';
 import './prepare.css';
+import { CommercialError, commercialWriteBlocked } from './commercial-errors';
 
 function PreparationWorkspace({
   current,
   revisionId,
   reloadCase,
+  readError,
 }: {
   current: ManagerCase;
   revisionId: number;
   reloadCase: () => Promise<ManagerCase | undefined>;
+  readError: unknown;
 }) {
   const session = useSession()!;
   const navigate = useNavigate();
@@ -37,11 +41,24 @@ function PreparationWorkspace({
   const [evidence, setEvidence] = useState<QuoteEvidence[]>([]);
   const [validUntil, setValidUntil] = useState('');
   const [notice, setNotice] = useState('');
+  const [writeError, setWriteError] = useState<unknown>(null);
+  const blocked = commercialWriteBlocked(writeError) || commercialWriteBlocked(readError);
   const parent = quotationParent(session.role, current.orderId);
 
   async function reload() {
     const fresh = await reloadCase();
-    if (fresh) setParentVersion(fresh.recordVersion);
+    if (!fresh) throw new Error('Current request could not be loaded.');
+    setParentVersion(fresh.recordVersion);
+    setWriteError(null);
+    setNotice('Current request loaded. Review the retained form before submitting again.');
+  }
+  if (writeError instanceof ApiError && [401, 403, 404].includes(writeError.status)) {
+    return (
+      <CommercialError
+        error={writeError}
+        backTo={session.role === 'MANAGER' ? '/manager/requests' : '/staff/cases'}
+      />
+    );
   }
   return (
     <>
@@ -55,16 +72,20 @@ function PreparationWorkspace({
           setParentVersion(receipt.recordVersion);
           setOffers((list) => [...list, offer]);
           setNotice(`Offer ${receipt.offerId} recorded. Use it as a source in the evidence below.`);
+          setWriteError(null);
           await refreshPreparationCase(session.generation, current.orderId);
         }}
-        onReload={() => void reload()}
+        onReload={reload}
+        onFailure={setWriteError}
+        disabled={blocked}
       />
       <EvidenceEditor
         rows={evidence}
         onChange={setEvidence}
         offers={offers}
         quoteValidUntil={validUntil.trim() || null}
-        disabled={false}
+        disabled={blocked}
+        serverFields={writeError instanceof ApiError ? writeError.fields : {}}
       />
       <QuoteForm
         orderId={current.orderId}
@@ -81,7 +102,9 @@ function PreparationWorkspace({
           ]);
           navigate(`${parent}/quotes/${quote.quote.quoteId}`);
         }}
-        onReload={() => void reload()}
+        onReload={reload}
+        onFailure={setWriteError}
+        disabled={blocked}
       />
     </>
   );
@@ -117,11 +140,23 @@ export function PrepareQuotationPage() {
         <Loading />
       </>
     );
-  if (query.error)
+  if (
+    query.error &&
+    (!query.data ||
+      (query.error instanceof ApiError && [401, 403, 404].includes(query.error.status)))
+  )
     return (
       <>
         {heading}
-        <ErrorNotice error={query.error} />
+        <CommercialError
+          error={query.error}
+          backTo={session.role === 'MANAGER' ? '/manager/requests' : '/staff/cases'}
+        />
+        {query.error instanceof ApiError && query.error.status === 503 && (
+          <button type="button" onClick={() => void query.refetch()}>
+            Try again
+          </button>
+        )}
       </>
     );
   const current = query.data;
@@ -139,15 +174,29 @@ export function PrepareQuotationPage() {
   return (
     <>
       {heading}
+      <CommercialError
+        error={query.error}
+        backTo={session.role === 'MANAGER' ? '/manager/requests' : '/staff/cases'}
+      />
+      {query.error instanceof ApiError && query.error.status === 503 && (
+        <button type="button" onClick={() => void query.refetch()}>
+          Try again
+        </button>
+      )}
       <Notice>
         Request {current.orderNumber}, revision ID {revisionId}. Sources and evidence apply to this
         revision only.
       </Notice>
       <PreparationWorkspace
-        key={revisionId}
+        key={`${session.generation}-${orderId}-${revisionId}`}
         current={current}
         revisionId={revisionId}
-        reloadCase={async () => (await query.refetch()).data}
+        readError={query.error}
+        reloadCase={async () => {
+          const result = await query.refetch();
+          if (result.error) throw result.error;
+          return result.data;
+        }}
       />
     </>
   );

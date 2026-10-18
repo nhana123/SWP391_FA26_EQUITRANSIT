@@ -47,6 +47,14 @@ export const airfareInclusions = [
 /** BE QuoteCommand, nested in every F06 mutation. */
 export type QuoteCommand = { recordVersion: string; operationId: string };
 
+export const bundleCoverages = ['ENTIRE_ROUTE', 'PARTIAL_ROUTE', 'UNKNOWN'] as const;
+export type BundleCoverage = (typeof bundleCoverages)[number];
+export const bundleCoverageLabels: Record<BundleCoverage, string> = {
+  ENTIRE_ROUTE: 'Entire route',
+  PARTIAL_ROUTE: 'Partial route',
+  UNKNOWN: 'Unknown — needs review',
+};
+
 export type SupplierOfferInput = {
   revisionId: number;
   serviceCode: QuoteChargeCode;
@@ -60,6 +68,8 @@ export type SupplierOfferInput = {
   evidenceFileKey: string;
   includesStall: boolean;
   includedCharges: QuoteChargeCode[];
+  // Legacy callers may omit this. Missing coverage never means entire route.
+  bundleCoverage?: BundleCoverage;
 };
 
 export const supplierOfferReceiptSchema = z.object({
@@ -106,6 +116,8 @@ function futureDate(value: string, label: string, now: number) {
 
 export function validateOffer(input: SupplierOfferInput, now = Date.now()): FieldErrors {
   const e: FieldErrors = {};
+  if (input.bundleCoverage !== undefined && !bundleCoverages.includes(input.bundleCoverage))
+    e.bundleCoverage = 'Choose entire route, partial route or unknown.';
   if (!input.providerName.trim() || input.providerName.trim().length > 200)
     e.providerName = 'Enter the provider (1–200 characters).';
   if (!input.offerReference.trim() || input.offerReference.trim().length > 100)

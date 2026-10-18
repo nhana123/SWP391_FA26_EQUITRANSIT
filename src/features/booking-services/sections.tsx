@@ -6,6 +6,7 @@ import { Field } from '../../shared/ui/common';
 import type { Disclosure, Preferences, StallFit } from './contracts';
 import { arrangementPatch, textOrNull, type Arrangement } from './form';
 import { RateTag, SectionRates } from './rates';
+import { recommendsWide } from './stall-options';
 
 export type SectionProps = {
   order: Order;
@@ -31,6 +32,7 @@ export function ChoiceGroup<T extends string>({
   disabled,
   children,
   notes,
+  error,
 }: {
   legend: string;
   name: string;
@@ -42,10 +44,16 @@ export function ChoiceGroup<T extends string>({
   children?: ReactNode;
   // Shown beside an option, outside its label text (e.g. the current unit rate).
   notes?: Partial<Record<T, ReactNode>>;
+  error?: string;
 }) {
   return (
     <fieldset disabled={disabled}>
       <legend>{legend}</legend>
+      {error && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
       {/* No option is pre-selected when the BE value is null. */}
       {options.map((option) => (
         <div key={option} className="choice-row">
@@ -123,6 +131,7 @@ export function TransportationSection(props: SectionProps) {
       <ChoiceGroup
         legend="Who arranges road transport?"
         name="roadArrangement"
+        error={props.errors.roadArrangement}
         options={arrangementOptions(disclosure, 'TRANSPORTATION')}
         value={prefs.roadArrangement}
         labels={arrangementLabels}
@@ -151,6 +160,8 @@ const reasonText: Record<string, string> = {
   FIT_POLICY_CONFIGURATION_INVALID: 'The carrier policy for this option needs review.',
   HORSE_MEASUREMENTS_REQUIRED: "Your horse's weight, height and body width must be recorded.",
   HORSE_EXCEEDS_APPROVED_LIMITS: 'Your horse exceeds the approved limits for this option.',
+  STALLION_COMPATIBILITY_REVIEW_REQUIRED:
+    'Stallion compatibility needs Coordinator review before any sharing can be confirmed.',
 };
 
 /** Only what the BE allows: never an unsuitable option or an unconfirmed one-slot. */
@@ -168,7 +179,12 @@ export function AirStallSection({
   errors,
   disabled,
 }: SectionProps) {
-  const options = visibleStalls(disclosure.airStalls);
+  const offered =
+    disclosure.sections.find((section) => section.code === 'AIR_STALL')?.options ?? [];
+  const options = visibleStalls(disclosure.airStalls).filter((stall) =>
+    offered.includes(stall.option),
+  );
+  const wideRecommended = recommendsWide(disclosure);
   const savedMissing = prefs.airStall !== null && !options.some((o) => o.option === prefs.airStall);
   const needsMeasurements = disclosure.airStalls.some((s) =>
     s.reasons.includes('HORSE_MEASUREMENTS_REQUIRED'),
@@ -183,8 +199,18 @@ export function AirStallSection({
       </p>
       <p>
         Air stall rate: <RateTag product="AIR_STALL" />{' '}
-        <span className="muted">(charged as slots × air km once the route is known)</span>
+        <span className="muted">(unit rate only; quantities and amounts come from the server)</span>
       </p>
+      <p>
+        Shared and Wide are Request Share preferences. Matching, flight assignment and physical
+        slots require Coordinator confirmation.
+      </p>
+      {wideRecommended && (
+        <p className="booking-dirty">
+          WIDE recommended: the server rules out one slot for this horse. This recommendation is not
+          saved until you confirm service choices; any saved preference is kept.
+        </p>
+      )}
       {savedMissing && (
         <p className="field-error" role="alert">
           Your saved choice ({stallNames[prefs.airStall!]}) is not available for this horse now.
@@ -218,11 +244,18 @@ export function AirStallSection({
             <span>
               <strong>{stallNames[s.option]}</strong>
               <small>
+                {s.slots} slots ·{' '}
+                {s.option === 'PRIVATE'
+                  ? 'Private configuration requested'
+                  : 'Request Share — not matched or booked'}
+              </small>
+              <RateTag product="AIR_STALL" />
+              <small>
                 {s.status === 'ELIGIBLE'
                   ? "Fits the approved limits for your horse's recorded measurements."
                   : 'Requested — pending assessment. Not confirmed as suitable.'}
               </small>
-              {s.status === 'PENDING' && s.reasons.length > 0 && (
+              {s.reasons.length > 0 && (
                 <ul className="stall-reasons">
                   {s.reasons.map((r) => (
                     <li key={r}>{reasonText[r] ?? r}</li>
