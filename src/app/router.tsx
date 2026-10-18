@@ -43,6 +43,7 @@ import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage
 import { CaseAvailabilityPage } from '../features/resources/availability';
 import { PlansPage } from '../features/plans/PlansPage';
 import { PlanDetailPage } from '../features/plans/PlanDetailPage';
+import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
@@ -354,6 +355,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/availability', element: <CaseAvailabilityPage /> },
               { path: 'requests/:id/plans', element: <PlansPage /> },
               { path: 'requests/:id/plans/:planId', element: <PlanDetailPage /> },
+              { path: 'requests/:id/departure', element: <DeparturePage /> },
             ],
           },
         ],
@@ -377,12 +379,26 @@ export const router = createBrowserRouter([
                   { path: ':id/availability', element: <CaseAvailabilityPage /> },
                   { path: ':id/plans', element: <PlansPage /> },
                   { path: ':id/plans/:planId', element: <PlanDetailPage /> },
+                  { path: ':id/departure', element: <DeparturePage /> },
                 ],
               },
               {
                 element: <RoleGate roles={['SPECIALIST']} />,
                 children: [{ path: ':id/compliance', element: <SpecialistCompliancePage /> }],
               },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RoleGate roles={['DRIVER']} />,
+        children: [
+          {
+            path: '/driver',
+            element: <DriverLayout />,
+            children: [
+              { index: true, element: <DriverHome /> },
+              { path: 'orders/:id/departure', element: <DeparturePage /> },
             ],
           },
         ],

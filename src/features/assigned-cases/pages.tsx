@@ -12,6 +12,7 @@ import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
+import { DepartureLink } from '../departure/DeparturePage';
 import { ComplianceLink } from '../compliance/link';
 import { NotificationBell } from '../activity-customer/notifications';
 import { SettlementPreviewLink } from '../settlement/navigation';
@@ -234,6 +235,7 @@ export function AssignedCasePage() {
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
       <Notice>
