@@ -44,6 +44,8 @@ import { CaseAvailabilityPage } from '../features/resources/availability';
 import { PlansPage } from '../features/plans/PlansPage';
 import { PlanDetailPage } from '../features/plans/PlanDetailPage';
 import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
+import { staffTaskRoute } from '../features/activity-operations/routes';
+import { ExecutionPage } from '../features/execution/ExecutionPage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
@@ -236,13 +238,12 @@ function StaffLanding() {
   if (session.role === 'MANAGER') return <Navigate to="/manager/requests" replace />;
   if (session.role === 'SPECIALIST' || session.role === 'COORDINATOR')
     return <Navigate to="/staff/cases" replace />;
+  if (session.role === 'DRIVER') return <Navigate to="/driver" replace />;
   return (
     <section className="auth-card">
       <h1>{session.role} access</h1>
       <Notice>
-        {session.role === 'DRIVER'
-          ? 'The driver operations portal is not available in this release.'
-          : 'Your account is signed in. This role workspace is not available in this release.'}
+        Your account is signed in. This role workspace is not available in this release.
       </Notice>
       <button onClick={clearSession}>Log Out</button>
     </section>
@@ -325,6 +326,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
               { path: 'requests/:id/compliance', element: <CustomerCompliancePage /> },
+              { path: 'requests/:id/execution', element: <ExecutionPage /> },
             ],
           },
         ],
@@ -356,6 +358,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/plans', element: <PlansPage /> },
               { path: 'requests/:id/plans/:planId', element: <PlanDetailPage /> },
               { path: 'requests/:id/departure', element: <DeparturePage /> },
+              { path: 'requests/:id/execution', element: <ExecutionPage /> },
             ],
           },
         ],
@@ -363,6 +366,7 @@ export const router = createBrowserRouter([
       {
         element: <RoleGate roles={['SPECIALIST', 'COORDINATOR']} />,
         children: [
+          staffTaskRoute,
           {
             path: '/staff/cases',
             element: <AssignedCasesLayout />,
@@ -380,6 +384,7 @@ export const router = createBrowserRouter([
                   { path: ':id/plans', element: <PlansPage /> },
                   { path: ':id/plans/:planId', element: <PlanDetailPage /> },
                   { path: ':id/departure', element: <DeparturePage /> },
+                  { path: ':id/execution', element: <ExecutionPage /> },
                 ],
               },
               {
@@ -399,6 +404,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <DriverHome /> },
               { path: 'orders/:id/departure', element: <DeparturePage /> },
+              { path: 'orders/:id/execution', element: <ExecutionPage /> },
             ],
           },
         ],

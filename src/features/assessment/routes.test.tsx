@@ -61,6 +61,17 @@ vi.mock('../compliance/api', () => ({
 vi.mock('../departure/api', () => ({
   departureApi: { get: vi.fn(() => new Promise(() => {})) },
 }));
+vi.mock('../activity-operations/api', () => ({
+  OPERATIONS_PAGE_SIZE: 20,
+  operationsApi: {
+    tasks: vi.fn(() => new Promise(() => {})),
+    timeline: vi.fn(() => new Promise(() => {})),
+  },
+}));
+vi.mock('../execution/api', () => ({
+  EXECUTION_PAGE_SIZE: 20,
+  executionApi: { get: vi.fn(() => new Promise(() => {})) },
+}));
 vi.mock('../transport-orders/status-api', () => ({
   ORDER_PAGE_SIZE: 20,
   orderStatusApi: {
@@ -195,6 +206,49 @@ describe('FE2 routes are wired into the app router', () => {
     open(path, role);
     expect(await screen.findByText(/do not have access to this workspace/)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Departure' })).not.toBeInTheDocument();
+  });
+
+  it.each(['SPECIALIST', 'COORDINATOR'] as const)(
+    '/staff/tasks shows the task queue for %s',
+    async (role) => {
+      open('/staff/tasks', role);
+      expect(await screen.findByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
+      const nav = screen.getByRole('navigation', { name: 'Staff navigation' });
+      expect(within(nav).getByRole('link', { name: 'My Tasks' })).toHaveAttribute(
+        'href',
+        '/staff/tasks',
+      );
+    },
+  );
+
+  it.each(['CUSTOMER', 'MANAGER', 'DRIVER'] as const)(
+    '/staff/tasks is blocked for %s',
+    async (role) => {
+      open('/staff/tasks', role);
+      expect(await screen.findByText(/do not have access to this workspace/)).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'My tasks' })).not.toBeInTheDocument();
+    },
+  );
+
+  it('a Driver signing in to /staff lands on the driver home', async () => {
+    const memory = open('/staff', 'DRIVER');
+    expect(await screen.findByRole('heading', { name: 'My active tasks' })).toBeInTheDocument();
+    expect(memory.state.location.pathname).toBe('/driver');
+  });
+
+  it.each([
+    ['/manager/requests/7/execution', 'MANAGER'],
+    ['/staff/cases/7/execution', 'COORDINATOR'],
+    ['/driver/orders/7/execution', 'DRIVER'],
+    ['/customer/requests/7/execution', 'CUSTOMER'],
+  ] as const)('%s renders #81 F12 trip progress for %s', async (path, role) => {
+    open(path, role);
+    expect(await screen.findByRole('heading', { name: 'Trip progress' })).toBeInTheDocument();
+  });
+
+  it('a Specialist cannot open trip progress', async () => {
+    open('/staff/cases/7/execution', 'SPECIALIST');
+    expect(await screen.findByText(/do not have access to this workspace/)).toBeInTheDocument();
   });
 
   it('a Specialist cannot open the availability probe', async () => {

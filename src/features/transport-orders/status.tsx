@@ -11,6 +11,7 @@ import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { QuotationLink } from '../quotations/navigation';
 import { ComplianceLink } from '../compliance/link';
+import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import { PaymentLink } from '../payments/pages';
@@ -211,6 +212,7 @@ export function RequestDetailPage() {
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />
         <ComplianceLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
+        <ExecutionLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
         <SettlementPreviewLink orderId={query.data.orderId} />
         <PaymentLink orderId={query.data.orderId} />
       </div>
