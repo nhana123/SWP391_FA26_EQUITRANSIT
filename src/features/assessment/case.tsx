@@ -13,9 +13,11 @@ import { ManagerHeading } from './layout';
 import { reviewStateLabels } from './pages';
 import { caseRoleLabels } from './staff';
 import { QuotationLink } from '../quotations/navigation';
+import { PaymentLink } from '../payments/pages';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
+import { SettlementPreviewLink } from '../settlement/navigation';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -255,6 +257,8 @@ export function ManagerCasePage() {
       </ManagerHeading>
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
+        <SettlementPreviewLink orderId={current.orderId} />
+        <PaymentLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />

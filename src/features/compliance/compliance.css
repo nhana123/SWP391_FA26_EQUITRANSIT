@@ -1,0 +1,13 @@
+.compliance-tabs button[aria-pressed='true'] {
+  font-weight: 700;
+  text-decoration: underline;
+}
+.compliance-source {
+  max-width: 16rem;
+  overflow-wrap: anywhere;
+}
+.compliance-preview {
+  max-width: 100%;
+  max-height: 24rem;
+  display: block;
+}

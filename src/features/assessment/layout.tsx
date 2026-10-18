@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { clearSession } from '../../shared/api/session';
+import { NotificationBell } from '../activity-customer/notifications';
 import './assessment.css';
 
 // Same shell classes as FE1's customer workspace; kept in FE2's module so the
@@ -11,6 +12,8 @@ const links = [
   { to: '/manager/staff-administration', label: 'Staff Administration' },
   { to: '/manager/service-prices', label: 'Service Prices' },
   { to: '/manager/resources', label: 'Transport Resources' },
+  { to: '/manager/reports/financial', label: 'Financial Report' },
+  { to: '/manager/audit-events', label: 'Audit Events' },
 ];
 
 export function ManagerLayout() {
@@ -50,6 +53,7 @@ export function ManagerLayout() {
             Menu
           </button>
           <span>Request assessment</span>
+          <NotificationBell />
           <button type="button" onClick={clearSession}>
             Log Out
           </button>

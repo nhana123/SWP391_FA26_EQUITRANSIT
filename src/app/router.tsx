@@ -31,6 +31,7 @@ import {
   CreateStaffPage,
   StaffAdministrationDetailPage,
 } from '../features/staff-administration/pages';
+import { PaymentsPage } from '../features/payments/pages';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
@@ -42,6 +43,17 @@ import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage
 import { CaseAvailabilityPage } from '../features/resources/availability';
 import { PlansPage } from '../features/plans/PlansPage';
 import { PlanDetailPage } from '../features/plans/PlanDetailPage';
+import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
+import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
+import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
+import { NotificationBell, NotificationsPage } from '../features/activity-customer/notifications';
+import { EmailPreferencesPage } from '../features/activity-customer/preferences';
+import { ManagerAuditPage, ManagerFinancialPage } from '../features/activity-reports/pages';
+import {
+  CustomerHandoverPage,
+  ManagerSettlementPage,
+  StaffActualCostsPage,
+} from '../features/settlement/pages';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -71,6 +83,7 @@ function PublicLayout() {
           <Link to="/">Home</Link>
           {session ? (
             <>
+              <NotificationBell />
               <Link className="button primary" to={workspaceHome(session.role)}>
                 My Workspace
               </Link>
@@ -170,6 +183,9 @@ function CustomerLayout() {
         <Brand to="/customer/horses" />
         <small>Customer PORTAL</small>
         <nav aria-label="Customer navigation">
+          <NavLink to="/customer/dashboard" onClick={() => setMenu(false)}>
+            Dashboard
+          </NavLink>
           <NavLink to="/customer/horses" onClick={() => setMenu(false)}>
             My Horses
           </NavLink>
@@ -178,6 +194,9 @@ function CustomerLayout() {
           </NavLink>
           <NavLink to="/customer/account" onClick={() => setMenu(false)}>
             Account
+          </NavLink>
+          <NavLink to="/customer/notification-preferences" onClick={() => setMenu(false)}>
+            Email preferences
           </NavLink>
         </nav>
         <div className="support">
@@ -197,6 +216,7 @@ function CustomerLayout() {
             Menu
           </button>
           <span>International horse transport</span>
+          <NotificationBell />
           <button type="button" onClick={clearSession}>
             Log Out
           </button>
@@ -271,6 +291,17 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        element: (
+          <RoleGate roles={['CUSTOMER', 'MANAGER', 'SPECIALIST', 'COORDINATOR', 'DRIVER']} />
+        ),
+        children: [
+          {
+            element: <PublicLayout />,
+            children: [{ path: '/notifications', element: <NotificationsPage /> }],
+          },
+        ],
+      },
+      {
         element: <RoleGate roles={['CUSTOMER']} />,
         children: [
           {
@@ -279,6 +310,8 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="horses" replace /> },
               { path: 'account', element: <AccountPage /> },
+              { path: 'dashboard', element: <CustomerDashboardPage /> },
+              { path: 'notification-preferences', element: <EmailPreferencesPage /> },
               { path: 'horses', element: <HorsesPage /> },
               { path: 'horses/new', element: <HorseEditor /> },
               { path: 'horses/:id', element: <HorseDetailPage /> },
@@ -286,8 +319,11 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <RequestsPage /> },
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <RequestDetailPage /> },
+              { path: 'requests/:id/handover', element: <CustomerHandoverPage /> },
+              { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
+              { path: 'requests/:id/compliance', element: <CustomerCompliancePage /> },
             ],
           },
         ],
@@ -302,6 +338,8 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="requests" replace /> },
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
+              { path: 'requests/:id/settlement', element: <ManagerSettlementPage /> },
+              { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/prepare', element: <PrepareQuotationPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <ManagerQuotationDetailPage /> },
@@ -311,6 +349,8 @@ export const router = createBrowserRouter([
               { path: 'staff-administration/:staffId', element: <StaffAdministrationDetailPage /> },
               { path: 'service-prices', element: <ManagerPricesPage /> },
               { path: 'resources', element: <ManagerResourcesPage /> },
+              { path: 'reports/financial', element: <ManagerFinancialPage /> },
+              { path: 'audit-events', element: <ManagerAuditPage /> },
               { path: 'requests/:id/availability', element: <CaseAvailabilityPage /> },
               { path: 'requests/:id/plans', element: <PlansPage /> },
               { path: 'requests/:id/plans/:planId', element: <PlanDetailPage /> },
@@ -327,6 +367,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <AssignedCasesPage /> },
               { path: ':id', element: <AssignedCasePage /> },
+              { path: ':id/actual-costs', element: <StaffActualCostsPage /> },
               {
                 element: <RoleGate roles={['COORDINATOR']} />,
                 children: [
@@ -337,6 +378,10 @@ export const router = createBrowserRouter([
                   { path: ':id/plans', element: <PlansPage /> },
                   { path: ':id/plans/:planId', element: <PlanDetailPage /> },
                 ],
+              },
+              {
+                element: <RoleGate roles={['SPECIALIST']} />,
+                children: [{ path: ':id/compliance', element: <SpecialistCompliancePage /> }],
               },
             ],
           },
