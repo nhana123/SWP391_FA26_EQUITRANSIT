@@ -1,5 +1,8 @@
 # EquiTransit frontend — FE1
 
+Issue #77 has preview-only handover, internal-cost and settlement routes;
+F14 integration is blocked by the missing BE contract. See
+[the scope and BE handoff](docs/ISSUE_77_HANDOVER_SETTLEMENT.md).
 Manual bank payment reporting, Manager reconciliation, allocations and refunds
 for issue #76: see [the implementation and acceptance guide](docs/ISSUE_76_MANUAL_PAYMENTS.md),
 including the BE schedule-ID dependency that blocks first-request creation.

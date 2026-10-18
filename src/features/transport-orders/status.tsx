@@ -10,6 +10,7 @@ import { BookingServices } from '../booking-services/BookingServices';
 import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { QuotationLink } from '../quotations/navigation';
+import { SettlementPreviewLink } from '../settlement/navigation';
 import { PaymentLink } from '../payments/pages';
 import { orderStatusApi } from './status-api';
 import { orderStatusLabels, type CustomerAssessment } from './status-contracts';
@@ -207,6 +208,7 @@ export function RequestDetailPage() {
       <AssessmentPanel order={query.data} />
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />
+        <SettlementPreviewLink orderId={query.data.orderId} />
         <PaymentLink orderId={query.data.orderId} />
       </div>
       {/* FE1's editor, unchanged, with FE2 booking in its documented slot. */}
