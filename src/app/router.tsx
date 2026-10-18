@@ -41,6 +41,7 @@ import { ManagerQuotationDetailPage } from '../features/quotations/manager-actio
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
 import { CaseAvailabilityPage } from '../features/resources/availability';
+import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
@@ -350,6 +351,7 @@ export const router = createBrowserRouter([
               { path: 'reports/financial', element: <ManagerFinancialPage /> },
               { path: 'audit-events', element: <ManagerAuditPage /> },
               { path: 'requests/:id/availability', element: <CaseAvailabilityPage /> },
+              { path: 'requests/:id/departure', element: <DeparturePage /> },
             ],
           },
         ],
@@ -371,12 +373,26 @@ export const router = createBrowserRouter([
                   { path: ':id/quotes/prepare', element: <PrepareQuotationPage /> },
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
                   { path: ':id/availability', element: <CaseAvailabilityPage /> },
+                  { path: ':id/departure', element: <DeparturePage /> },
                 ],
               },
               {
                 element: <RoleGate roles={['SPECIALIST']} />,
                 children: [{ path: ':id/compliance', element: <SpecialistCompliancePage /> }],
               },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RoleGate roles={['DRIVER']} />,
+        children: [
+          {
+            path: '/driver',
+            element: <DriverLayout />,
+            children: [
+              { index: true, element: <DriverHome /> },
+              { path: 'orders/:id/departure', element: <DeparturePage /> },
             ],
           },
         ],
