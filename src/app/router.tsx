@@ -41,6 +41,8 @@ import { ManagerQuotationDetailPage } from '../features/quotations/manager-actio
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
 import { CaseAvailabilityPage } from '../features/resources/availability';
+import { PlansPage } from '../features/plans/PlansPage';
+import { PlanDetailPage } from '../features/plans/PlanDetailPage';
 import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
@@ -351,6 +353,8 @@ export const router = createBrowserRouter([
               { path: 'reports/financial', element: <ManagerFinancialPage /> },
               { path: 'audit-events', element: <ManagerAuditPage /> },
               { path: 'requests/:id/availability', element: <CaseAvailabilityPage /> },
+              { path: 'requests/:id/plans', element: <PlansPage /> },
+              { path: 'requests/:id/plans/:planId', element: <PlanDetailPage /> },
               { path: 'requests/:id/departure', element: <DeparturePage /> },
             ],
           },
@@ -373,6 +377,8 @@ export const router = createBrowserRouter([
                   { path: ':id/quotes/prepare', element: <PrepareQuotationPage /> },
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
                   { path: ':id/availability', element: <CaseAvailabilityPage /> },
+                  { path: ':id/plans', element: <PlansPage /> },
+                  { path: ':id/plans/:planId', element: <PlanDetailPage /> },
                   { path: ':id/departure', element: <DeparturePage /> },
                 ],
               },

@@ -40,6 +40,14 @@ vi.mock('../resources/api', () => ({
   RESOURCE_PAGE_SIZE: 20,
   resourcesApi: { list: vi.fn(() => new Promise(() => {})), probe: vi.fn() },
 }));
+vi.mock('../plans/api', () => ({
+  PLAN_PAGE_SIZE: 20,
+  plansApi: {
+    list: vi.fn(() => new Promise(() => {})),
+    get: vi.fn(() => new Promise(() => {})),
+    candidates: vi.fn(() => new Promise(() => {})),
+  },
+}));
 vi.mock('../compliance/api', () => ({
   COMPLIANCE_PAGE_SIZE: 20,
   complianceApi: {
@@ -138,6 +146,23 @@ describe('FE2 routes are wired into the app router', () => {
     expect(
       await screen.findByRole('heading', { name: 'Check resource availability' }),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/manager/requests/7/plans', 'MANAGER'],
+    ['/staff/cases/7/plans', 'COORDINATOR'],
+    ['/manager/requests/7/plans/3', 'MANAGER'],
+    ['/staff/cases/7/plans/3', 'COORDINATOR'],
+  ] as const)('%s renders the #80 plan page for %s', async (path, role) => {
+    open(path, role);
+    expect(
+      await screen.findByRole('heading', { name: /Operational plans|Plan detail/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('a Specialist cannot open operational plans', async () => {
+    open('/staff/cases/7/plans', 'SPECIALIST');
+    expect(await screen.findByText(/do not have access to this workspace/)).toBeInTheDocument();
   });
 
   it.each([
