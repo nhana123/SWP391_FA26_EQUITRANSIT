@@ -1,0 +1,10 @@
+.staff-email {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.staff-admin-form {
+  margin-top: 1.25rem;
+}
+.staff-admin-form fieldset {
+  min-width: 0;
+}

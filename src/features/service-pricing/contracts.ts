@@ -86,6 +86,7 @@ export type TariffCommand = {
   validUntil: string | null;
   operationId: string;
   recordVersion: string | null;
+  unitCode?: string;
 };
 
 export const productLabels: Record<ServiceProduct, string> = {
