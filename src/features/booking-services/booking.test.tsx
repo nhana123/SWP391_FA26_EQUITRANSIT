@@ -37,7 +37,8 @@ describe('booking shell (FE-20)', () => {
   it('shows the seven sections in order with no horse picker', async () => {
     mountBooking();
     const buttons = await screen.findAllByRole('button', { expanded: false });
-    expect(buttons.map((b) => b.textContent)).toEqual([
+    // Each section card is named by its title; the rest of the card is a preview.
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
       'Transportation',
       'Available Air Stalls for Your Horse',
       'Horse Care',
@@ -94,5 +95,26 @@ describe('booking contract', () => {
     const prefs = toPreferences({ airStall: 'WIDE' });
     expect(prefs.airStall).toBe('WIDE');
     expect(Object.values(prefs).filter((v) => v === null)).toHaveLength(14);
+  });
+});
+
+describe('service cards and popup', () => {
+  it('opens a section as a modal dialog; Esc and Done close it and keep the choice', async () => {
+    const { user } = mountBooking();
+    const card = await screen.findByRole('button', { name: 'Transportation' });
+    expect(card).toHaveAttribute('aria-haspopup', 'dialog');
+    await user.click(card);
+    const dialog = screen.getByRole('dialog', { name: 'Transportation' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await user.click(screen.getByLabelText('Arranged by EquiTransit'));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // The choice is kept as an unconfirmed edit.
+    expect(screen.getByText(/You have unconfirmed changes/)).toBeInTheDocument();
+    await user.click(card);
+    expect(screen.getByLabelText('Arranged by EquiTransit')).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(bookingApi.confirm).not.toHaveBeenCalled();
   });
 });

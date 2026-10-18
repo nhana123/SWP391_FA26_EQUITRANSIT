@@ -183,7 +183,7 @@ function CustomerLayout() {
         Skip to content
       </a>
       <aside className={menu ? 'sidebar open' : 'sidebar'}>
-        <Brand to="/customer/horses" />
+        <Brand to="/customer/dashboard" />
         <small>Customer PORTAL</small>
         <nav aria-label="Customer navigation">
           <NavLink to="/customer/dashboard" onClick={() => setMenu(false)}>

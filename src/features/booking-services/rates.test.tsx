@@ -89,7 +89,8 @@ describe('unit prices inside service options (FE-26)', () => {
     expect(await within(equi as HTMLElement).findByText('2.00 USD per km')).toBeInTheDocument();
     const own = screen.getByLabelText('I will arrange my own provider').closest('.choice-row')!;
     expect(within(own as HTMLElement).getByText(/not charged by EquiTransit/)).toBeInTheDocument();
-    expect(screen.getByText(/Airfare: Awaiting pricing\/assessment/)).toBeInTheDocument();
+    const airfare = within(screen.getByRole('dialog')).getByRole('listitem', { name: 'Airfare' });
+    expect(within(airfare).getByText('Awaiting pricing/assessment')).toBeInTheDocument();
     expect(ratesApi.get).toHaveBeenCalledWith(11, expect.any(AbortSignal));
   });
 
@@ -105,10 +106,14 @@ describe('unit prices inside service options (FE-26)', () => {
 
   it('marks evidence and event rates as not final, and included as included', async () => {
     await open('Additional Charges');
-    expect(screen.getByText(/Document review: Included/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Waiting time: 20.00 USD per hour · only if it happens/),
-    ).toBeInTheDocument();
+    const dialog = within(screen.getByRole('dialog'));
+    const review = within(dialog.getByRole('listitem', { name: 'Document review' }));
+    expect(review.getByText('Included')).toBeInTheDocument();
+    expect(review.getByText('Never charged separately')).toBeInTheDocument();
+    const waiting = within(dialog.getByRole('listitem', { name: 'Waiting time' }));
+    expect(waiting.getByText('20.00')).toBeInTheDocument();
+    expect(waiting.getByText('USD per hour')).toBeInTheDocument();
+    expect(waiting.getByText('Charged only if it happens')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: "Current unit rates (today's catalog, not your quote)" }),
     ).toBeInTheDocument();
@@ -118,8 +123,11 @@ describe('unit prices inside service options (FE-26)', () => {
     await open('Insurance');
     expect(screen.getByText('No premium')).toBeInTheDocument();
     expect(screen.getByText('No new premium')).toBeInTheDocument();
+    // The section card also previews the rate; the option tag is inside the popup.
     expect(
-      screen.getByText(/300.00 USD per policy · final amount needs assessment/),
+      within(screen.getByRole('dialog')).getByText(
+        /300.00 USD per policy · final amount needs assessment/,
+      ),
     ).toBeInTheDocument();
   });
 

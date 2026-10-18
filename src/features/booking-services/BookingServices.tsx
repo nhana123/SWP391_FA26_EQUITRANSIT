@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useCallback, useState, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
 import type { Order } from '../../shared/api/contracts';
@@ -27,6 +27,7 @@ import { HorseCareSection, QuarantineSection, VeterinarySection } from './care-s
 import { validatePreferences } from './form';
 import { InsuranceSection } from './insurance-section';
 import { AirStallSection, TransportationSection, type SectionProps } from './sections';
+import { ServiceCard, ServiceDialog } from './service-cards';
 import './booking.css';
 
 const fallbackTitles: Record<SectionCode, string> = {
@@ -95,6 +96,7 @@ function BookingEditor({
   const awaitingRefresh = confirmationToRefresh !== null;
   const rates = useServiceRates(order.orderId);
   const [open, setOpen] = useState<SectionCode | null>(null);
+  const close = useCallback(() => setOpen(null), []);
   const [confirmedNotice, setConfirmedNotice] = useState('');
   const dirty = !samePreferences(prefs, saved);
   const localErrors = validatePreferences(prefs, disclosure);
@@ -184,6 +186,8 @@ function BookingEditor({
       throw error;
     }
   }
+  const titleOf = (code: SectionCode) =>
+    disclosure.sections.find((s) => s.code === code)?.title ?? fallbackTitles[code];
   const props: SectionProps = {
     order,
     disclosure,
@@ -251,31 +255,26 @@ function BookingEditor({
             reload={() => void reload().catch(() => {})}
           />
         )}
-        {sectionCodes.map((code) => {
-          const title =
-            disclosure.sections.find((s) => s.code === code)?.title ?? fallbackTitles[code];
-          const View = sectionViews[code];
-          const expanded = open === code;
-          return (
-            <section key={code} className="booking-section" aria-labelledby={`section-${code}`}>
-              <h3 id={`section-${code}`}>
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  aria-controls={`panel-${code}`}
-                  onClick={() => setOpen(expanded ? null : code)}
-                >
-                  {title}
-                </button>
-              </h3>
-              {expanded && (
-                <div id={`panel-${code}`} className="booking-panel">
-                  <View {...props} />
-                </div>
-              )}
-            </section>
-          );
-        })}
+        <div className="service-grid">
+          {sectionCodes.map((code) => (
+            <ServiceCard
+              key={code}
+              code={code}
+              title={titleOf(code)}
+              open={open === code}
+              onOpen={() => setOpen(open === code ? null : code)}
+            />
+          ))}
+        </div>
+        {open &&
+          (() => {
+            const View = sectionViews[open];
+            return (
+              <ServiceDialog id={`panel-${open}`} title={titleOf(open)} onClose={close}>
+                <View {...props} />
+              </ServiceDialog>
+            );
+          })()}
         <LivePreview
           preview={preview}
           enabled={previewEnabled}

@@ -118,12 +118,12 @@ describe('FE2 routes are wired into the app router', () => {
     expect(memory.state.location.pathname).toBe('/manager/requests');
   });
 
-  it('customer logo stays in the workspace and keeps the session', async () => {
+  it('customer logo opens the dashboard and keeps the session', async () => {
     const memory = open('/customer/account', 'CUSTOMER');
     await userEvent
       .setup()
       .click(within(screen.getByRole('complementary')).getByRole('link', { name: 'EquiTransit' }));
-    expect(memory.state.location.pathname).toBe('/customer/horses');
+    expect(memory.state.location.pathname).toBe('/customer/dashboard');
     expect(getSession()).not.toBeNull();
   });
 
