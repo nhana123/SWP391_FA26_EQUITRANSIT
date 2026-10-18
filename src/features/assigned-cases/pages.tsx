@@ -11,6 +11,7 @@ import { useAssignedCase, useAssignedCases } from './hooks';
 import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
+import { NotificationBell } from '../activity-customer/notifications';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -80,6 +81,7 @@ export function AssignedCasesLayout() {
             Menu
           </button>
           <span>Case preparation</span>
+          <NotificationBell />
           <button type="button" onClick={clearSession}>
             Log Out
           </button>
