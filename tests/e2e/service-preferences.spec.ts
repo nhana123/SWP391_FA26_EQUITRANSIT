@@ -73,7 +73,10 @@ test('Customer reviews WIDE and Request Share on mobile without confirming a rev
         return route.fulfill({
           json: { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 },
         });
+      if (/^\/api\/activity\/orders\/\d+\/timeline$/.test(path))
+        return route.fulfill({ json: { orderId: 11, items: [], page: 0, size: 20 } });
       unexpected.push(path);
+
       return route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
     },
   );
@@ -163,6 +166,8 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
               assignments: [],
             },
           });
+        if (/^\/api\/activity\/orders\/\d+\/timeline$/.test(path))
+          return route.fulfill({ json: { orderId: 9, items: [], page: 0, size: 20 } });
         unexpected.push(path);
         return route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
       },

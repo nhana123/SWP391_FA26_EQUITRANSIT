@@ -31,45 +31,51 @@ for (const role of ['CUSTOMER', 'MANAGER', 'COORDINATOR'] as const) {
       deliveryDeadline: null,
     };
     // Vite also serves modules under /src/shared/api/. Only mock backend paths.
-    await page.route((url) => url.pathname.startsWith('/api/'), async (route) => {
-      const request = route.request();
-      const path = new URL(request.url()).pathname;
-      if (path === '/api/auth/login')
-        await route.fulfill({
-          json: { accessToken: 'browser-test-only', tokenType: 'Bearer', expiresIn: 120, role },
-        });
-      else if (path === '/api/horses') await route.fulfill({ json: empty });
-      else if (path === '/api/transport-orders')
-        await route.fulfill({
-          json: { ...empty, items: [order], totalElements: 1, totalPages: 1 },
-        });
-      else if (path === '/api/transport-orders/9') await route.fulfill({ json: order });
-      else if (path === '/api/transport-orders/9/quotes') await route.fulfill({ json: pageOf() });
-      else if (path === '/api/transport-orders/9/quotes/31')
-        await route.fulfill({
-          json: {
-            ...quotation,
-            terms: '<img src=x onerror=alert(1)>',
-            purchaseCost: 'PRIVATE-PURCHASE-COST',
-            internalNotes: 'PRIVATE-INTERNAL-NOTES',
-          },
-        });
-      else if (path === '/api/manager/transport-orders' || path === '/api/staff/transport-orders')
-        await route.fulfill({
-          json: { ...empty, items: [caseRow], totalElements: 1, totalPages: 1 },
-        });
-      else if (
-        path === '/api/manager/transport-orders/9' ||
-        path === '/api/staff/transport-orders/9'
-      )
-        await route.fulfill({ json: current });
-      else if (/\/9\/(decisions|assignments|revisions)$/.test(path))
-        await route.fulfill({ json: [] });
-      else {
-        unexpected.push(path);
-        await route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
-      }
-    });
+    await page.route(
+      (url) => url.pathname.startsWith('/api/'),
+      async (route) => {
+        const request = route.request();
+        const path = new URL(request.url()).pathname;
+        if (path === '/api/auth/login')
+          await route.fulfill({
+            json: { accessToken: 'browser-test-only', tokenType: 'Bearer', expiresIn: 120, role },
+          });
+        else if (path === '/api/horses') await route.fulfill({ json: empty });
+        else if (path === '/api/transport-orders')
+          await route.fulfill({
+            json: { ...empty, items: [order], totalElements: 1, totalPages: 1 },
+          });
+        else if (path === '/api/transport-orders/9') await route.fulfill({ json: order });
+        else if (path === '/api/transport-orders/9/quotes') await route.fulfill({ json: pageOf() });
+        else if (path === '/api/transport-orders/9/quotes/31')
+          await route.fulfill({
+            json: {
+              ...quotation,
+              terms: '<img src=x onerror=alert(1)>',
+              purchaseCost: 'PRIVATE-PURCHASE-COST',
+              internalNotes: 'PRIVATE-INTERNAL-NOTES',
+            },
+          });
+        else if (path === '/api/manager/transport-orders' || path === '/api/staff/transport-orders')
+          await route.fulfill({
+            json: { ...empty, items: [caseRow], totalElements: 1, totalPages: 1 },
+          });
+        else if (
+          path === '/api/manager/transport-orders/9' ||
+          path === '/api/staff/transport-orders/9'
+        )
+          await route.fulfill({ json: current });
+        else if (/\/9\/(decisions|assignments|revisions)$/.test(path))
+          await route.fulfill({ json: [] });
+        else if (/^\/api\/activity\/orders\/\d+\/timeline$/.test(path))
+          await route.fulfill({ json: { orderId: 9, items: [], page: 0, size: 20 } });
+        else {
+          unexpected.push(path);
+
+          await route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
+        }
+      },
+    );
     await page.goto('/login');
     await page.getByLabel('Email address').fill('quotation-test@example.invalid');
     await page.getByLabel('Password').fill('TestPassword123!');

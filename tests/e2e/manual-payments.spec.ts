@@ -166,7 +166,10 @@ test('Manager navigates from a case to payments and explicitly allocates verifie
         allocated = true;
         return route.fulfill({ json: { entityId: 502, recordVersion: '00000000000000a2' } });
       }
+      if (/^\/api\/activity\/orders\/\d+\/timeline$/.test(path))
+        return route.fulfill({ json: { orderId: 11, items: [], page: 0, size: 20 } });
       unexpected.push(path);
+
       return route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
     },
   );
