@@ -41,6 +41,8 @@ import { ManagerQuotationDetailPage } from '../features/quotations/manager-actio
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
 import { CaseAvailabilityPage } from '../features/resources/availability';
+import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
+import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
 import { NotificationBell, NotificationsPage } from '../features/activity-customer/notifications';
 import { EmailPreferencesPage } from '../features/activity-customer/preferences';
@@ -319,6 +321,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
+              { path: 'requests/:id/compliance', element: <CustomerCompliancePage /> },
             ],
           },
         ],
@@ -369,6 +372,10 @@ export const router = createBrowserRouter([
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
                   { path: ':id/availability', element: <CaseAvailabilityPage /> },
                 ],
+              },
+              {
+                element: <RoleGate roles={['SPECIALIST']} />,
+                children: [{ path: ':id/compliance', element: <SpecialistCompliancePage /> }],
               },
             ],
           },

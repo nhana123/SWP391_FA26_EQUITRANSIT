@@ -10,6 +10,7 @@ import { BookingServices } from '../booking-services/BookingServices';
 import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { QuotationLink } from '../quotations/navigation';
+import { ComplianceLink } from '../compliance/link';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import { PaymentLink } from '../payments/pages';
 import { orderStatusApi } from './status-api';
@@ -208,6 +209,7 @@ export function RequestDetailPage() {
       <AssessmentPanel order={query.data} />
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />
+        <ComplianceLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
         <SettlementPreviewLink orderId={query.data.orderId} />
         <PaymentLink orderId={query.data.orderId} />
       </div>
