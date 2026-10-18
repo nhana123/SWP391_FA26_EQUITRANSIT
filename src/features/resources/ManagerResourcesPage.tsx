@@ -6,6 +6,7 @@ import { queryClient, queryKeys } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
 import { displayDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
+import { PhoneInput } from '../../shared/ui/PhoneInput';
 import { useCaseCommand } from '../assessment/command';
 import { ManagerHeading } from '../assessment/layout';
 import { RESOURCE_PAGE_SIZE, resourcesApi } from './api';
@@ -223,7 +224,15 @@ function FieldInput({
   return (
     <Field label={spec.label} hint={spec.hint} error={error}>
       {(id) =>
-        spec.type === 'select' ? (
+        spec.type === 'phone' ? (
+          <PhoneInput
+            id={id}
+            maxLength={spec.maxLength}
+            value={value}
+            onChange={onChange}
+            invalid={!!error}
+          />
+        ) : spec.type === 'select' ? (
           <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
             {spec.options!.map((o) => (
               <option key={o} value={o}>

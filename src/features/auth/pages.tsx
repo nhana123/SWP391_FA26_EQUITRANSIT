@@ -5,6 +5,7 @@ import { authApi } from './api';
 import { clearSession, startSession, useSession } from '../../shared/api/session';
 import { queryKeys } from '../../shared/api/query';
 import { ErrorNotice, Field, Loading, Notice, PageHeading } from '../../shared/ui/common';
+import { PhoneInput } from '../../shared/ui/PhoneInput';
 import {
   optional,
   passwordErrors,
@@ -163,18 +164,16 @@ export function RegisterPage() {
           <Field
             label="Phone number (optional)"
             error={errors.phone}
-            hint="Example: +84901234567. Leave blank if unknown."
+            hint="Choose the country code, then the number. Leave blank if unknown."
           >
             {(id) => (
-              <input
+              <PhoneInput
                 id={id}
-                type="tel"
                 maxLength={30}
-                autoComplete="tel"
                 value={phone}
-                aria-invalid={!!errors.phone}
-                aria-describedby={errors.phone ? `${id}-error` : undefined}
-                onChange={(e) => setPhone(e.target.value)}
+                invalid={!!errors.phone}
+                describedBy={errors.phone ? `${id}-error` : undefined}
+                onChange={setPhone}
               />
             )}
           </Field>

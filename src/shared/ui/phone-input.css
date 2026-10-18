@@ -1,0 +1,14 @@
+.phone-input {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.phone-input select {
+  flex: 0 0 auto;
+  width: 8.5rem;
+  max-width: 45%;
+}
+.phone-input input {
+  flex: 1 1 auto;
+  min-width: 0;
+}

@@ -6,6 +6,7 @@ import { queryClient, queryKeys } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
 import { displayDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice } from '../../shared/ui/common';
+import { PhoneInput } from '../../shared/ui/PhoneInput';
 import { SnapshotView } from '../assessment/case';
 import { useCaseCommand } from '../assessment/command';
 import { draftForm, draftInput, journeyFields, validateDraft, type DraftForm } from './form';
@@ -274,16 +275,26 @@ function RevisionForm({
         <legend>Journey and handover</legend>
         {journeyFields.map((f) => (
           <Field key={f.key} label={f.label} error={fieldError(f.key)}>
-            {(id) => (
-              <input
-                id={id}
-                type={f.key === 'receiverEmail' ? 'email' : 'text'}
-                maxLength={'max' in f ? f.max : 35}
-                value={form[f.key]}
-                onChange={(e) => set(f.key, e.target.value)}
-                aria-invalid={!!fieldError(f.key)}
-              />
-            )}
+            {(id) =>
+              f.key === 'receiverPhone' ? (
+                <PhoneInput
+                  id={id}
+                  maxLength={f.max}
+                  value={form[f.key]}
+                  onChange={(v) => set(f.key, v)}
+                  invalid={!!fieldError(f.key)}
+                />
+              ) : (
+                <input
+                  id={id}
+                  type={f.key === 'receiverEmail' ? 'email' : 'text'}
+                  maxLength={'max' in f ? f.max : 35}
+                  value={form[f.key]}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  aria-invalid={!!fieldError(f.key)}
+                />
+              )
+            }
           </Field>
         ))}
         <Field label="Import type" error={fieldError('importType')}>
