@@ -8,6 +8,7 @@ import './assessment.css';
 const links = [
   { to: '/manager/requests', label: 'Requests' },
   { to: '/manager/staff', label: 'Case Staff' },
+  { to: '/manager/staff-administration', label: 'Staff Administration' },
   { to: '/manager/service-prices', label: 'Service Prices' },
 ];
 

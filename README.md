@@ -1,5 +1,9 @@
 # EquiTransit frontend — FE1
 
+Manager staff provisioning and the tariff unit/version extension for issue #75:
+see [the review guide](docs/ISSUE_75_STAFF_TARIFF_ADMIN.md) for routes, contracts,
+checks and deployment dependencies.
+
 React + TypeScript strict + Vite. Implements FE-01–FE-12 against backend `dev`
 commit `de7b083a21c18bb0be2ea41e7c93a720c5c1670f` (F01–F05, including auth/OpenAPI audit fixes).
 

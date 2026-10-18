@@ -48,6 +48,7 @@ export const serviceRateSchema = z.object({
   pricingMode: pricingModeSchema,
   tariffId: idSchema.nullable(),
   tariffVersion: z.number().int().positive().nullable(),
+  allowedUnits: z.array(z.string()).optional(),
 });
 export type ServiceRate = z.infer<typeof serviceRateSchema>;
 
@@ -85,6 +86,7 @@ export type TariffCommand = {
   validUntil: string | null;
   operationId: string;
   recordVersion: string | null;
+  unitCode?: string;
 };
 
 export const productLabels: Record<ServiceProduct, string> = {
