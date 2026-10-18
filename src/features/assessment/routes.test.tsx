@@ -68,6 +68,10 @@ vi.mock('../activity-operations/api', () => ({
     timeline: vi.fn(() => new Promise(() => {})),
   },
 }));
+vi.mock('../execution/api', () => ({
+  EXECUTION_PAGE_SIZE: 20,
+  executionApi: { get: vi.fn(() => new Promise(() => {})) },
+}));
 vi.mock('../transport-orders/status-api', () => ({
   ORDER_PAGE_SIZE: 20,
   orderStatusApi: {
@@ -230,6 +234,21 @@ describe('FE2 routes are wired into the app router', () => {
     const memory = open('/staff', 'DRIVER');
     expect(await screen.findByRole('heading', { name: 'My active tasks' })).toBeInTheDocument();
     expect(memory.state.location.pathname).toBe('/driver');
+  });
+
+  it.each([
+    ['/manager/requests/7/execution', 'MANAGER'],
+    ['/staff/cases/7/execution', 'COORDINATOR'],
+    ['/driver/orders/7/execution', 'DRIVER'],
+    ['/customer/requests/7/execution', 'CUSTOMER'],
+  ] as const)('%s renders #81 F12 trip progress for %s', async (path, role) => {
+    open(path, role);
+    expect(await screen.findByRole('heading', { name: 'Trip progress' })).toBeInTheDocument();
+  });
+
+  it('a Specialist cannot open trip progress', async () => {
+    open('/staff/cases/7/execution', 'SPECIALIST');
+    expect(await screen.findByText(/do not have access to this workspace/)).toBeInTheDocument();
   });
 
   it('a Specialist cannot open the availability probe', async () => {

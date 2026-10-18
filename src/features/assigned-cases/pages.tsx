@@ -13,6 +13,7 @@ import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
+import { ExecutionLink } from '../execution/ExecutionPage';
 import { staffTaskLink } from '../activity-operations/routes';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { ComplianceLink } from '../compliance/link';
@@ -241,6 +242,7 @@ export function AssignedCasePage() {
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
       <OrderTimeline orderId={current.orderId} />

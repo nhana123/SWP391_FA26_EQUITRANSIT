@@ -45,6 +45,7 @@ import { PlansPage } from '../features/plans/PlansPage';
 import { PlanDetailPage } from '../features/plans/PlanDetailPage';
 import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
 import { staffTaskRoute } from '../features/activity-operations/routes';
+import { ExecutionPage } from '../features/execution/ExecutionPage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
@@ -325,6 +326,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
               { path: 'requests/:id/compliance', element: <CustomerCompliancePage /> },
+              { path: 'requests/:id/execution', element: <ExecutionPage /> },
             ],
           },
         ],
@@ -356,6 +358,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id/plans', element: <PlansPage /> },
               { path: 'requests/:id/plans/:planId', element: <PlanDetailPage /> },
               { path: 'requests/:id/departure', element: <DeparturePage /> },
+              { path: 'requests/:id/execution', element: <ExecutionPage /> },
             ],
           },
         ],
@@ -381,6 +384,7 @@ export const router = createBrowserRouter([
                   { path: ':id/plans', element: <PlansPage /> },
                   { path: ':id/plans/:planId', element: <PlanDetailPage /> },
                   { path: ':id/departure', element: <DeparturePage /> },
+                  { path: ':id/execution', element: <ExecutionPage /> },
                 ],
               },
               {
@@ -400,6 +404,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <DriverHome /> },
               { path: 'orders/:id/departure', element: <DeparturePage /> },
+              { path: 'orders/:id/execution', element: <ExecutionPage /> },
             ],
           },
         ],

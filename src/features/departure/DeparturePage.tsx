@@ -19,6 +19,7 @@ import {
   type Readiness,
 } from './contracts';
 import { TaskQueue } from '../activity-operations/TaskQueue';
+import { executionPath } from '../execution/ExecutionPage';
 import './departure.css';
 
 export const departureKeys = {
@@ -467,7 +468,10 @@ function Workspace({ orderId }: { orderId: number }) {
       )}
       {role === 'DRIVER' && !hasLeg && <Notice>No first road leg is planned for you yet.</Notice>}
       {departed && (
-        <Notice>The first leg has departed. Later legs are not managed on this page.</Notice>
+        <Notice>
+          The first leg has departed.{' '}
+          <Link to={executionPath(role, orderId)}>Follow trip progress and later legs</Link>.
+        </Notice>
       )}
     </>
   );
