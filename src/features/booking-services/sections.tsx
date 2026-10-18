@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Order } from '../../shared/api/contracts';
 import type { FieldErrors } from '../../shared/lib/validation';
 import { Field } from '../../shared/ui/common';
+import { PhoneInput } from '../../shared/ui/PhoneInput';
 import type { Disclosure, Preferences, StallFit } from './contracts';
 import { arrangementPatch, textOrNull, type Arrangement } from './form';
 import { RateTag, SectionRates } from './rates';
@@ -99,15 +100,14 @@ export function ProviderFields({
           />
         )}
       </Field>
-      <Field label="Provider phone" hint="Example: +84901234567" error={errors[contactKey]}>
+      <Field label="Provider phone" error={errors[contactKey]}>
         {(id) => (
-          <input
+          <PhoneInput
             id={id}
-            type="tel"
             maxLength={16}
             value={prefs[contactKey] ?? ''}
-            onChange={(e) => update({ [contactKey]: textOrNull(e.target.value) })}
-            aria-invalid={!!errors[contactKey]}
+            onChange={(v) => update({ [contactKey]: textOrNull(v) })}
+            invalid={!!errors[contactKey]}
           />
         )}
       </Field>

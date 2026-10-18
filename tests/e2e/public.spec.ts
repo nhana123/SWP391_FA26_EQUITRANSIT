@@ -16,7 +16,7 @@ test('registration accepts international email for API validation and blocks inv
   await page.getByLabel('Email address').fill('khách@example.invalid');
   await page.getByLabel('Password', { exact: true }).fill('TestPassword123!');
   await page.getByLabel('Confirm password').fill('TestPassword123!');
-  await page.getByLabel('Phone number (optional)').fill('090 123 4567');
+  await page.getByLabel('Phone number (optional)').fill('12');
   await page.getByRole('button', { name: 'Create Account' }).click();
   await expect(page.getByText(/Use 8–15 digits/)).toBeVisible();
   expect(bodies).toHaveLength(0);

@@ -25,7 +25,7 @@ type RatesState = {
   status: 'loading' | 'error' | 'ready';
   byProduct: Map<ServiceProduct, ServiceRate>;
 };
-const RatesContext = createContext<RatesState>({ status: 'loading', byProduct: new Map() });
+export const RatesContext = createContext<RatesState>({ status: 'loading', byProduct: new Map() });
 
 export function RatesProvider({
   query,
@@ -64,25 +64,51 @@ export function RateTag({ product }: { product: ServiceProduct }) {
   return <small className="rate-tag">{rateText(byProduct.get(product), status)}</small>;
 }
 
-/** All catalog rates belonging to one booking section. */
+function amount(rate: ServiceRate) {
+  if (rate.pricingMode === 'INCLUDED') return { value: 'Included', unit: '' };
+  if (rate.unitRate === null)
+    return {
+      value: rate.pricingMode === 'EVIDENCE' ? 'Awaiting pricing/assessment' : 'Awaiting pricing',
+      unit: '',
+    };
+  return { value: rate.unitRate, unit: `${rate.currency} ${unitLabel(rate.unit)}` };
+}
+const modeNotes: Partial<Record<ServiceRate['pricingMode'], string>> = {
+  EVIDENCE: 'Final amount needs assessment',
+  EVENT: 'Charged only if it happens',
+  INCLUDED: 'Never charged separately',
+};
+
+/** All catalog rates of one booking section, as price cards. Never a quote total. */
 export function SectionRates({ section, title }: { section: SectionCode; title?: string }) {
   const { status, byProduct } = useContext(RatesContext);
   const rows = [...byProduct.values()].filter((r) => r.uiSection === section);
   if (status === 'ready' && rows.length === 0) return null;
+  const heading = title ?? 'Current unit rates';
   return (
-    <div className="section-rates">
-      <h4>{title ?? 'Current unit rates'}</h4>
+    <section className="section-rates" aria-label={heading}>
+      <h4>{heading}</h4>
       {status !== 'ready' ? (
         <p className="muted">{rateText(undefined, status)}</p>
       ) : (
-        <ul>
-          {rows.map((r) => (
-            <li key={r.product}>
-              {productLabels[r.product]}: {rateText(r, status)}
-            </li>
-          ))}
+        <ul className="rate-cards">
+          {rows.map((r) => {
+            const a = amount(r);
+            return (
+              <li key={r.product} className="rate-card" aria-label={productLabels[r.product]}>
+                <span className="rate-card-name">{productLabels[r.product]}</span>
+                <span className="rate-card-price">
+                  <strong>{a.value}</strong>
+                  {a.unit && <small>{a.unit}</small>}
+                </span>
+                {modeNotes[r.pricingMode] && (
+                  <span className="rate-card-note">{modeNotes[r.pricingMode]}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

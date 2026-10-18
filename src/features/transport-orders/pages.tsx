@@ -10,6 +10,7 @@ import { draftForm, draftInput, journeyFields, validateDraft, type DraftForm } f
 import { useHorseSearch } from '../horses/hooks';
 import { useAction } from '../../shared/lib/useAction';
 import type { FieldErrors } from '../../shared/lib/validation';
+import { PhoneInput } from '../../shared/ui/PhoneInput';
 import {
   ErrorNotice,
   Field,
@@ -427,17 +428,28 @@ export function OrderEditor({
                         : undefined
                   }
                 >
-                  {(id) => (
-                    <input
-                      id={id}
-                      type={f.key === 'receiverEmail' ? 'email' : 'text'}
-                      maxLength={'max' in f ? f.max : 35}
-                      value={form[f.key]}
-                      onChange={(e) => change(f.key, e.target.value)}
-                      aria-invalid={!!fieldError(f.key)}
-                      aria-describedby={fieldError(f.key) ? `${id}-error` : undefined}
-                    />
-                  )}
+                  {(id) =>
+                    f.key === 'receiverPhone' ? (
+                      <PhoneInput
+                        id={id}
+                        maxLength={f.max}
+                        value={form[f.key]}
+                        onChange={(v) => change(f.key, v)}
+                        invalid={!!fieldError(f.key)}
+                        describedBy={fieldError(f.key) ? `${id}-error` : undefined}
+                      />
+                    ) : (
+                      <input
+                        id={id}
+                        type={f.key === 'receiverEmail' ? 'email' : 'text'}
+                        maxLength={'max' in f ? f.max : 35}
+                        value={form[f.key]}
+                        onChange={(e) => change(f.key, e.target.value)}
+                        aria-invalid={!!fieldError(f.key)}
+                        aria-describedby={fieldError(f.key) ? `${id}-error` : undefined}
+                      />
+                    )
+                  }
                 </Field>
               ))}
               <Field label="Import type" error={fieldError('importType')}>

@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/api/client';
 import { useAction } from '../../shared/lib/useAction';
 import type { FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Notice } from '../../shared/ui/common';
+import { PhoneInput } from '../../shared/ui/PhoneInput';
 import { useCaseCommand } from '../assessment/command';
 import { staffApi, staffErrorHelp } from './api';
 import {
@@ -190,16 +191,26 @@ export function StaffForm({
           <>
             {textFields.map(([key, label, maxLength]) => (
               <Field key={key} label={label} error={fields[key]}>
-                {(id) => (
-                  <input
-                    id={id}
-                    type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
-                    value={profile[key] ?? ''}
-                    maxLength={maxLength}
-                    aria-invalid={!!fields[key]}
-                    onChange={(event) => setProfile((p) => ({ ...p, [key]: event.target.value }))}
-                  />
-                )}
+                {(id) =>
+                  key === 'phone' ? (
+                    <PhoneInput
+                      id={id}
+                      value={profile.phone ?? ''}
+                      maxLength={maxLength}
+                      invalid={!!fields.phone}
+                      onChange={(v) => setProfile((p) => ({ ...p, phone: v }))}
+                    />
+                  ) : (
+                    <input
+                      id={id}
+                      type={key === 'email' ? 'email' : 'text'}
+                      value={profile[key] ?? ''}
+                      maxLength={maxLength}
+                      aria-invalid={!!fields[key]}
+                      onChange={(event) => setProfile((p) => ({ ...p, [key]: event.target.value }))}
+                    />
+                  )
+                }
               </Field>
             ))}
             <Field label="Staff role" error={fields.role}>

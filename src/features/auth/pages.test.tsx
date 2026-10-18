@@ -40,11 +40,11 @@ describe('account flows', () => {
       </MemoryRouter>,
     );
     const user = await fillRegistration();
-    await user.type(screen.getByLabelText('Phone number (optional)'), '090 123 4567');
+    await user.type(screen.getByLabelText('Phone number (optional)'), '12');
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
     expect(authApi.register).not.toHaveBeenCalled();
     expect(await screen.findByText(/Use 8–15 digits/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Phone number (optional)')).toHaveValue('090 123 4567');
+    expect(screen.getByLabelText('Phone number (optional)')).toHaveValue('12');
     expect(screen.getByLabelText('Phone number (optional)')).toHaveAttribute(
       'aria-invalid',
       'true',

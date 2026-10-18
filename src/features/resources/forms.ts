@@ -17,7 +17,7 @@ export type FormValues = Record<string, string>;
 export type FieldSpec = {
   name: string;
   label: string;
-  type?: 'text' | 'textarea' | 'select' | 'checkbox';
+  type?: 'text' | 'textarea' | 'select' | 'checkbox' | 'phone';
   options?: readonly string[];
   hint?: string;
   maxLength?: number;
@@ -93,7 +93,7 @@ export const fieldSpecs: Record<CatalogKey, FieldSpec[]> = {
     {
       name: 'phone',
       label: 'Phone (optional)',
-      hint: 'Digits with optional +, 8–15.',
+      type: 'phone',
       maxLength: 16,
     },
     {
