@@ -38,6 +38,8 @@ import { QuotationDetailPage, QuotationsPage } from '../features/quotations/page
 import { PrepareQuotationPage } from '../features/quotations/prepare';
 import { ManagerQuotationDetailPage } from '../features/quotations/manager-actions';
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
+import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
+import { CaseAvailabilityPage } from '../features/resources/availability';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -306,6 +308,8 @@ export const router = createBrowserRouter([
               { path: 'staff-administration/new', element: <CreateStaffPage /> },
               { path: 'staff-administration/:staffId', element: <StaffAdministrationDetailPage /> },
               { path: 'service-prices', element: <ManagerPricesPage /> },
+              { path: 'resources', element: <ManagerResourcesPage /> },
+              { path: 'requests/:id/availability', element: <CaseAvailabilityPage /> },
             ],
           },
         ],
@@ -325,6 +329,7 @@ export const router = createBrowserRouter([
                   { path: ':id/quotes', element: <QuotationsPage /> },
                   { path: ':id/quotes/prepare', element: <PrepareQuotationPage /> },
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
+                  { path: ':id/availability', element: <CaseAvailabilityPage /> },
                 ],
               },
             ],

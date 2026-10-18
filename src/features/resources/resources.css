@@ -1,0 +1,19 @@
+.resource-tabs button[aria-pressed='true'] {
+  font-weight: 700;
+  text-decoration: underline;
+}
+.resource-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.resource-source {
+  max-width: 16rem;
+  overflow-wrap: anywhere;
+}
+.probe-result ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
