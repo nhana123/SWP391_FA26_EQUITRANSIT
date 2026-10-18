@@ -40,6 +40,8 @@ import { ManagerQuotationDetailPage } from '../features/quotations/manager-actio
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
 import { CaseAvailabilityPage } from '../features/resources/availability';
+import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
+import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -286,6 +288,7 @@ export const router = createBrowserRouter([
               { path: 'requests/:id', element: <RequestDetailPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
+              { path: 'requests/:id/compliance', element: <CustomerCompliancePage /> },
             ],
           },
         ],
@@ -331,6 +334,10 @@ export const router = createBrowserRouter([
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
                   { path: ':id/availability', element: <CaseAvailabilityPage /> },
                 ],
+              },
+              {
+                element: <RoleGate roles={['SPECIALIST']} />,
+                children: [{ path: ':id/compliance', element: <SpecialistCompliancePage /> }],
               },
             ],
           },

@@ -11,6 +11,7 @@ import { useAssignedCase, useAssignedCases } from './hooks';
 import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
+import { ComplianceLink } from '../compliance/link';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -227,6 +228,7 @@ export function AssignedCasePage() {
         <QuotationLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
       <Notice>
         Read-only preparation view. Document review, planning, reservations and departure are not
