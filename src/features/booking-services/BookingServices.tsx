@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/api/client';
 import type { Order } from '../../shared/api/contracts';
 import { queryClient, queryKeys } from '../../shared/api/query';
 import { getSession, useSession } from '../../shared/api/session';
+import { useAction } from '../../shared/lib/useAction';
 import { Loading, Notice } from '../../shared/ui/common';
 import { ordersApi } from '../transport-orders/api';
 import type { ServicesSlotProps } from '../transport-orders/pages';
@@ -87,15 +88,23 @@ function BookingEditor({
   }));
   const [mutationError, setMutationError] = useState<unknown>(null);
   const [reloadError, setReloadError] = useState<unknown>(null);
+  // A successful write stays acknowledged even when a subsequent read fails.
+  // Recovery must finish reading current data before another write is possible.
+  const [confirmationToRefresh, setConfirmationToRefresh] = useState<Confirmation | null>(null);
+  const confirmationRefresh = useAction();
+  const awaitingRefresh = confirmationToRefresh !== null;
   const rates = useServiceRates(order.orderId);
   const [open, setOpen] = useState<SectionCode | null>(null);
   const [confirmedNotice, setConfirmedNotice] = useState('');
   const dirty = !samePreferences(prefs, saved);
   const localErrors = validatePreferences(prefs, disclosure);
   const previewEnabled =
-    dirty && Object.keys(localErrors).length === 0 && !serviceWriteBlocked(mutationError);
+    !awaitingRefresh &&
+    dirty &&
+    Object.keys(localErrors).length === 0 &&
+    !serviceWriteBlocked(mutationError);
   const preview = useServicePreview(order.orderId, disclosure, prefs, previewEnabled);
-  const previewError = preview.settling ? null : preview.query.error;
+  const previewError = awaitingRefresh || preview.settling ? null : preview.query.error;
   const errors = {
     ...localErrors,
     ...serviceFields(previewError),
@@ -104,6 +113,7 @@ function BookingEditor({
   const versionMismatch =
     order.recordVersion.toLowerCase() !== disclosure.recordVersion.toLowerCase();
   const blocked =
+    awaitingRefresh ||
     versionMismatch ||
     serviceWriteBlocked(readError) ||
     serviceWriteBlocked(previewError) ||
@@ -111,43 +121,53 @@ function BookingEditor({
     serviceWriteBlocked(rates.error);
   const servicesKey = queryKeys.services(session.generation, order.orderId);
 
-  async function confirmed(result: Confirmation) {
-    try {
-      // The receipt is history: re-read the current order and disclosure.
-      const fresh = await ordersApi.get(order.orderId);
-      const next = await queryClient.fetchQuery({
-        queryKey: servicesKey,
-        queryFn: ({ signal }) => bookingApi.get(order.orderId, signal),
-        staleTime: 0,
-      });
-      if (getSession()?.generation !== session.generation) return;
+  async function readCurrent() {
+    const [next, fresh] = await Promise.all([
+      bookingApi.get(order.orderId),
+      ordersApi.get(order.orderId),
+    ]);
+    if (getSession()?.generation !== session.generation) return null;
+    if (next.recordVersion.toLowerCase() !== fresh.recordVersion.toLowerCase())
+      throw new ApiError(409, 'The request changed while reloading. Reload again and review.');
+    return { disclosure: next, order: fresh };
+  }
+
+  function refreshConfirmation(result: Confirmation) {
+    return confirmationRefresh.run(async () => {
+      // Only GETs are retried here. The original confirmation already succeeded.
+      const current = await readCurrent();
+      if (!current) return;
+      const { disclosure: next, order: fresh } = current;
       setReview({ disclosure: next, order: fresh });
       setSaved(savedPreferences(next, fresh));
       setPrefs(savedPreferences(next, fresh));
       setMutationError(null);
+      setReloadError(null);
       setConfirmedNotice(
         result.revision
           ? `Service choices confirmed in new revision ${result.revision.revisionNo}, which goes back for assessment.`
           : 'Service choices saved to your draft.',
       );
+      queryClient.setQueryData(servicesKey, next);
+      queryClient.setQueryData(queryKeys.order(session.generation, order.orderId), fresh);
       await queryClient.invalidateQueries({ queryKey: queryKeys.orders(session.generation) });
+      if (getSession()?.generation !== session.generation) return;
       onSaved(fresh);
-    } catch (error) {
-      // The write succeeded; retry the GET, never turn a failed refresh into
-      // a second confirmation with a new UUID and another revision.
-      setMutationError(error);
-      setReloadError(error);
-    }
+      setConfirmationToRefresh(null);
+    });
+  }
+
+  async function confirmed(result: Confirmation) {
+    setConfirmationToRefresh(result);
+    setMutationError(null);
+    setConfirmedNotice('');
+    await refreshConfirmation(result);
   }
   async function reload() {
     try {
-      const [next, fresh] = await Promise.all([
-        bookingApi.get(order.orderId),
-        ordersApi.get(order.orderId),
-      ]);
-      if (getSession()?.generation !== session.generation) return;
-      if (next.recordVersion.toLowerCase() !== fresh.recordVersion.toLowerCase())
-        throw new ApiError(409, 'The request changed while reloading. Reload again and review.');
+      const current = await readCurrent();
+      if (!current) return;
+      const { disclosure: next, order: fresh } = current;
       setReview({ disclosure: next, order: fresh });
       setSaved(savedPreferences(next, fresh));
       setMutationError(null);
@@ -169,15 +189,20 @@ function BookingEditor({
     disclosure,
     prefs,
     update: (patch) => {
+      if (blocked) return;
       setPrefs((p) => ({ ...p, ...patch }));
-      if (!blocked) setMutationError(null);
+      setMutationError(null);
     },
     errors,
     disabled: blocked,
   };
-  const accessError = [previewError, mutationError, reloadError, rates.error].find(
-    (error) => error instanceof ApiError && [401, 403, 404].includes(error.status),
-  );
+  const accessError = [
+    previewError,
+    mutationError,
+    reloadError,
+    confirmationRefresh.error,
+    rates.error,
+  ].find((error) => error instanceof ApiError && [401, 403, 404].includes(error.status));
   if (accessError) return <ServiceError error={accessError} />;
   return (
     <RatesProvider query={rates}>
@@ -188,7 +213,25 @@ function BookingEditor({
           your quote.
         </Notice>
         {confirmedNotice && <Notice>{confirmedNotice} This is not a quote or a payment.</Notice>}
-        {dirty && (
+        {awaitingRefresh && (
+          <div className="notice" role="status">
+            <p>
+              Service choices were saved. Load current data before making further changes. Retrying
+              this step only reloads data; it does not confirm services again.
+            </p>
+            <button
+              type="button"
+              disabled={confirmationRefresh.pending}
+              onClick={() => void refreshConfirmation(confirmationToRefresh)}
+            >
+              {confirmationRefresh.pending
+                ? 'Loading saved choices...'
+                : 'Retry loading saved choices'}
+            </button>
+          </div>
+        )}
+        <ServiceError error={confirmationRefresh.error} />
+        {dirty && !awaitingRefresh && (
           <p className="booking-dirty" role="status">
             You have unconfirmed changes. Saved estimates in the sections are for your last
             confirmed choices; the live estimate below reflects your unsaved choices.

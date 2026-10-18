@@ -47,8 +47,12 @@ Replace IDs with real orders/quotes owned by the signed-in actor.
 - Confirm remains an explicit, separate UUID mutation with top-level versions
   and a reason for submitted requests. Background reads cannot silently advance
   an edited confirmation's version. Conflicts require explicit reload/review;
-  input is retained. If the write succeeds but its follow-up read fails, retry
-  performs reads rather than another confirmation/revision.
+  input is retained. After a successful confirmation, the UI acknowledges the
+  save and locks choices, previews and further confirmations until fresh order
+  and service reads have matching versions. Network, 500, contract/502 and 503
+  read failures retain this state. **Retry loading saved choices** only repeats
+  GETs; it never creates another UUID/confirmation/revision. A successful retry
+  adopts the saved preferences and versions, then permits a genuinely new edit.
 - Supplier Offer sends `bundleCoverage` as `ENTIRE_ROUTE`, `PARTIAL_ROUTE` or
   `UNKNOWN`. The form defaults to UNKNOWN; legacy adapter callers may omit it.
   Only evidenced entire-route coverage can automatically waive a whole charge.
@@ -101,19 +105,34 @@ are not pricing logic or live backend evidence.
 
 Results are recorded after execution; browser discovery is not a pass.
 
-| Check                             | Result                                                                                                                                                                           |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full unit/component regression    | Passed on final source: 320 tests / 35 files, including 34 new unit/component cases for this extension.                                                                          |
-| TypeScript                        | Passed on the final source.                                                                                                                                                      |
-| ESLint                            | Passed on the final source.                                                                                                                                                      |
-| Production build                  | Passed; existing chunk-size warning remains (630.60 kB / 183.30 kB gzip for the main chunk).                                                                                     |
-| Three browser cases / screenshots | Three cases discovered (not executed). Execution attempted; did not progress past web-server startup. Stopped the stalled process; no browser pass or screenshots claimed.       |
-| Real backend integration          | **Blocked; 0 business scenarios executed.** Read-only `GET http://127.0.0.1:8080/v3/api-docs` failed with Windows socket access denied. No backend/SQL mutations were attempted. |
+| Check                             | Result                                                                                                                                                                                                    |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full unit/component regression    | Passed after the recovery fix: 329 tests / 35 files (320 previous tests plus 9 additional recovery cases).                                                                                                |
+| TypeScript                        | Passed on the final source.                                                                                                                                                                               |
+| ESLint                            | Passed on the final source.                                                                                                                                                                               |
+| Production build                  | Passed after the recovery fix; existing chunk-size warning remains (631.29 kB / 183.51 kB gzip for the main chunk).                                                                                       |
+| Three browser cases / screenshots | Three cases discovered. Local execution retried after the recovery fix; timed out in plugin setup/teardown (45 seconds each), before running the cases. No new local browser pass or screenshots claimed. |
+| Real backend integration          | **Blocked; 0 business scenarios executed.** Read-only `GET http://127.0.0.1:8080/v3/api-docs` failed with Windows socket access denied. No backend/SQL mutations were attempted.                          |
 
-`FE1_COMMERCIAL_FINANCE_GUIDE.md` referenced in the issue was not available in
-the reviewed repositories/workspace. This implementation follows issue 74 and
-the current Controller/DTO/API documentation; the separate guide still needs
-to be checked when supplied.
+## Guide reconciliation and confirmation recovery - 18 October 2026
+
+Read the supplied `FE1_COMMERCIAL_FINANCE_GUIDE.md` in full (1,533 lines),
+including Task 01, shared integration rules and the DTO appendix. Rechecked
+the current issue 74 against this guide; both describe the same F05/F06 scope.
+The guide's backend snapshot is a source reference, not deployment evidence.
+
+| Guide requirement                                                        | Frontend implementation / remaining evidence                                                                                                                                                                                         |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Seven sections, prices before selection, pending/null distinct from zero | Existing catalog-rate cards and server charge rendering retained; no client rate or total calculation added.                                                                                                                         |
+| WIDE recommendation, saved choices, stallion review and Request Share    | Existing server-driven fit/options and warnings retained; no automatic confirmation or physical assignment.                                                                                                                          |
+| Full read-only preview; explicit versioned confirmation                  | Existing request shapes retained. Added acknowledged-save recovery so a failed GET cannot initiate another confirmation.                                                                                                             |
+| Entire/partial/unknown bundle coverage and private purchase cost         | Existing Supplier Offer field and internal form retained; INCLUDED/blocker decisions remain server-owned. Actual persistence and no-double-charge results still need live evidence.                                                  |
+| Role routes, conflicts/retry and regression                              | Existing route/browser coverage retained. Recovery tests cover failures of either GET, repeated retries, reads in flight, version mismatch and a new edit after recovery. Real BE 403/IDOR/409/retry acceptance remains outstanding. |
+
+The recovery regression was reproduced before the fix: after a successful POST,
+a network or 500 GET failure left **Confirm service choices** enabled. The old
+503-only test did not cover these failures. Recovery now depends on whether a
+successful write still needs refreshing, independently of the error status.
 
 ## Outstanding acceptance evidence
 
@@ -133,10 +152,11 @@ quotation. Queue/history fixtures and destination/form assertions now cover this
 navigation; there is no hard reload that would discard the memory-only session.
 The test file also disables raw traces/video under the default CI configuration.
 
-The correction passes lint and typecheck locally. A local browser retry timed
-out in plugin setup/teardown (45 seconds each), before executing the tests.
-The updated browser results remain pending a new CI run after committing/pushing
-the correction on the same branch. No browser pass for the fix is claimed.
+The staff-navigation correction was committed as `25766e2`. Its
+[pull-request check run](https://github.com/nhana123/SWP391_FA26_EQUITRANSIT_FE/actions/runs/39090876406)
+completed successfully, rechecked on 18 October 2026. This is mocked browser CI
+evidence for that commit; it does not cover the subsequent local confirmation
+recovery changes or prove integration with a real backend.
 
 Issue 74 must not be marked fully accepted solely from mocked tests. On the
 designated isolated test environment, provide a reachable matching BE release,

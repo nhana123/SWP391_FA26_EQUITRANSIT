@@ -103,22 +103,105 @@ describe('F05 extension #74', () => {
     expect(screen.getByRole('button', { name: 'Confirm service choices' })).toBeDisabled();
     expect(bookingApi.confirm).not.toHaveBeenCalled();
   });
-  it('retries a failed post-confirmation GET without sending another confirmation', async () => {
+  describe.each(['order', 'services'] as const)('post-confirmation %s GET recovery', (target) => {
+    it.each([0, 500, 502, 503])(
+      'locks writes through repeated read failures (%s) and retries only GETs',
+      async (status) => {
+        const fresh = testOrder({ recordVersion: '00000000000000e2' });
+        fresh.draft.services = { roadArrangement: 'EQUITRANSIT' };
+        const next = testDisclosure({
+          recordVersion: fresh.recordVersion,
+          selected: fresh.draft.services,
+        });
+        vi.mocked(bookingApi.confirm).mockResolvedValue({ order: fresh, revision: null });
+        vi.mocked(ordersApi.get).mockResolvedValue(fresh);
+        const user = await changeRoad();
+        vi.mocked(bookingApi.get).mockResolvedValue(next);
+        const failure = new ApiError(status, 'Current data could not be loaded.');
+        if (target === 'order')
+          vi.mocked(ordersApi.get).mockRejectedValueOnce(failure).mockRejectedValueOnce(failure);
+        else
+          vi.mocked(bookingApi.get).mockRejectedValueOnce(failure).mockRejectedValueOnce(failure);
+
+        await user.click(screen.getByRole('button', { name: 'Confirm service choices' }));
+        expect(await screen.findByText('Current data could not be loaded.')).toBeInTheDocument();
+        expect(screen.getByText(/Service choices were saved/)).toBeInTheDocument();
+        expect(screen.getByLabelText('Arranged by EquiTransit')).toBeChecked();
+        expect(screen.getByLabelText('I will arrange my own provider')).toBeDisabled();
+        expect(screen.queryByText(/You have unconfirmed changes/)).toBeNull();
+        expect(screen.queryByRole('heading', { name: /Live estimate/ })).toBeNull();
+        const confirm = screen.getByRole('button', { name: 'Confirm service choices' });
+        expect(confirm).toBeDisabled();
+        await user.click(confirm);
+        expect(bookingApi.confirm).toHaveBeenCalledTimes(1);
+
+        await user.click(screen.getByRole('button', { name: 'Retry loading saved choices' }));
+        expect(await screen.findByText('Current data could not be loaded.')).toBeInTheDocument();
+        expect(confirm).toBeDisabled();
+        expect(bookingApi.confirm).toHaveBeenCalledTimes(1);
+        await user.click(screen.getByRole('button', { name: 'Retry loading saved choices' }));
+        await screen.findByText(/Service choices saved to your draft/);
+        expect(screen.queryByText(/Service choices were saved/)).toBeNull();
+        expect(confirm).toBeDisabled();
+        expect(screen.getByLabelText('Arranged by EquiTransit')).toBeChecked();
+        expect(screen.getByLabelText('I will arrange my own provider')).toBeEnabled();
+        expect(bookingApi.confirm).toHaveBeenCalledTimes(1);
+        expect(ordersApi.get).toHaveBeenCalledTimes(3);
+        expect(queryClient.getQueryData(queryKeys.order(getSession()!.generation, 11))).toEqual(
+          fresh,
+        );
+
+        // A genuinely new edit uses the freshly reviewed version and a new UUID.
+        await user.click(screen.getByLabelText('I will arrange my own provider'));
+        await user.click(confirm);
+        await waitFor(() => expect(bookingApi.confirm).toHaveBeenCalledTimes(2));
+        const [first, second] = vi.mocked(bookingApi.confirm).mock.calls;
+        expect(second[1].recordVersion).toBe(fresh.recordVersion);
+        expect(second[1].operationId).not.toBe(first[1].operationId);
+        expect(second[1].services.roadArrangement).toBe('CUSTOMER');
+      },
+    );
+  });
+
+  it('keeps confirmation locked while the acknowledged write is still refreshing', async () => {
     const fresh = testOrder({ recordVersion: '00000000000000e2' });
     fresh.draft.services = { roadArrangement: 'EQUITRANSIT' };
+    let finishRead!: (order: Order) => void;
+    vi.mocked(ordersApi.get).mockImplementation(
+      () => new Promise<Order>((resolve) => (finishRead = resolve)),
+    );
     vi.mocked(bookingApi.confirm).mockResolvedValue({ order: fresh, revision: null });
-    vi.mocked(ordersApi.get)
-      .mockRejectedValueOnce(new ApiError(503, 'Read schema unavailable.'))
-      .mockResolvedValueOnce(fresh);
     const user = await changeRoad();
     vi.mocked(bookingApi.get).mockResolvedValue(
       testDisclosure({ recordVersion: fresh.recordVersion, selected: fresh.draft.services }),
     );
     await user.click(screen.getByRole('button', { name: 'Confirm service choices' }));
-    expect(await screen.findByText(/Deployment blocked/)).toBeInTheDocument();
+    expect(await screen.findByText(/Service choices were saved/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Loading saved choices...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Confirming/ })).toBeDisabled();
+    expect(screen.getByLabelText('I will arrange my own provider')).toBeDisabled();
+    await act(async () => finishRead(fresh));
+    await screen.findByText(/Service choices saved to your draft/);
     expect(screen.getByRole('button', { name: 'Confirm service choices' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(ordersApi.get).toHaveBeenCalledTimes(2));
+    expect(bookingApi.confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires matching order and disclosure versions before finishing confirmation recovery', async () => {
+    const fresh = testOrder({ recordVersion: '00000000000000e2' });
+    fresh.draft.services = { roadArrangement: 'EQUITRANSIT' };
+    vi.mocked(bookingApi.confirm).mockResolvedValue({ order: fresh, revision: null });
+    vi.mocked(ordersApi.get).mockResolvedValue(fresh);
+    const user = await changeRoad();
+    // The service read observes an earlier version than the order read.
+    await user.click(screen.getByRole('button', { name: 'Confirm service choices' }));
+    expect(await screen.findByText(/The request changed while reloading/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm service choices' })).toBeDisabled();
+    vi.mocked(bookingApi.get).mockResolvedValue(
+      testDisclosure({ recordVersion: fresh.recordVersion, selected: fresh.draft.services }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Retry loading saved choices' }));
+    await screen.findByText(/Service choices saved to your draft/);
+    expect(screen.queryByText(/The request changed while reloading/)).toBeNull();
     expect(bookingApi.confirm).toHaveBeenCalledTimes(1);
   });
   it('keeps an explicitly confirmed null stall when GET suggests the WIDE view default again', async () => {
