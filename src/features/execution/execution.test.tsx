@@ -12,6 +12,13 @@ import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
+vi.mock('../incidents/api', () => ({
+  incidentsApi: {
+    adjustments: vi.fn(() => new Promise(() => {})),
+    customerAdjustments: vi.fn(() => new Promise(() => {})),
+    forLeg: vi.fn(() => new Promise(() => {})),
+  },
+}));
 vi.mock('./api', () => ({
   EXECUTION_PAGE_SIZE: 20,
   executionApi: {

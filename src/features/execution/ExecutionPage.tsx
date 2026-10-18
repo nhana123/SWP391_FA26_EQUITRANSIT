@@ -30,6 +30,12 @@ import {
   type TransitionForm,
   type WelfareForm,
 } from './validation';
+import {
+  CustomerAdjustments,
+  LegIncidents,
+  PlanAdjustments,
+  ReportIncidentForm,
+} from '../incidents/panels';
 import './execution.css';
 
 export const executionKeys = {
@@ -541,7 +547,7 @@ function WelfareFormView({
 
 type Panel = {
   leg: ExecutionLeg;
-  kind: 'start' | 'complete' | 'milestone' | 'welfare';
+  kind: 'start' | 'complete' | 'milestone' | 'welfare' | 'incidents';
   correcting?: WelfareLog;
 };
 
@@ -674,6 +680,11 @@ function Workspace({ orderId }: { orderId: number }) {
                           </button>
                         </>
                       )}
+                      {writable(leg) && departed(leg) && (
+                        <button type="button" onClick={() => open({ leg, kind: 'incidents' })}>
+                          {session.role === 'DRIVER' ? 'Report incident' : 'Incidents'}
+                        </button>
+                      )}
                       {leg.sequenceNo === 1 && leg.legStatus === 'CONFIRMED' && (
                         <span className="muted">Departs from the departure page</span>
                       )}
@@ -697,6 +708,19 @@ function Workspace({ orderId }: { orderId: number }) {
             />
           ) : panel.kind === 'milestone' ? (
             <MilestoneFormView key={`m-${panel.leg.legId}`} o={o} leg={panel.leg} pinned={pinned} />
+          ) : panel.kind === 'incidents' ? (
+            session.role === 'DRIVER' ? (
+              <ReportIncidentForm
+                key={`i-${panel.leg.legId}`}
+                legId={panel.leg.legId}
+                asDriver
+                onReported={(i) =>
+                  setNotice(`Incident ${i.incidentId} reported. Staff have been alerted.`)
+                }
+              />
+            ) : (
+              <LegIncidents key={`i-${panel.leg.legId}`} legId={panel.leg.legId} />
+            )
           ) : (
             <WelfareFormView
               key={`w-${panel.leg.legId}-${panel.correcting?.welfareLogId ?? 'new'}`}
@@ -717,6 +741,10 @@ function Workspace({ orderId }: { orderId: number }) {
           </button>
         </div>
       )}
+      {(session.role === 'MANAGER' || session.role === 'COORDINATOR') && (
+        <PlanAdjustments planId={o.planId} manager={session.role === 'MANAGER'} />
+      )}
+      {session.role === 'CUSTOMER' && <CustomerAdjustments orderId={o.orderId} />}
       <section className="card" aria-label="Updates">
         <h2>Updates ({o.milestoneCount})</h2>
         {!o.milestones.length ? (
