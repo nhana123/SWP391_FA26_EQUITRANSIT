@@ -3,6 +3,9 @@
 Issue #77 has preview-only handover, internal-cost and settlement routes;
 F14 integration is blocked by the missing BE contract. See
 [the scope and BE handoff](docs/ISSUE_77_HANDOVER_SETTLEMENT.md).
+Manual bank payment reporting, Manager reconciliation, allocations and refunds
+for issue #76: see [the implementation and acceptance guide](docs/ISSUE_76_MANUAL_PAYMENTS.md),
+including the BE schedule-ID dependency that blocks first-request creation.
 
 Manager staff provisioning and the tariff unit/version extension for issue #75:
 see [the review guide](docs/ISSUE_75_STAFF_TARIFF_ADMIN.md) for routes, contracts,

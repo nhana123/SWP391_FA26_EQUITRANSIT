@@ -13,6 +13,7 @@ import { ManagerHeading } from './layout';
 import { reviewStateLabels } from './pages';
 import { caseRoleLabels } from './staff';
 import { QuotationLink } from '../quotations/navigation';
+import { PaymentLink } from '../payments/pages';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { SettlementPreviewLink } from '../settlement/navigation';
@@ -256,6 +257,7 @@ export function ManagerCasePage() {
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
         <SettlementPreviewLink orderId={current.orderId} />
+        <PaymentLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>

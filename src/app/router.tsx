@@ -31,6 +31,7 @@ import {
   CreateStaffPage,
   StaffAdministrationDetailPage,
 } from '../features/staff-administration/pages';
+import { PaymentsPage } from '../features/payments/pages';
 import { HorseDetailPage, HorseEditPage, HorseEditor, HorsesPage } from '../features/horses/pages';
 import { OrderEditor } from '../features/transport-orders/pages';
 import { RequestDetailPage, RequestsPage } from '../features/transport-orders/status';
@@ -290,6 +291,7 @@ export const router = createBrowserRouter([
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <RequestDetailPage /> },
               { path: 'requests/:id/handover', element: <CustomerHandoverPage /> },
+              { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
             ],
@@ -307,6 +309,7 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
               { path: 'requests/:id/settlement', element: <ManagerSettlementPage /> },
+              { path: 'requests/:id/payments', element: <PaymentsPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/prepare', element: <PrepareQuotationPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <ManagerQuotationDetailPage /> },
