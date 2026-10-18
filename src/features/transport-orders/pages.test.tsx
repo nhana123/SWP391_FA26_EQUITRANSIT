@@ -69,7 +69,7 @@ describe('draft conflict and submit retry', () => {
       }),
     );
     mount();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.clear(screen.getByLabelText('Pickup address'));
     await user.type(screen.getByLabelText('Pickup address'), 'Keep my stable');
     await user.click(screen.getByRole('button', { name: 'Save Draft' }));
@@ -91,7 +91,7 @@ describe('draft conflict and submit retry', () => {
       new ApiError(409, 'Version changed', 'ORDER_VERSION_CONFLICT'),
     );
     mount();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.clear(screen.getByLabelText('Pickup address'));
     await user.type(screen.getByLabelText('Pickup address'), 'Changed stable');
     await user.click(screen.getByRole('button', { name: 'Save Draft' }));
@@ -118,7 +118,7 @@ describe('draft conflict and submit retry', () => {
       currentRevisionId: 3,
     });
     mount();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: '4. Review & Submit' }));
     await user.click(screen.getByRole('button', { name: 'Submit for Review' }));
     await screen.findByText('Interrupted');
@@ -140,7 +140,7 @@ describe('draft conflict and submit retry', () => {
         recordVersion: '0000000000000002',
       });
     mount();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: '4. Review & Submit' }));
     await user.click(screen.getByRole('button', { name: 'Submit for Review' }));
     expect(await screen.findByText(/Submission was accepted/)).toBeInTheDocument();
@@ -160,7 +160,7 @@ describe('draft conflict and submit retry', () => {
     vi.mocked(ordersApi.submit).mockRejectedValue(new ApiError(0, 'Unknown outcome'));
     vi.mocked(ordersApi.get).mockResolvedValue(order);
     mount();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: '4. Review & Submit' }));
     await user.click(screen.getByRole('button', { name: 'Submit for Review' }));
     await screen.findByText('Unknown outcome');
@@ -180,7 +180,7 @@ describe('draft conflict and submit retry', () => {
     async (code) => {
       vi.mocked(ordersApi.submit).mockRejectedValue(new ApiError(409, 'Review fit', code));
       mount();
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: '4. Review & Submit' }));
       await user.click(screen.getByRole('button', { name: 'Submit for Review' }));
       expect(await screen.findByRole('link', { name: 'Review horse profile' })).toHaveAttribute(

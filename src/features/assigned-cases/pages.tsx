@@ -13,6 +13,7 @@ import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
+import { staffTaskLink } from '../activity-operations/routes';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { ComplianceLink } from '../compliance/link';
 import { NotificationBell } from '../activity-customer/notifications';
@@ -71,6 +72,9 @@ export function AssignedCasesLayout() {
         <nav aria-label="Staff navigation">
           <NavLink to="/staff/cases" onClick={() => setMenu(false)}>
             My Cases
+          </NavLink>
+          <NavLink to={staffTaskLink.to} onClick={() => setMenu(false)}>
+            {staffTaskLink.label}
           </NavLink>
         </nav>
       </aside>

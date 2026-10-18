@@ -1,13 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { authApi } from '../features/auth/api';
+import { queryClient } from '../shared/api/query';
 import { startSession } from '../shared/api/session';
 import type { Role } from '../shared/api/contracts';
 
 vi.mock('../features/auth/api', () => ({ authApi: { login: vi.fn(), me: vi.fn() } }));
+vi.mock('../features/activity-operations/api', () => ({
+  OPERATIONS_PAGE_SIZE: 20,
+  operationsApi: { tasks: vi.fn(() => new Promise(() => {})) },
+}));
 vi.mock('../features/assigned-cases/pages', () => ({
   AssignedCasesLayout: () => <Outlet />,
   AssignedCasesPage: () => <h1>Assigned cases workspace</h1>,
@@ -30,7 +36,12 @@ let memoryRouter: ReturnType<typeof createMemoryRouter>;
 afterEach(() => memoryRouter?.dispose());
 function mount(path = '/login') {
   memoryRouter = createMemoryRouter(router.routes, { initialEntries: [path] });
-  render(<RouterProvider router={memoryRouter} />);
+  // As in bootstrap.tsx: the app root provides the query client.
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={memoryRouter} />
+    </QueryClientProvider>,
+  );
 }
 
 describe('login and role routing', () => {
@@ -39,7 +50,7 @@ describe('login and role routing', () => {
     ['MANAGER', '/manager/requests', 'Manager workspace'],
     ['SPECIALIST', '/staff/cases', 'Assigned cases workspace'],
     ['COORDINATOR', '/staff/cases', 'Assigned cases workspace'],
-    ['DRIVER', '/staff', 'DRIVER access'],
+    ['DRIVER', '/driver', 'My active tasks'],
   ])('sends %s to its available workspace after login', async (role, path, heading) => {
     vi.mocked(authApi.login).mockResolvedValue({
       accessToken: 'test-only',
@@ -48,17 +59,13 @@ describe('login and role routing', () => {
       role,
     });
     mount();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.type(screen.getByLabelText('Email address'), 'test@example.invalid');
     await user.type(screen.getByLabelText('Password'), 'TestPassword123!');
     await user.click(screen.getByRole('button', { name: 'Log In' }));
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
     expect(memoryRouter.state.location.pathname).toBe(path);
     expect(authApi.me).not.toHaveBeenCalled();
-    if (role === 'DRIVER')
-      expect(
-        screen.getByText('The driver operations portal is not available in this release.'),
-      ).toBeInTheDocument();
   });
 
   it('requires login when assigned cases are opened without a session', async () => {

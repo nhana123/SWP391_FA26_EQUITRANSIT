@@ -44,6 +44,7 @@ import { CaseAvailabilityPage } from '../features/resources/availability';
 import { PlansPage } from '../features/plans/PlansPage';
 import { PlanDetailPage } from '../features/plans/PlanDetailPage';
 import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
+import { staffTaskRoute } from '../features/activity-operations/routes';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
@@ -236,13 +237,12 @@ function StaffLanding() {
   if (session.role === 'MANAGER') return <Navigate to="/manager/requests" replace />;
   if (session.role === 'SPECIALIST' || session.role === 'COORDINATOR')
     return <Navigate to="/staff/cases" replace />;
+  if (session.role === 'DRIVER') return <Navigate to="/driver" replace />;
   return (
     <section className="auth-card">
       <h1>{session.role} access</h1>
       <Notice>
-        {session.role === 'DRIVER'
-          ? 'The driver operations portal is not available in this release.'
-          : 'Your account is signed in. This role workspace is not available in this release.'}
+        Your account is signed in. This role workspace is not available in this release.
       </Notice>
       <button onClick={clearSession}>Log Out</button>
     </section>
@@ -363,6 +363,7 @@ export const router = createBrowserRouter([
       {
         element: <RoleGate roles={['SPECIALIST', 'COORDINATOR']} />,
         children: [
+          staffTaskRoute,
           {
             path: '/staff/cases',
             element: <AssignedCasesLayout />,
