@@ -117,6 +117,27 @@ to be checked when supplied.
 
 ## Outstanding acceptance evidence
 
+### CI follow-up — commit 9136d6d
+
+The [pull-request check run](https://github.com/nhana123/SWP391_FA26_EQUITRANSIT_FE/actions/runs/39090385640)
+passed dependency installation, lint, typecheck, 320 unit/component tests and
+production build. Browser E2E ran 12 tests: 10 passed and two staff bundle tests
+timed out waiting for the Supplier Offer form. This is distinct from the local
+web-server startup restriction recorded above.
+
+The new staff tests incorrectly expected login to honor `returnTo`. The actual
+LoginPage sends staff to `/staff`, then their role workspace. Customer returnTo
+behavior is unchanged. The fix follows the existing SPA links: role workspace,
+Manager APPROVED queue / Coordinator assigned list, TEST-9 case, then Prepare
+quotation. Queue/history fixtures and destination/form assertions now cover this
+navigation; there is no hard reload that would discard the memory-only session.
+The test file also disables raw traces/video under the default CI configuration.
+
+The correction passes lint and typecheck locally. A local browser retry timed
+out in plugin setup/teardown (45 seconds each), before executing the tests.
+The updated browser results remain pending a new CI run after committing/pushing
+the correction on the same branch. No browser pass for the fix is claimed.
+
 Issue 74 must not be marked fully accepted solely from mocked tests. On the
 designated isolated test environment, provide a reachable matching BE release,
 deployed required schema and authorized Customer/Manager/assigned Coordinator

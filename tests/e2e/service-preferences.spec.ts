@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { testDisclosure, testOrder } from '../../src/features/booking-services/testing';
 
+test.use({ trace: 'off', video: 'off', screenshot: 'off' });
+
 test('Customer reviews WIDE and Request Share on mobile without confirming a revision', async ({
   page,
 }, testInfo) => {
@@ -110,11 +112,22 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
     const coverage = role === 'MANAGER' ? 'ENTIRE_ROUTE' : 'PARTIAL_ROUTE';
     const writes: Record<string, unknown>[] = [];
     const unexpected: string[] = [];
+    const caseRow = {
+      orderId: 9,
+      orderNumber: 'TEST-9',
+      orderStatus: 'APPROVED',
+      recordVersion: '00000000000000c1',
+      currentRevisionId: 7,
+      originCountryCode: 'VN',
+      destinationCountryCode: 'GB',
+      deliveryDeadline: null,
+    };
     await page.route(
       (url) => url.pathname.startsWith('/api/'),
       async (route) => {
         const req = route.request();
-        const path = new URL(req.url()).pathname;
+        const url = new URL(req.url());
+        const path = url.pathname;
         if (path === '/api/auth/login')
           return route.fulfill({
             json: { accessToken: 'browser-test-only', tokenType: 'Bearer', expiresIn: 600, role },
@@ -123,6 +136,20 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
           writes.push(req.postDataJSON());
           return route.fulfill({ json: { offerId: 55, recordVersion: '00000000000000c2' } });
         }
+        if (path === '/api/manager/transport-orders' || path === '/api/staff/transport-orders') {
+          const items =
+            role === 'COORDINATOR' || url.searchParams.get('state') === 'APPROVED' ? [caseRow] : [];
+          return route.fulfill({
+            json: {
+              items,
+              page: 0,
+              size: 20,
+              totalElements: items.length,
+              totalPages: items.length ? 1 : 0,
+            },
+          });
+        }
+        if (/\/9\/(decisions|assignments)$/.test(path)) return route.fulfill({ json: [] });
         if (path === '/api/manager/transport-orders/9' || path === '/api/staff/transport-orders/9')
           return route.fulfill({
             json: {
@@ -140,11 +167,20 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
         return route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
       },
     );
-    await page.goto(`/login?returnTo=${encodeURIComponent(`${base}/9/quotes/prepare`)}`);
+    await page.goto('/login');
     await page.getByLabel('Email address').fill('issue74@example.invalid');
     await page.getByLabel('Password').fill('TestPassword123!');
     await page.getByRole('button', { name: 'Log In' }).click();
+    // Staff login deliberately opens the role workspace, ignoring returnTo.
+    // Follow the real queue -> approved case -> preparation links in the SPA;
+    // a page.goto here would reload and discard the memory-only session.
+    await expect(page).toHaveURL(new RegExp(`${base}$`));
+    if (role === 'MANAGER') await page.getByLabel('Assessment state').selectOption('APPROVED');
+    await page.getByRole('link', { name: 'TEST-9', exact: true }).click();
+    await page.getByRole('link', { name: 'Prepare quotation', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${base}/9/quotes/prepare$`));
     const form = page.getByRole('form', { name: 'Record supplier offer' });
+    await expect(form).toBeVisible();
     await form.getByLabel('Provider name').fill('TEST supplier');
     await form.getByLabel('Offer reference', { exact: true }).fill('TEST-74');
     await form.getByLabel('Quantity', { exact: true }).fill('1.000');
