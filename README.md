@@ -1,5 +1,9 @@
 # EquiTransit frontend — FE1
 
+Manual bank payment reporting, Manager reconciliation, allocations and refunds
+for issue #76: see [the implementation and acceptance guide](docs/ISSUE_76_MANUAL_PAYMENTS.md),
+including the BE schedule-ID dependency that blocks first-request creation.
+
 Manager staff provisioning and the tariff unit/version extension for issue #75:
 see [the review guide](docs/ISSUE_75_STAFF_TARIFF_ADMIN.md) for routes, contracts,
 checks and deployment dependencies.
