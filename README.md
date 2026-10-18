@@ -1,5 +1,9 @@
 # EquiTransit frontend — FE1
 
+Issue #77 has preview-only handover, internal-cost and settlement routes;
+F14 integration is blocked by the missing BE contract. See
+[the scope and BE handoff](docs/ISSUE_77_HANDOVER_SETTLEMENT.md).
+
 Manager staff provisioning and the tariff unit/version extension for issue #75:
 see [the review guide](docs/ISSUE_75_STAFF_TARIFF_ADMIN.md) for routes, contracts,
 checks and deployment dependencies.

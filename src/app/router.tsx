@@ -40,6 +40,11 @@ import { ManagerQuotationDetailPage } from '../features/quotations/manager-actio
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
 import { CaseAvailabilityPage } from '../features/resources/availability';
+import {
+  CustomerHandoverPage,
+  ManagerSettlementPage,
+  StaffActualCostsPage,
+} from '../features/settlement/pages';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -284,6 +289,7 @@ export const router = createBrowserRouter([
               { path: 'requests', element: <RequestsPage /> },
               { path: 'requests/new', element: <OrderEditor /> },
               { path: 'requests/:id', element: <RequestDetailPage /> },
+              { path: 'requests/:id/handover', element: <CustomerHandoverPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <CustomerQuotationDetailPage /> },
             ],
@@ -300,6 +306,7 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="requests" replace /> },
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
+              { path: 'requests/:id/settlement', element: <ManagerSettlementPage /> },
               { path: 'requests/:id/quotes', element: <QuotationsPage /> },
               { path: 'requests/:id/quotes/prepare', element: <PrepareQuotationPage /> },
               { path: 'requests/:id/quotes/:quoteId', element: <ManagerQuotationDetailPage /> },
@@ -323,6 +330,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <AssignedCasesPage /> },
               { path: ':id', element: <AssignedCasePage /> },
+              { path: ':id/actual-costs', element: <StaffActualCostsPage /> },
               {
                 element: <RoleGate roles={['COORDINATOR']} />,
                 children: [
