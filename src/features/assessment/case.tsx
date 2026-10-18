@@ -15,6 +15,7 @@ import { caseRoleLabels } from './staff';
 import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
+import { PlansLink } from '../plans/link';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -256,6 +257,7 @@ export function ManagerCasePage() {
         <QuotationLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
       {receipt && (
         <Notice>

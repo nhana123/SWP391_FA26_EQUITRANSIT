@@ -40,6 +40,8 @@ import { ManagerQuotationDetailPage } from '../features/quotations/manager-actio
 import { CustomerQuotationDetailPage } from '../features/quotations/customer-actions';
 import { ManagerResourcesPage } from '../features/resources/ManagerResourcesPage';
 import { CaseAvailabilityPage } from '../features/resources/availability';
+import { PlansPage } from '../features/plans/PlansPage';
+import { PlanDetailPage } from '../features/plans/PlanDetailPage';
 import { clearSession, useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
@@ -310,6 +312,8 @@ export const router = createBrowserRouter([
               { path: 'service-prices', element: <ManagerPricesPage /> },
               { path: 'resources', element: <ManagerResourcesPage /> },
               { path: 'requests/:id/availability', element: <CaseAvailabilityPage /> },
+              { path: 'requests/:id/plans', element: <PlansPage /> },
+              { path: 'requests/:id/plans/:planId', element: <PlanDetailPage /> },
             ],
           },
         ],
@@ -330,6 +334,8 @@ export const router = createBrowserRouter([
                   { path: ':id/quotes/prepare', element: <PrepareQuotationPage /> },
                   { path: ':id/quotes/:quoteId', element: <QuotationDetailPage /> },
                   { path: ':id/availability', element: <CaseAvailabilityPage /> },
+                  { path: ':id/plans', element: <PlansPage /> },
+                  { path: ':id/plans/:planId', element: <PlanDetailPage /> },
                 ],
               },
             ],
