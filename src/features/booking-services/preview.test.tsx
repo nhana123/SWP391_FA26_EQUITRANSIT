@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { BookingServices } from './BookingServices';
+import { PREVIEW_DEBOUNCE_MS } from './preview';
 import { bookingApi } from './api';
 import type { Disclosure } from './contracts';
 import { testCharge, testDisclosure, testOrder } from './testing';
@@ -15,6 +16,10 @@ vi.mock('./api', () => ({
   bookingApi: { get: vi.fn(), confirm: vi.fn(), preview: vi.fn() },
 }));
 vi.mock('./rates-api', () => ({ ratesApi: { get: vi.fn().mockResolvedValue([]) } }));
+
+// The preview is debounced by design; waiting only the 1s default leaves too
+// little margin for that delay plus rendering on a loaded machine.
+const settled = { timeout: PREVIEW_DEBOUNCE_MS + 2600 };
 
 const previewWith = (label: string, amount: string | null, total: string | null): Disclosure =>
   testDisclosure({
@@ -37,7 +42,7 @@ async function openTransport() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.click(await screen.findByRole('button', { name: 'Transportation' }));
   return user;
 }
@@ -53,7 +58,7 @@ describe('live preview (FE-27)', () => {
     vi.mocked(bookingApi.preview).mockResolvedValue(previewWith('Road transport', '220.00', null));
     const user = await openTransport();
     await user.click(screen.getByLabelText('Arranged by EquiTransit'));
-    expect(await screen.findByText('220.00')).toBeInTheDocument();
+    expect(await screen.findByText('220.00', {}, settled)).toBeInTheDocument();
     expect(bookingApi.preview).toHaveBeenCalledTimes(1);
     const [id, body] = vi.mocked(bookingApi.preview).mock.calls[0];
     expect(id).toBe(11);
@@ -70,11 +75,16 @@ describe('live preview (FE-27)', () => {
 
   it('debounces rapid edits into a single request for the latest choice', async () => {
     vi.mocked(bookingApi.preview).mockResolvedValue(previewWith('Road transport', '1.00', '1.00'));
-    const user = await openTransport();
-    await user.click(screen.getByLabelText('Arranged by EquiTransit'));
-    await user.click(screen.getByLabelText('I will arrange my own provider'));
-    await user.type(screen.getByLabelText('Provider name'), 'Trucks');
-    await waitFor(() => expect(bookingApi.preview).toHaveBeenCalledTimes(1));
+    await openTransport();
+    // Rapid edits happen with no time passing between them, so the outcome no
+    // longer depends on how fast the machine types relative to the debounce.
+    fireEvent.click(screen.getByLabelText('Arranged by EquiTransit'));
+    fireEvent.click(screen.getByLabelText('I will arrange my own provider'));
+    fireEvent.change(screen.getByLabelText('Provider name'), { target: { value: 'Trucks' } });
+    await waitFor(() => expect(bookingApi.preview).toHaveBeenCalledTimes(1), settled);
+    // Nothing further is sent once the choice settled.
+    await new Promise((r) => setTimeout(r, PREVIEW_DEBOUNCE_MS + 100));
+    expect(bookingApi.preview).toHaveBeenCalledTimes(1);
     expect(vi.mocked(bookingApi.preview).mock.calls[0][1].services).toMatchObject({
       roadArrangement: 'CUSTOMER',
       roadProviderName: 'Trucks',
@@ -88,9 +98,9 @@ describe('live preview (FE-27)', () => {
       .mockResolvedValueOnce(previewWith('New choice line', '2.00', '2.00'));
     const user = await openTransport();
     await user.click(screen.getByLabelText('Arranged by EquiTransit'));
-    await waitFor(() => expect(bookingApi.preview).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(bookingApi.preview).toHaveBeenCalledTimes(1), settled);
     await user.click(screen.getByLabelText('I will arrange my own provider'));
-    expect(await screen.findByText('New choice line')).toBeInTheDocument();
+    expect(await screen.findByText('New choice line', {}, settled)).toBeInTheDocument();
     resolveOld(previewWith('Old choice line', '9.00', '9.00'));
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByText('Old choice line')).toBeNull();
@@ -103,7 +113,9 @@ describe('live preview (FE-27)', () => {
     );
     const user = await openTransport();
     await user.click(screen.getByLabelText('Arranged by EquiTransit'));
-    expect(await screen.findByText(/Reload to estimate against current data/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Reload to estimate against current data/, {}, settled),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Arranged by EquiTransit')).toBeChecked();
     expect(bookingApi.preview).toHaveBeenCalledTimes(1);
   });
