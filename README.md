@@ -1,5 +1,9 @@
 # EquiTransit frontend — FE1
 
+Issue #82 Part A adds Customer dashboard, recipient notifications, ordinary-email
+preferences and Manager financial/audit reports. See
+[the scope, routes and acceptance guide](docs/ISSUE_82_FE1_ACTIVITY.md).
+Staff task queues and order timeline remain FE2's separate Part B.
 Issue #77 has preview-only handover, internal-cost and settlement routes;
 F14 integration is blocked by the missing BE contract. See
 [the scope and BE handoff](docs/ISSUE_77_HANDOVER_SETTLEMENT.md).

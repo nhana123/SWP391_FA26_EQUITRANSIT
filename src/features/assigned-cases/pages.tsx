@@ -11,6 +11,7 @@ import { useAssignedCase, useAssignedCases } from './hooks';
 import { QuotationLink } from '../quotations/navigation';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
+import { NotificationBell } from '../activity-customer/notifications';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import './assigned-cases.css';
 
@@ -81,6 +82,7 @@ export function AssignedCasesLayout() {
             Menu
           </button>
           <span>Case preparation</span>
+          <NotificationBell />
           <button type="button" onClick={clearSession}>
             Log Out
           </button>
