@@ -233,34 +233,33 @@ describe('trip progress (#81 F12)', () => {
 describe('F13 capability on the execution page', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('is off by default: no incident action and no calls to unreleased routes', async () => {
-    const user = mount('MANAGER');
-    const table = await screen.findByRole('table', { name: 'Execution legs' });
-    const row = within(table).getAllByRole('row')[1];
-    expect(within(row).getByRole('button', { name: 'Add welfare check' })).toBeInTheDocument();
-    expect(within(row).queryByRole('button', { name: 'Incidents' })).toBeNull();
-    expect(screen.getByText(/backend has not released them/)).toBeInTheDocument();
-    await user.click(within(row).getByRole('button', { name: 'Add welfare check' }));
-    expect(incidentsApi.adjustments).not.toHaveBeenCalled();
-    expect(incidentsApi.customerAdjustments).not.toHaveBeenCalled();
-    expect(incidentsApi.forLeg).not.toHaveBeenCalled();
-  });
-
-  it('a customer sees no adjustments panel and makes no adjustment call', async () => {
-    mount('CUSTOMER');
-    await screen.findByRole('table', { name: 'Execution legs' });
-    expect(screen.queryByText(/backend has not released them/)).toBeNull();
-    expect(incidentsApi.customerAdjustments).not.toHaveBeenCalled();
-  });
-
-  it('mounts the F13 panels once the capability is enabled', async () => {
-    vi.stubEnv('VITE_F13_INCIDENTS', 'true');
+  it('is on by default: staff get the incident action and adjustments', async () => {
     mount('MANAGER');
     const table = await screen.findByRole('table', { name: 'Execution legs' });
     expect(
       within(within(table).getAllByRole('row')[1]).getByRole('button', { name: 'Incidents' }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/not available on this server/)).toBeNull();
     await waitFor(() => expect(incidentsApi.adjustments).toHaveBeenCalled());
+  });
+
+  it('a customer gets the adjustments decision panel by default', async () => {
+    mount('CUSTOMER');
+    await screen.findByRole('table', { name: 'Execution legs' });
+    await waitFor(() => expect(incidentsApi.customerAdjustments).toHaveBeenCalled());
+  });
+
+  it('can be switched off for an older BE: no incident action and no F13 calls', async () => {
+    vi.stubEnv('VITE_F13_INCIDENTS', 'false');
+    const user = mount('MANAGER');
+    const table = await screen.findByRole('table', { name: 'Execution legs' });
+    const row = within(table).getAllByRole('row')[1];
+    expect(within(row).queryByRole('button', { name: 'Incidents' })).toBeNull();
+    expect(screen.getByText(/not available on this server/)).toBeInTheDocument();
+    await user.click(within(row).getByRole('button', { name: 'Add welfare check' }));
+    expect(incidentsApi.adjustments).not.toHaveBeenCalled();
+    expect(incidentsApi.customerAdjustments).not.toHaveBeenCalled();
+    expect(incidentsApi.forLeg).not.toHaveBeenCalled();
   });
 });
 
