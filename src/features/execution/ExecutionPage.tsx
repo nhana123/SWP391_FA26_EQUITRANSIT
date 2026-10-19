@@ -745,8 +745,8 @@ function Workspace({ orderId }: { orderId: number }) {
       {!incidentsEnabled() ? (
         session.role !== 'CUSTOMER' && (
           <Notice>
-            Incident reporting and plan adjustments are not available yet: the backend has not
-            released them. Record urgent welfare as an URGENT welfare check.
+            Incident reporting and plan adjustments are not available on this server. Record urgent
+            welfare as an URGENT welfare check.
           </Notice>
         )
       ) : (

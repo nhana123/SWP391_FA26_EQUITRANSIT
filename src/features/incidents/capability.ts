@@ -1,7 +1,6 @@
 /**
- * F13 incidents and operational adjustments have no controller on the released
- * BE (dev); their routes exist only on an unmerged BE branch. Off by default so
- * the execution page never calls routes that do not exist. Set
- * VITE_F13_INCIDENTS=true once the BE contract is deployed.
+ * F13 incidents and operational adjustments are on BE dev (11f684e), so they
+ * are on by default. Set VITE_F13_INCIDENTS=false for a server that still
+ * runs an older BE without those controllers.
  */
-export const incidentsEnabled = () => import.meta.env.VITE_F13_INCIDENTS === 'true';
+export const incidentsEnabled = () => import.meta.env.VITE_F13_INCIDENTS !== 'false';
