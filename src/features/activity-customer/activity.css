@@ -31,6 +31,18 @@
 .activity-bell {
   position: relative;
 }
+/* In app headers the bell sits in the top-right corner, next to Log Out. */
+.workspace-header .activity-bell {
+  margin-left: auto;
+}
+.bell-button.bell-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--brand, #1f6f5c);
+}
 .activity-peek {
   position: absolute;
   right: 0;
