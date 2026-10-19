@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient, queryKeys } from '../../shared/api/query';
@@ -41,7 +42,7 @@ export const handoverKeys = {
   profit: (generation: string, planId: number) =>
     [...handoverKeys.all(generation), 'profit', planId] as const,
 };
-const dateHint = 'ISO date with offset, e.g. 2027-02-01T08:00:00+07:00. Not in the future.';
+const dateHint = 'Cannot be in the future.';
 const keyHint = 'Stored file reference. This release has no upload for handover files.';
 /** The BE allows five minutes of clock skew for "not in the future". */
 const future = (value: string) => Date.parse(value) > Date.now() + 5 * 60_000;
@@ -56,6 +57,7 @@ function Input({
   hint,
   max,
   area,
+  date,
 }: {
   label: string;
   value: string;
@@ -64,11 +66,14 @@ function Input({
   hint?: string;
   max: number;
   area?: boolean;
+  date?: boolean;
 }) {
   return (
     <Field label={name} hint={hint} error={error}>
       {(id) =>
-        area ? (
+        date ? (
+          <DateTimeInput id={id} value={value} onChange={onChange} />
+        ) : area ? (
           <textarea
             id={id}
             maxLength={max}
@@ -126,7 +131,7 @@ interface HandoverForm {
 export function validateHandover(f: HandoverForm): FieldErrors {
   const e: FieldErrors = {};
   const final = f.kind === 'FINAL_RECEIVER';
-  if (!validOffsetDate(f.handoverTime)) e.handoverTime = 'Enter an ISO date with offset.';
+  if (!validOffsetDate(f.handoverTime)) e.handoverTime = 'Choose a date and time.';
   else if (future(f.handoverTime)) e.handoverTime = 'The handover time cannot be in the future.';
   if (!text(f.receivedByName)) e.receivedByName = 'Enter who received the horse.';
   if (final && !text(f.receiverSignatureFileKey))
@@ -239,6 +244,7 @@ export function LegHandovers({
         />
         <Input
           label="Handover time"
+          date
           hint={dateHint}
           max={40}
           value={f.handoverTime}
@@ -488,7 +494,7 @@ export function validateCost(f: CostForm): FieldErrors {
   if (!/^\d{1,13}(\.\d{1,2})?$/.test(f.amount.trim()))
     e.amount = 'Enter a non-negative amount with at most 2 decimals.';
   if (!/^[A-Z]{3}$/.test(f.currency.trim())) e.currency = 'Use a 3-letter code such as USD.';
-  if (!validOffsetDate(f.incurredAt)) e.incurredAt = 'Enter an ISO date with offset.';
+  if (!validOffsetDate(f.incurredAt)) e.incurredAt = 'Choose a date and time.';
   else if (future(f.incurredAt)) e.incurredAt = 'The cost date cannot be in the future.';
   return e;
 }
@@ -629,6 +635,7 @@ export function ActualCosts({
           />
           <Input
             label="Incurred at"
+            date
             hint={dateHint}
             max={40}
             value={f.incurredAt}

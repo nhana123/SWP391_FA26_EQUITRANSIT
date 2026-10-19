@@ -17,27 +17,27 @@ export type FormValues = Record<string, string>;
 export type FieldSpec = {
   name: string;
   label: string;
-  type?: 'text' | 'textarea' | 'select' | 'checkbox' | 'phone';
+  type?: 'text' | 'textarea' | 'select' | 'checkbox' | 'phone' | 'datetime';
   options?: readonly string[];
   hint?: string;
   maxLength?: number;
   decimal?: boolean;
 };
 
-const dateHint = 'ISO date with offset, e.g. 2027-01-01T00:00:00Z. Leave empty if not applicable.';
+const dateHint = 'Leave empty if not applicable.';
 const windowFields: FieldSpec[] = [
-  { name: 'maintenanceFrom', label: 'Maintenance from', hint: dateHint, maxLength: 35 },
+  { name: 'maintenanceFrom', label: 'Maintenance from', hint: dateHint, type: 'datetime' },
   {
     name: 'maintenanceTo',
     label: 'Maintenance to',
     hint: 'Empty while maintenance is ongoing. Needs a start.',
-    maxLength: 35,
+    type: 'datetime',
   },
   {
     name: 'documentExpiresAt',
     label: 'Document expires at',
     hint: 'Unknown expiry keeps availability pending.',
-    maxLength: 35,
+    type: 'datetime',
   },
   {
     name: 'bufferMinutes',
@@ -112,8 +112,8 @@ export const fieldSpecs: Record<CatalogKey, FieldSpec[]> = {
     { name: 'maxWeightKg', label: 'Max horse weight (kg)', maxLength: 9, decimal: true },
     { name: 'maxHeightCm', label: 'Max horse height (cm)', maxLength: 9, decimal: true },
     { name: 'maxWidthCm', label: 'Max horse width (cm)', maxLength: 9, decimal: true },
-    { name: 'effectiveFrom', label: 'Effective from', hint: dateHint, maxLength: 35 },
-    { name: 'effectiveTo', label: 'Effective to (optional)', maxLength: 35 },
+    { name: 'effectiveFrom', label: 'Effective from', type: 'datetime' },
+    { name: 'effectiveTo', label: 'Effective to (optional)', type: 'datetime' },
     {
       name: 'sourceUrl',
       label: 'Source URL',
@@ -249,8 +249,7 @@ class Reader {
       return null;
     }
     const t = Date.parse(v);
-    if (!validOffsetDate(v))
-      this.errors[name] = 'Use an ISO date with offset, e.g. 2027-01-01T00:00:00Z.';
+    if (!validOffsetDate(v)) this.errors[name] = 'Choose a date and time.';
     else if (t < MIN_TIME || t >= MAX_TIME) this.errors[name] = 'Use a year between 1900 and 9997.';
     return v;
   }

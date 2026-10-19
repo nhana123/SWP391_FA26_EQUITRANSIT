@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -53,7 +54,6 @@ export function executionPath(role: Role, orderId: number) {
   if (role === 'DRIVER') return `/driver/orders/${orderId}/execution`;
   return `/staff/cases/${orderId}/execution`;
 }
-const dateHint = 'ISO date with offset, e.g. 2027-02-01T08:00:00+07:00.';
 
 /** Order version pinned to what the user reviewed; only own receipts or a reload move it. */
 function usePinned(orderId: number, current: string | undefined) {
@@ -163,6 +163,7 @@ function Input({
   hint,
   max,
   area,
+  date,
 }: {
   label: string;
   value: string;
@@ -171,11 +172,14 @@ function Input({
   hint?: string;
   max: number;
   area?: boolean;
+  date?: boolean;
 }) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(id) =>
-        area ? (
+        date ? (
+          <DateTimeInput id={id} value={value} onChange={onChange} />
+        ) : area ? (
           <textarea
             id={id}
             maxLength={max}
@@ -239,7 +243,7 @@ function SourceFields({
     <>
       <Input
         label="Occurred at"
-        hint={dateHint}
+        date
         max={35}
         value={f.occurredAt}
         onChange={(occurredAt) => set({ occurredAt })}
@@ -386,7 +390,7 @@ function MilestoneFormView({
           />
           <Input
             label="Estimated arrival (optional)"
-            hint={dateHint}
+            date
             max={35}
             value={f.estimatedArrivalAt}
             onChange={(estimatedArrivalAt) => set({ estimatedArrivalAt })}

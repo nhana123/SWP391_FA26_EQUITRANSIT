@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
@@ -291,17 +292,12 @@ export function SupplierOfferForm({
             />
           )}
         </Field>
-        <Field
-          label="Offer valid until"
-          hint="ISO date with offset, e.g. 2027-01-31T12:00:00Z."
-          error={errors.validUntil}
-        >
+        <Field label="Offer valid until" error={errors.validUntil}>
           {(id) => (
-            <input
+            <DateTimeInput
               id={id}
-              maxLength={35}
               value={form.validUntil}
-              onChange={(e) => set({ validUntil: e.target.value })}
+              onChange={(validUntil) => set({ validUntil })}
             />
           )}
         </Field>
@@ -584,11 +580,10 @@ export function EvidenceEditor({
                 error={errors.validUntil}
               >
                 {(id) => (
-                  <input
+                  <DateTimeInput
                     id={id}
-                    maxLength={35}
                     value={row.validUntil}
-                    onChange={(e) => update(i, { validUntil: e.target.value })}
+                    onChange={(validUntil) => update(i, { validUntil })}
                   />
                 )}
               </Field>

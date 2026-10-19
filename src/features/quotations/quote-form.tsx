@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { type FieldErrors } from '../../shared/lib/validation';
@@ -156,17 +157,10 @@ export function QuoteForm({
       <fieldset className="form-grid" disabled={locked}>
         <Field
           label="Quotation valid until"
-          hint="ISO date with offset. Evidence must stay valid at least this long."
+          hint="Evidence must stay valid at least this long."
           error={errors.validUntil}
         >
-          {(id) => (
-            <input
-              id={id}
-              maxLength={35}
-              value={validUntil}
-              onChange={(e) => onValidUntil(e.target.value)}
-            />
-          )}
+          {(id) => <DateTimeInput id={id} value={validUntil} onChange={onValidUntil} />}
         </Field>
         <Field label="Terms version" error={errors.termsVersion}>
           {(id) => (
@@ -228,11 +222,10 @@ export function QuoteForm({
               </Field>
               <Field label={`Stage ${n} due at`} error={errors[`due${n}`]}>
                 {(id) => (
-                  <input
+                  <DateTimeInput
                     id={id}
-                    maxLength={35}
                     value={row.dueAt}
-                    onChange={(e) => updateRow(i, { dueAt: e.target.value })}
+                    onChange={(dueAt) => updateRow(i, { dueAt })}
                   />
                 )}
               </Field>

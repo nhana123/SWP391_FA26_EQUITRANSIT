@@ -36,8 +36,8 @@ export function reconcileAction(orderId: number): ActionSpec {
       {
         name: 'postedAt',
         label: 'Bank posted at',
-        hint: 'ISO time with offset; no later than now.',
-        maxLength: 40,
+        hint: 'No later than now.',
+        dateTime: true,
       },
       { name: 'verificationSource', label: 'Verification source', maxLength: 500 },
       {
@@ -168,8 +168,8 @@ export function refundDecisionAction(
             {
               name: 'refundedAt',
               label: 'Refunded at',
-              hint: 'Offset time after approval, no later than now.',
-              maxLength: 40,
+              hint: 'After approval, no later than now.',
+              dateTime: true,
             },
           ]
         : []),

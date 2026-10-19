@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
@@ -148,7 +149,7 @@ function PriceEditor({
       if (!ref || ref.length > 1000)
         next.sourceReference = 'Enter a source reference (1–1000 characters).';
       if (until && (!validOffsetDate(until) || Date.parse(until) <= Date.now()))
-        next.validUntil = 'Use a future ISO date with offset.';
+        next.validUntil = 'Choose a future date and time.';
       setErrors(next);
       if (Object.keys(next).length) return null;
       return {
@@ -270,16 +271,15 @@ function PriceEditor({
         </Field>
         <Field
           label="Valid until (optional)"
-          hint="ISO date with offset; leave empty for no planned expiry."
+          hint="Leave empty for no planned expiry."
           error={fields.validUntil}
         >
           {(id) => (
-            <input
+            <DateTimeInput
               id={id}
-              maxLength={35}
               value={validUntil}
-              aria-invalid={!!fields.validUntil}
-              onChange={(e) => setValidUntil(e.target.value)}
+              invalid={!!fields.validUntil}
+              onChange={setValidUntil}
             />
           )}
         </Field>

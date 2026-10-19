@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { optional, type FieldErrors } from '../../shared/lib/validation';
 import { displayDate } from '../../shared/lib/validation';
@@ -131,17 +132,11 @@ function ReplaceForm({
         </Field>
         <Field
           label="Preparation deadline (optional)"
-          hint="Saved as entered. Leave empty to clear it. Example: 2027-02-01T17:00:00+07:00"
+          hint="Saved as entered. Leave empty to clear it."
           error={errors.dueAt || command.fields.dueAt}
         >
           {(id) => (
-            <input
-              id={id}
-              value={dueAt}
-              maxLength={35}
-              onChange={(e) => setDueAt(e.target.value)}
-              aria-invalid={!!errors.dueAt}
-            />
+            <DateTimeInput id={id} value={dueAt} onChange={setDueAt} invalid={!!errors.dueAt} />
           )}
         </Field>
         <Field

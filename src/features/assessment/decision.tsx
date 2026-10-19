@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { useAction } from '../../shared/lib/useAction';
@@ -26,7 +27,7 @@ export const MAX_TEXT = 1000;
 export function dueAtError(value: string, now = Date.now()) {
   const due = value.trim();
   if (!due) return undefined;
-  if (!validOffsetDate(due)) return 'Use a date with offset, e.g. 2027-02-01T17:00:00+07:00.';
+  if (!validOffsetDate(due)) return 'Choose a date and time.';
   if (Date.parse(due) <= now) return 'The deadline must be in the future.';
   return undefined;
 }
@@ -261,16 +262,15 @@ export function DecisionForm({
             <legend>Internal preparation details</legend>
             <Field
               label="Preparation deadline (optional)"
-              hint="A work deadline for the team, not a travel booking. Example: 2027-02-01T17:00:00+07:00"
+              hint="A work deadline for the team, not a travel booking."
               error={errors.dueAt || serverFields.dueAt}
             >
               {(id) => (
-                <input
+                <DateTimeInput
                   id={id}
                   value={form.dueAt}
-                  maxLength={35}
-                  onChange={(e) => update({ dueAt: e.target.value })}
-                  aria-invalid={!!errors.dueAt}
+                  onChange={(dueAt) => update({ dueAt })}
+                  invalid={!!errors.dueAt}
                 />
               )}
             </Field>

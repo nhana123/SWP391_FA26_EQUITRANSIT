@@ -1,3 +1,4 @@
+import { setDateTime } from '../../test/date-time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -52,17 +53,17 @@ function mount() {
 }
 async function fillQuote(user: ReturnType<typeof userEvent.setup>) {
   const form = within(await screen.findByRole('form', { name: 'Prepare quotation version' }));
-  await user.type(form.getByLabelText('Quotation valid until'), '2099-03-01T00:00:00Z');
+  setDateTime(form.getByLabelText('Quotation valid until'), '2099-03-01T00:00:00Z');
   await user.type(form.getByLabelText('Terms version'), 'T-1');
   await user.type(form.getByLabelText('Terms'), 'Standard terms');
   await user.type(form.getByLabelText('Cancellation terms'), 'Cancel 7 days ahead');
   await user.type(form.getByLabelText('Stage 1 name'), 'DEPOSIT');
   await user.type(form.getByLabelText('Stage 1 amount (USD)'), '600.10');
-  await user.type(form.getByLabelText('Stage 1 due at'), '2099-01-01T00:00:00Z');
+  setDateTime(form.getByLabelText('Stage 1 due at'), '2099-01-01T00:00:00Z');
   await user.click(form.getByRole('button', { name: 'Add payment stage' }));
   await user.type(form.getByLabelText('Stage 2 name'), 'BALANCE');
   await user.type(form.getByLabelText('Stage 2 amount (USD)'), '400.20');
-  await user.type(form.getByLabelText('Stage 2 due at'), '2099-02-01T00:00:00Z');
+  setDateTime(form.getByLabelText('Stage 2 due at'), '2099-02-01T00:00:00Z');
   return form;
 }
 

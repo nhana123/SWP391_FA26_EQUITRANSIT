@@ -36,7 +36,7 @@ function when(e: FieldErrors, name: string, v: string, required = true) {
     if (required) e[name] = 'Enter a date.';
     return null;
   }
-  if (!validOffsetDate(t)) e[name] = 'Use an ISO date with offset, e.g. 2027-02-01T08:00:00+07:00.';
+  if (!validOffsetDate(t)) e[name] = 'Choose a date and time.';
   return t;
 }
 function id(e: FieldErrors, name: string, v: string, required = true) {

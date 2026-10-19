@@ -22,7 +22,7 @@ function opt(e: FieldErrors, name: string, v: string, max: number) {
 /** An observed time: offset date, not in the future. The BE also bounds it to the leg. */
 function observed(e: FieldErrors, name: string, v: string) {
   const t = v.trim();
-  if (!validOffsetDate(t)) e[name] = 'Use an ISO date with offset, e.g. 2027-02-01T08:00:00+07:00.';
+  if (!validOffsetDate(t)) e[name] = 'Choose a date and time.';
   else if (Date.parse(t) > Date.now()) e[name] = 'An observed time cannot be in the future.';
   return t;
 }
@@ -76,7 +76,7 @@ export function validateMilestone(mode: 'ROAD' | 'AIR', f: MilestoneForm): Resul
     e.longitude = 'Use −180 to 180 with up to 6 decimals.';
   const eta = f.estimatedArrivalAt.trim();
   if (eta) {
-    if (!validOffsetDate(eta)) e.estimatedArrivalAt = 'Use an ISO date with offset.';
+    if (!validOffsetDate(eta)) e.estimatedArrivalAt = 'Choose a date and time.';
     else if (!e.occurredAt && Date.parse(eta) < Date.parse(occurredAt))
       e.estimatedArrivalAt = 'The estimated arrival cannot be before the event.';
   }

@@ -1,3 +1,4 @@
+import { setDateTime } from '../../test/date-time';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -48,7 +49,7 @@ function mount() {
 async function fill(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByLabelText('Payment obligation'), '101');
   await user.type(screen.getByLabelText('Amount transferred (USD)'), '50.00');
-  await user.type(screen.getByLabelText('Transferred at'), '2020-01-01T00:00:00Z');
+  setDateTime(screen.getByLabelText('Transferred at'), '2020-01-01T00:00:00Z');
   await user.type(screen.getByLabelText('Bank transfer reference'), 'TEST-REF');
   await user.selectOptions(screen.getByLabelText('Use existing evidence'), proofKey);
 }

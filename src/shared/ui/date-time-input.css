@@ -1,0 +1,21 @@
+.date-time-input {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.date-time-input input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.date-time-input select {
+  flex: 0 0 auto;
+  width: auto;
+}
+@media (max-width: 480px) {
+  .date-time-input {
+    flex-wrap: wrap;
+  }
+  .date-time-input select {
+    width: 100%;
+  }
+}

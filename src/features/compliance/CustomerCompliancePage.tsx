@@ -1,3 +1,4 @@
+import { DateInput } from '../../shared/ui/DateTimeInput';
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { idSchema } from '../../shared/api/contracts';
@@ -130,25 +131,11 @@ function UploadForm({
                 />
               )}
             </Field>
-            <Field label="Issued date" hint="YYYY-MM-DD" error={fields.issuedDate}>
-              {(id) => (
-                <input
-                  id={id}
-                  maxLength={10}
-                  value={issuedDate}
-                  onChange={(e) => setIssuedDate(e.target.value)}
-                />
-              )}
+            <Field label="Issued date" error={fields.issuedDate}>
+              {(id) => <DateInput id={id} value={issuedDate} onChange={setIssuedDate} />}
             </Field>
-            <Field label="Expiry date" hint="YYYY-MM-DD" error={fields.expiryDate}>
-              {(id) => (
-                <input
-                  id={id}
-                  maxLength={10}
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                />
-              )}
+            <Field label="Expiry date" error={fields.expiryDate}>
+              {(id) => <DateInput id={id} value={expiryDate} onChange={setExpiryDate} />}
             </Field>
             <Field label="Document number (optional)" error={fields.documentNumber}>
               {(id) => (

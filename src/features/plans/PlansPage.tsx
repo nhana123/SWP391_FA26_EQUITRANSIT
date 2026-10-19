@@ -11,7 +11,7 @@ import { usePreparationCase } from '../quotations/source';
 import { PLAN_PAGE_SIZE, plansApi } from './api';
 import { legModes, type Candidate, type LegMode } from './contracts';
 import { CommandForm, StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
-import { TextInput, dateHint } from './ui';
+import { TextInput } from './ui';
 import { emptyLeg, legToForm, validateLegs, type LegForm } from './validation';
 import './plans.css';
 
@@ -91,7 +91,7 @@ function LegFields({
         />
         <TextInput
           label={`Leg ${n} departs`}
-          hint={dateHint}
+          date
           max={35}
           value={leg.plannedDeparture}
           onChange={(plannedDeparture) => onChange({ plannedDeparture })}
@@ -99,7 +99,7 @@ function LegFields({
         />
         <TextInput
           label={`Leg ${n} arrives`}
-          hint={dateHint}
+          date
           max={35}
           value={leg.plannedArrival}
           onChange={(plannedArrival) => onChange({ plannedArrival })}
