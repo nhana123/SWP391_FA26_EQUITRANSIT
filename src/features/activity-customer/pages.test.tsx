@@ -154,6 +154,65 @@ it.each([403, 404])('hides cached notifications after mark-read returns %s', asy
   expect(screen.queryByText('Test order update')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Mark notification 102 as read' })).toBeNull();
 });
+it.each([403, 404])(
+  'hides an uncertain mark-read retry when a later GET revokes access with %s',
+  async (status) => {
+    vi.mocked(activityApi.read).mockRejectedValueOnce(new ApiError(0, 'Uncertain.'));
+    const { user } = mount(<NotificationsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Mark notification 101 as read' }));
+    await screen.findByRole('button', { name: 'Retry marking notification as read' });
+    const current = getSession()!;
+    const prefix = activityKeys.notifications(current.generation, current.role);
+    vi.mocked(activityApi.notifications).mockRejectedValueOnce(new ApiError(status, 'Revoked.'));
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: prefix });
+    });
+    await screen.findByText(
+      status === 403
+        ? 'You do not have access to this activity.'
+        : 'This activity is no longer available to your account.',
+    );
+    expect(screen.queryByRole('button', { name: 'Retry marking notification as read' })).toBeNull();
+    expect(screen.queryByText('Test order update')).toBeNull();
+    expect(activityApi.read).toHaveBeenCalledTimes(1);
+
+    // A successful authorized GET restores only the original idempotent retry.
+    vi.mocked(activityApi.notifications).mockResolvedValue(notificationsFixture);
+    vi.mocked(activityApi.read).mockResolvedValue({ ...notificationFixture, readAt: fixtureTime });
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: prefix });
+    });
+    await user.click(
+      await screen.findByRole('button', { name: 'Retry marking notification as read' }),
+    );
+    await screen.findByText('Notification 101 marked as read.');
+    expect(vi.mocked(activityApi.read).mock.calls).toEqual([[101], [101]]);
+  },
+);
+it.each([403, 404])(
+  'hides conflict recovery when a later GET revokes notification access with %s',
+  async (status) => {
+    vi.mocked(activityApi.read).mockRejectedValueOnce(new ApiError(409, 'Changed.'));
+    const { user } = mount(<NotificationsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Mark notification 101 as read' }));
+    await screen.findByRole('button', { name: 'Reload notifications and review' });
+    const current = getSession()!;
+    vi.mocked(activityApi.notifications).mockRejectedValueOnce(new ApiError(status, 'Revoked.'));
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: activityKeys.notifications(current.generation, current.role),
+      });
+    });
+    await screen.findByText(
+      status === 403
+        ? 'You do not have access to this activity.'
+        : 'This activity is no longer available to your account.',
+    );
+    expect(screen.queryByRole('button', { name: 'Reload notifications and review' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark notification 102 as read' })).toBeNull();
+    expect(activityApi.read).toHaveBeenCalledTimes(1);
+  },
+);
 it('does not reuse the previous recipient notifications after an account switch', async () => {
   mount(<NotificationsPage />);
   await screen.findByText('Test order update');

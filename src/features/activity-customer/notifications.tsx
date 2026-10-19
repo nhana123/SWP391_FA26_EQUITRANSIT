@@ -41,10 +41,13 @@ function NotificationWorkspace() {
   const target = useRef<number | null>(null);
   const [notice, setNotice] = useState('');
   const reviewRequired = action.error instanceof ApiError && action.error.status === 409;
-  const locked = action.pending || retryId !== null || reviewRequired;
+  const readDenied = deniedActivity(query.error);
+  const accessDenied = readDenied || deniedActivity(action.error);
+  const locked = action.pending || retryId !== null || reviewRequired || accessDenied;
   const prefix = activityKeys.notifications(session.generation, session.role);
   async function markRead(id: number) {
-    if (reviewRequired || (target.current !== null && target.current !== id)) return;
+    if (accessDenied || reviewRequired || (target.current !== null && target.current !== id))
+      return;
     target.current = id;
     setRetryId(id);
     await action.run(async () => {
@@ -76,7 +79,7 @@ function NotificationWorkspace() {
     });
   }
   if (!paging.valid) return <InvalidActivityPage reset={() => paging.setPage(0)} />;
-  const hidden = !!query.error || deniedActivity(action.error);
+  const hidden = !!query.error || accessDenied;
   const data = query.data;
   return (
     <>
@@ -91,8 +94,8 @@ function NotificationWorkspace() {
         error={query.error}
         retry={() => void query.refetch()}
       />
-      <ActivityError error={action.error} />
-      {reviewRequired && (
+      <ActivityError error={readDenied ? null : action.error} />
+      {reviewRequired && !accessDenied && (
         <button
           type="button"
           onClick={() =>
@@ -105,7 +108,7 @@ function NotificationWorkspace() {
           Reload notifications and review
         </button>
       )}
-      {retryId !== null && !action.pending && (
+      {retryId !== null && !action.pending && !accessDenied && (
         <div className="notice" role="status">
           <p>The result is uncertain. Retry marks the same notification as read.</p>
           <button type="button" onClick={() => void markRead(retryId)}>
