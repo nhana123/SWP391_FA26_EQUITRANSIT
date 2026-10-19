@@ -21,7 +21,7 @@ describe('quotation contracts and reads', () => {
     expect(page.totalElements).toBe(1);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][0]).toBe(
-      'http://127.0.0.1:8080/api/transport-orders/9/quotes?page=0&size=20',
+      'http://localhost:8080/api/transport-orders/9/quotes?page=0&size=20',
     );
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer test-only');
     expect(fetch.mock.calls[0][1].method).toBe('GET');

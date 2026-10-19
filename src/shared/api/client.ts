@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { apiBase } from './base';
+import { refreshSession } from './refresh';
 import { clearSession, getSession } from './session';
 
 export class ApiError extends Error {
@@ -19,16 +21,35 @@ const safeErrorSchema = z.object({
   code: z.string().optional(),
   fields: z.record(z.string(), z.string()).optional(),
 });
-const base = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+type RequestOptions = {
+  method?: 'GET' | 'POST' | 'PUT';
+  body?: unknown;
+  signal?: AbortSignal;
+  public?: boolean;
+  /** Send and accept the HttpOnly refresh cookie (login). */
+  withCookies?: boolean;
+};
+/** The access token was renewed after a 401: repeat the identical request once. */
+class RetryAfterRefresh extends Error {}
+
 export async function request<T>(
   path: string,
   schema: z.ZodType<T>,
-  options: {
-    method?: 'GET' | 'POST' | 'PUT';
-    body?: unknown;
-    signal?: AbortSignal;
-    public?: boolean;
-  } = {},
+  options: RequestOptions = {},
+): Promise<T> {
+  try {
+    return await attempt(path, schema, options, false);
+  } catch (error) {
+    if (error instanceof RetryAfterRefresh) return attempt(path, schema, options, true);
+    throw error;
+  }
+}
+
+async function attempt<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  options: RequestOptions,
+  retried: boolean,
 ): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
@@ -37,10 +58,10 @@ export async function request<T>(
   if (options.signal?.aborted) controller.abort();
   const session = options.public ? null : getSession();
   try {
-    const response = await fetch(base + path, {
+    const response = await fetch(apiBase + path, {
       method: options.method || 'GET',
       signal: controller.signal,
-      credentials: 'omit',
+      credentials: options.withCookies ? 'include' : 'omit',
       headers: {
         Accept: 'application/json',
         ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -52,7 +73,13 @@ export async function request<T>(
     if (!options.public && getSession()?.generation !== session?.generation)
       throw new DOMException('Session changed', 'AbortError');
     if (!response.ok) {
-      if (response.status === 401 && !options.public) clearSession();
+      if (response.status === 401 && !options.public) {
+        // A rejected access token on a refreshable session: renew once, then
+        // repeat the identical request (a 401 means it was not executed).
+        if (session?.refreshable && !retried && (await refreshSession()) === 'renewed')
+          throw new RetryAfterRefresh();
+        clearSession();
+      }
       const parsed = safeErrorSchema.safeParse(data);
       // Never reflect backend text in authentication errors; it can contain credentials.
       const messages: Record<number, string> = {
@@ -88,7 +115,7 @@ export async function request<T>(
       );
     return parsed.data;
   } catch (error) {
-    if (error instanceof ApiError) throw error;
+    if (error instanceof ApiError || error instanceof RetryAfterRefresh) throw error;
     if (
       options.signal?.aborted ||
       (getSession()?.generation !== session?.generation && !options.public)

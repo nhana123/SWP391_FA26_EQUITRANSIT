@@ -37,7 +37,7 @@ describe('resource adapter (#79)', () => {
     vi.stubGlobal('fetch', fetch);
     const page = await resourcesApi.list('stalls', 0);
     expect(fetch.mock.calls[0][0]).toBe(
-      'http://127.0.0.1:8080/api/manager/resources/stalls?page=0&size=20',
+      'http://localhost:8080/api/manager/resources/stalls?page=0&size=20',
     );
     expect(page.items[0].data.internalWidthCm).toBe('90.5');
     // A NULL legacy buffer stays unknown, never defaulted to 0.
@@ -54,7 +54,7 @@ describe('resource adapter (#79)', () => {
       data: data as never,
     });
     const [url, init] = fetch.mock.calls[0];
-    expect(url).toBe('http://127.0.0.1:8080/api/manager/resources/stalls');
+    expect(url).toBe('http://localhost:8080/api/manager/resources/stalls');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({
       command: { operationId: 'c2046c13-4c31-49b9-8695-edbab59eec2b', recordVersion: null },
@@ -71,7 +71,7 @@ describe('resource adapter (#79)', () => {
       recordVersion: '00000000000000b1',
       data: stall.data as never,
     });
-    expect(fetch.mock.calls[0][0]).toBe('http://127.0.0.1:8080/api/manager/resources/stalls/12');
+    expect(fetch.mock.calls[0][0]).toBe('http://localhost:8080/api/manager/resources/stalls/12');
     expect(fetch.mock.calls[0][1].method).toBe('PUT');
     expect(JSON.parse(fetch.mock.calls[0][1].body).command.recordVersion).toBe('00000000000000b1');
   });
@@ -101,7 +101,7 @@ describe('resource adapter (#79)', () => {
     };
     const result = await resourcesApi.probe('STALL', 12, input);
     expect(fetch.mock.calls[0][0]).toBe(
-      'http://127.0.0.1:8080/api/resources/STALL/12/availability',
+      'http://localhost:8080/api/resources/STALL/12/availability',
     );
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(input);
     expect(result.blockers).toEqual(['FIT_POLICY_PENDING']);

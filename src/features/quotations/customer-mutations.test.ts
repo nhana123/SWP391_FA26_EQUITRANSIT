@@ -35,7 +35,7 @@ describe('Customer quotation action adapter', () => {
       } as QuoteActionCommand);
       expect(fetch).toHaveBeenCalledTimes(1);
       const [url, options] = fetch.mock.calls[0];
-      expect(url).toBe('http://127.0.0.1:8080/api/transport-orders/9/quotes/31/actions');
+      expect(url).toBe('http://localhost:8080/api/transport-orders/9/quotes/31/actions');
       expect(options.method).toBe('POST');
       expect(JSON.parse(options.body)).toEqual({
         command: { recordVersion: command.recordVersion, operationId: command.operationId },

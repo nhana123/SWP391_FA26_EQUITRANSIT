@@ -40,7 +40,9 @@ npm run dev
 ```
 
 On PowerShell, replace `cp` with `Copy-Item`. The app runs at
-`http://localhost:5173`. `VITE_API_BASE_URL` defaults to `http://127.0.0.1:8080`.
+`http://localhost:5173`. `VITE_API_BASE_URL` defaults to `http://localhost:8080`: keep the FE
+and API on the same hostname (`localhost`), because the BE refresh cookie is
+`SameSite=Strict` and is not sent between `localhost` and `127.0.0.1`.
 Configure the backend's `EQ_CORS_ORIGIN` and `EQ_FRONTEND_URL` to
 `http://localhost:5173`. Only public configuration belongs in `VITE_*` variables.
 

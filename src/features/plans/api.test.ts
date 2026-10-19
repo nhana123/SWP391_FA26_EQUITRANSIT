@@ -13,7 +13,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 const json = (data: unknown) => new Response(JSON.stringify(data), { status: 200 });
-const origin = 'http://127.0.0.1:8080/api/transport-orders/101/plans';
+const origin = 'http://localhost:8080/api/transport-orders/101/plans';
 const command = {
   operationId: 'd2046c13-4c31-49b9-8695-edbab59eec2b',
   recordVersion: '000000000001A2B3',

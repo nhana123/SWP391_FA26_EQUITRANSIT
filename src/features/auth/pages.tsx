@@ -216,7 +216,7 @@ export function LoginPage() {
     e.preventDefault();
     void action.run(async () => {
       const response = await authApi.login({ email: email.trim(), password });
-      startSession(response);
+      startSession(response, { refreshable: true });
       setPassword('');
       navigate(
         response.role === 'CUSTOMER'
