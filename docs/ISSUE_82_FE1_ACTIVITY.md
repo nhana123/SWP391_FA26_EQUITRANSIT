@@ -1,17 +1,34 @@
 # Issue 82 — FE1 / Part A: Customer activity and Manager reports
 
-Branch: `feature/82-customer-activity-notifications-manager-reports`.
-FE base: `dev` at `5acc04256eb77b62648d81fbd4793f6c05d4c99a`.
-BE contract verified at `563266a6d70d3691adbbba2478f71599460f43b1`
-on 18 October 2026, against ActivityController, activity DTOs, ActivityService,
+Current Part A review branch: `fix/82-part-a-notification-recovery`.
+FE base: `dev` at `bcbf5339980169179ed8d86954b877d7aef84eca`.
+BE contract checked at `da75f76d6e130ea1913d86fee915a2961295a42a`
+on 19 October 2026, against ActivityController, activity DTOs, ActivityService,
 ActivityRepository and `docs/activity-api.md`.
 
 This implements **Part A assigned to Haaju000** in
 [issue 82](https://github.com/nhana123/SWP391_FA26_EQUITRANSIT_FE/issues/82)
-and Task 09 of the supplied FE1_COMMERCIAL_FINANCE_GUIDE.md. Part B (staff task
-queues and order timeline) belongs to AIVIETNAM-AIO-felixdoit and is not replaced,
-simulated or declared complete here. Both parts and real BE acceptance are needed
-before closing the overall issue.
+and Task 09 of the supplied FE1_COMMERCIAL_FINANCE_GUIDE.md. The original Part A
+implementation is already in dev. Part B's task queues, timeline and current
+wiring are also present in this base. This review changes only Part A notification
+recovery and its tests/documentation, so the user can review/commit A separately.
+No router, staff navigation, Driver landing or FE2 implementation is modified.
+Both parts and real BE acceptance are needed before closing the overall issue.
+
+## Part A correction on 19 October
+
+After an uncertain mark-read failure or a definite conflict, a later background
+GET could revoke access with 403/404 while the old retry/review button remained
+visible. Four regression cases reproduced the defect before the fix.
+
+Recovery actions now follow both read and write access errors. A known access
+denial hides retry/conflict controls and cached notification content, and guards
+the mutation handler. An earlier uncertain action's ID remains in memory; only
+a later successful authorized GET allows retry of that same ID. No replacement
+target, automatic PUT, fake empty inbox or permission override is introduced.
+
+Commit scope: `notifications.tsx`, `pages.test.tsx` under `activity-customer/`,
+plus this Part A guide. All other modules remain byte-for-byte as the base.
 
 ## Routes and entry points
 
@@ -24,7 +41,9 @@ before closing the overall issue.
 | Manager                 | `/manager/audit-events`              | Manager navigation → Audit Events                        |
 
 The bell is available in Customer, Manager, assigned-case and signed-in public
-headers, including the current Driver landing page. It loads only when opened;
+headers. The Driver workspace uses its existing FE2 layout; its UI is not changed
+in this Part A correction. The common `/notifications` route remains available
+to authenticated Drivers. The bell loads only when opened;
 closed headers do not issue background requests. Escape closes the panel and
 returns focus to its button. Opening or following a notification never silently
 marks it read. Driver notifications have no fabricated order-detail link: FE2
@@ -45,7 +64,7 @@ through the Customer menu; it does not replace the horse or request editor flows
 | GET `/api/manager/reports/financial`             | Manager-only FinancialReport                            |
 | GET `/api/manager/audit-events?page=&size=20`    | Manager-only redacted audit page                        |
 
-All requests reuse the existing bearer HTTP client and memory session. Caller
+All requests reuse the existing bearer HTTP client and current shared session. Caller
 user/customer/recipient/staff IDs are never sent to select a recipient. Role,
 ownership and live assignment authorization remain the BE's responsibility.
 These read/write APIs do not accept a rowversion or operationId; F07's nested
@@ -107,7 +126,9 @@ replay a known successful save. The API has no preference CAS/version contract;
 no cross-device concurrency guarantee is invented. Security verification/recovery
 mail and in-app notifications are not disabled by this ordinary-email preference.
 
-Every query key includes session generation and role. Existing session cleanup
+Every query key includes session generation and role. The current shared session
+supports tab restoration through sessionStorage, per the new dev implementation;
+Part A does not add another token store or modify that shared behavior. Existing session cleanup
 cancels queries and clears caches on logout, expiry and 401. Late mutation results
 check generation again after asynchronous cancellation before writing cache.
 Customer dashboard/notification DTO whitelists strip unknown bank, supplier,
@@ -127,19 +148,32 @@ access is still valid. Unknown service errors do not echo potential private data
 
 - FE1: `features/activity-customer/`, `features/activity-reports/`, related tests,
   new route/menu registration and the notification button in existing shells.
-- FE2: `features/activity-operations/` or its agreed module, task queues and
-  OrderTimeline. No `/api/dashboard/tasks` or order-timeline call is added here.
-- FE2 should hand off actual route/component exports and required destinations
-  for menu integration. No dependency import or placeholder route is guessed.
-- Shared API client, session, contracts and auth redirects are unchanged. The
-  only existing app files changed are router, Manager layout and assigned-case
-  header for menu/bell integration. No package/lock or environment changes.
-- This branch starts from dev independently; unmerged #76/#77 branches are not
-  copied into this issue. Their work stays in their own commits/PRs.
+- FE2: existing `features/activity-operations/`, task queues and OrderTimeline.
+  No task/timeline request or implementation is changed by this Part A commit.
+- Existing `staffTaskRoute`, `staffTaskLink`, `/driver` and Driver redirects stay
+  as supplied by dev. Any Part B follow-up should be a separate commit.
+- Shared API client, session, contracts and auth redirects are unchanged by this
+  review. No package/lock or environment changes.
+- The branch starts from current dev, preserving all features already merged
+  there; no earlier feature branch is replayed or duplicated.
 
 ## Validation and live acceptance
 
-Results on 18 October 2026:
+Current correction results on 19 October 2026, from this branch:
+
+| Check                                                                  | Result                                                                                                        |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Regression reproduction before the fix                                 | Four newly added cases failed; 22 existing customer-page cases passed                                         |
+| Focused Customer / Manager report / activity route tests after the fix | 80 passed in five files                                                                                       |
+| Full regression suite, two consecutive runs                            | 668 passed in 68 files on each run                                                                            |
+| Typecheck and ESLint                                                   | Passed                                                                                                        |
+| Production build                                                       | Passed; large-chunk warning remains                                                                           |
+| Source formatting, changed guide formatting and git diff whitespace    | Passed                                                                                                        |
+| Dedicated mocked Playwright execution                                  | Blocked before scenarios ran: plugin setup and teardown each timed out at 45 seconds; no screenshots produced |
+| Read-only live OpenAPI probe                                           | Socket access to `127.0.0.1:8080` forbidden by the environment                                                |
+| Real BE / SQL / recipient IDOR acceptance                              | Not performed; required before closing the issue                                                              |
+
+Historical initial Part A results on 18 October 2026 (not the current dev suite):
 
 | Check                                                   | Result                                                                                                               |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -196,8 +230,8 @@ Using approved isolated fixtures, verify:
    private values reach Customer response/DOM/cache and audit redaction holds.
 6. Exercise 401 cleanup, 403/404 revocation, definite 409, interrupted retry and
    migration-pending 503. Capture role screenshots without credentials/tokens.
-7. Integrate FE2 Part B through its separate PR and verify the complete shared
-   issue with real active tasks and evidence-backed timeline milestones.
+7. Verify the already-integrated Part B with real active tasks and evidence-backed
+   timeline milestones, documenting its acceptance separately from this A commit.
 
 The full #82 DoD remains open until both owners' work and live acceptance pass.
 No commit, push, PR, merge or deployment is included in this coding handoff.
