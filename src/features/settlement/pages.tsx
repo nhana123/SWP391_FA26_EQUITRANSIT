@@ -1,11 +1,16 @@
 import type { ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { idSchema } from '../../shared/api/contracts';
-import { Notice, PageHeading } from '../../shared/ui/common';
+import { queryKeys } from '../../shared/api/query';
+import { useSession } from '../../shared/api/session';
+import { ErrorNotice, Loading, Notice, PageHeading } from '../../shared/ui/common';
+import { ActualCosts, CustomerHandovers, Profitability } from '../handover/panels';
+import { plansApi } from '../plans/api';
 
-// Release placeholders only. F14 has no confirmed API, DTO or write permission
-// contract. Do not add financial requests or infer settlement from other flows.
-function ReleasePreview({
+// F14 pages on the BE handover/actual-cost API (3d6dd6d). There is still no
+// financial settlement or close API: delivery never implies financial closure.
+function OrderPage({
   title,
   description,
   backTo,
@@ -14,7 +19,7 @@ function ReleasePreview({
   title: string;
   description: string;
   backTo: string;
-  children: ReactNode;
+  children: (orderId: number) => ReactNode;
 }) {
   const orderId = Number(useParams().id);
   if (!idSchema.safeParse(orderId).success)
@@ -24,91 +29,80 @@ function ReleasePreview({
       <PageHeading title={title} description={description}>
         <Link to={`${backTo}/${orderId}`}>Back to request</Link>
       </PageHeading>
-      <Notice>
-        Preview only — unavailable in this release. Records cannot be loaded or saved here.
-      </Notice>
-      {children}
+      {children(orderId)}
+    </>
+  );
+}
+
+/** The order's current plan with its legs; costs and margin are recorded per plan. */
+function useCurrentPlan(orderId: number) {
+  const { generation } = useSession()!;
+  return useQuery({
+    queryKey: [...queryKeys.session(generation), 'handover', 'plan', orderId],
+    queryFn: async ({ signal }) => {
+      const page = await plansApi.list(orderId, 0, signal);
+      const current = page.items.find((p) => p.currentPlan);
+      return current ? plansApi.get(orderId, current.planId, signal) : null;
+    },
+    retry: false,
+  });
+}
+
+function PlanCosts({ orderId, manager }: { orderId: number; manager: boolean }) {
+  const plan = useCurrentPlan(orderId);
+  if (plan.isPending) return <Loading />;
+  if (plan.error) return <ErrorNotice error={plan.error} />;
+  if (!plan.data)
+    return <Notice>No current operational plan yet, so there are no costs to record.</Notice>;
+  const legs = plan.data.legs.map((l) => ({ legId: l.legId, sequenceNo: l.sequenceNo }));
+  return (
+    <>
+      <ActualCosts planId={plan.data.planId} legs={legs} canWrite />
+      {manager && <Profitability planId={plan.data.planId} />}
     </>
   );
 }
 
 export function CustomerHandoverPage() {
   return (
-    <ReleasePreview
+    <OrderPage
       title="Delivery handover"
-      description="Review delivery evidence and record your handover decision when this feature becomes available."
+      description="Review how your horse was handed over and confirm the final delivery."
       backTo="/customer/requests"
     >
-      <section className="card">
-        <h2>Delivery record and evidence</h2>
-        <p>The delivery record and its supporting evidence are unavailable in this release.</p>
-      </section>
-      <section className="card">
-        <h2>Handover decision</h2>
-        <p>No decision can be recorded yet. These are the planned handover options.</p>
-        <fieldset disabled>
-          <legend>Planned handover decisions</legend>
-          <div className="actions">
-            <button type="button">Accept handover</button>
-            <button type="button">Report a handover exception</button>
-            <button type="button">Report not delivered</button>
-          </div>
-        </fieldset>
-      </section>
-    </ReleasePreview>
-  );
-}
-
-function ActualCostsPreview() {
-  return (
-    <section className="card">
-      <h2>Internal actual costs</h2>
-      <p>Cost records and their supporting sources are unavailable in this release.</p>
-      <button type="button" disabled>
-        Record an actual cost
-      </button>
-    </section>
+      {(orderId) => <CustomerHandovers orderId={orderId} />}
+    </OrderPage>
   );
 }
 
 export function StaffActualCostsPage() {
   return (
-    <ReleasePreview
+    <OrderPage
       title="Actual costs"
-      description="Review sourced internal cost records when this feature becomes available."
+      description="Record the internal supplier costs paid for this request's plan."
       backTo="/staff/cases"
     >
-      <ActualCostsPreview />
-    </ReleasePreview>
+      {(orderId) => <PlanCosts orderId={orderId} manager={false} />}
+    </OrderPage>
   );
 }
 
 export function ManagerSettlementPage() {
   return (
-    <ReleasePreview
-      title="Financial settlement"
-      description="Review internal costs and financial settlement before closing a transport request."
+    <OrderPage
+      title="Costs and profitability"
+      description="Internal actual costs against the quoted total for this request."
       backTo="/manager/requests"
     >
-      <ActualCostsPreview />
-      <section className="card">
-        <h2>Settlement review</h2>
-        <p>Delivery completion does not establish financial closure.</p>
-        <p>
-          Settlement has not been evaluated. The following conditions require server confirmation:
-        </p>
-        <ul>
-          <li>All quotation installments are paid in full after refunds and reversals.</li>
-          <li>No refund is awaiting approval or completion.</li>
-          <li>No financial obligation remains outstanding.</li>
-        </ul>
-        <button type="button" disabled>
-          Evaluate financial settlement
-        </button>{' '}
-        <button type="button" disabled>
-          Close transport request
-        </button>
-      </section>
-    </ReleasePreview>
+      {(orderId) => (
+        <>
+          <PlanCosts orderId={orderId} manager />
+          <Notice>
+            Delivery and recorded costs do not close a request financially. Payments stay on the
+            payments page; financial closing is not available from the server yet.
+          </Notice>
+        </>
+      )}
+    </OrderPage>
   );
 }

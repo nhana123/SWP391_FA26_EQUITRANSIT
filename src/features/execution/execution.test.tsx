@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ExecutionPage } from './ExecutionPage';
 import { executionApi } from './api';
 import { incidentsApi } from '../incidents/api';
+import { handoverApi } from '../handover/api';
 import { overviewSchema, type ExecutionOverview } from './contracts';
 import { validateMilestone, validateWelfare, type WelfareForm } from './validation';
 import { ApiError } from '../../shared/api/client';
@@ -19,6 +20,9 @@ vi.mock('../incidents/api', () => ({
     customerAdjustments: vi.fn(() => new Promise(() => {})),
     forLeg: vi.fn(() => new Promise(() => {})),
   },
+}));
+vi.mock('../handover/api', () => ({
+  handoverApi: { forLeg: vi.fn(() => Promise.resolve([])) },
 }));
 vi.mock('./api', () => ({
   EXECUTION_PAGE_SIZE: 20,
@@ -260,6 +264,48 @@ describe('F13 capability on the execution page', () => {
     expect(incidentsApi.adjustments).not.toHaveBeenCalled();
     expect(incidentsApi.customerAdjustments).not.toHaveBeenCalled();
     expect(incidentsApi.forLeg).not.toHaveBeenCalled();
+  });
+});
+
+describe('F14 handover on the execution page', () => {
+  const inTransit = () =>
+    overview({
+      legs: [
+        leg(1, { legStatus: 'COMPLETED', actualDeparture: '2026-10-18T05:30:00Z' }),
+        leg(2, {
+          transportMode: 'AIR',
+          legStatus: 'IN_TRANSIT',
+          actualDeparture: '2026-10-18T08:00:00Z',
+        }),
+        leg(3, { legStatus: 'IN_TRANSIT', actualDeparture: '2026-10-18T12:00:00Z' }),
+      ],
+    });
+
+  it('a driver hands over only their road leg, and the last leg offers final delivery', async () => {
+    vi.mocked(executionApi.get).mockResolvedValue(inTransit());
+    const user = mount('DRIVER');
+    const rows = within(await screen.findByRole('table', { name: 'Execution legs' })).getAllByRole(
+      'row',
+    );
+    expect(within(rows[2]).queryByRole('button', { name: 'Handover' })).toBeNull();
+    expect(within(rows[1]).queryByRole('button', { name: 'Handover' })).toBeNull();
+    await user.click(within(rows[3]).getByRole('button', { name: 'Handover' }));
+    const form = within(await screen.findByRole('form', { name: 'Record handover' }));
+    expect(form.getByLabelText('Handover type')).toHaveValue('FINAL_RECEIVER');
+    expect(handoverApi.forLeg).toHaveBeenCalledWith(true, 903, expect.any(AbortSignal));
+  });
+
+  it('a coordinator hands over a middle air leg with intermediate types only', async () => {
+    vi.mocked(executionApi.get).mockResolvedValue(inTransit());
+    const user = mount('COORDINATOR');
+    const rows = within(await screen.findByRole('table', { name: 'Execution legs' })).getAllByRole(
+      'row',
+    );
+    await user.click(within(rows[2]).getByRole('button', { name: 'Handover' }));
+    const form = within(await screen.findByRole('form', { name: 'Record handover' }));
+    expect(form.getByLabelText('Handover type')).toHaveValue('INTERMEDIATE_AIRPORT');
+    expect(form.queryByRole('option', { name: 'Final delivery to receiver' })).toBeNull();
+    expect(handoverApi.forLeg).toHaveBeenCalledWith(false, 902, expect.any(AbortSignal));
   });
 });
 
