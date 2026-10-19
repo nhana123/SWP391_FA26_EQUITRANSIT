@@ -313,7 +313,7 @@ describe('handover adapter (F14)', () => {
     await handoverApi.forLeg(false, 903);
     await handoverApi.costs(801);
     await handoverApi.customerList(101);
-    const origin = 'http://127.0.0.1:8080';
+    const origin = 'http://localhost:8080';
     expect(fetch.mock.calls.map((c) => c[0])).toEqual([
       `${origin}/api/driver/legs/903/handovers`,
       `${origin}/api/coordinator/legs/903/handovers`,

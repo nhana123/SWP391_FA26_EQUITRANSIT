@@ -23,7 +23,7 @@ const accounts = {
 };
 const inspection = {
   catalog: TEST_CATALOG,
-  apiOrigin: 'http://127.0.0.1:8080',
+  apiOrigin: 'http://localhost:8080',
   frontendOrigin: 'http://127.0.0.1:5173',
   migrations: [1, 2, 3, 4, 5],
   fixtureTool: '#55 test adapter',

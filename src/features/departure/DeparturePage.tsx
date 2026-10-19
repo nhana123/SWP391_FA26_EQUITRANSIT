@@ -4,7 +4,8 @@ import { Link, Outlet, useParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import { queryClient, queryKeys } from '../../shared/api/query';
-import { clearSession, useSession } from '../../shared/api/session';
+import { signOut } from '../../shared/api/refresh';
+import { useSession } from '../../shared/api/session';
 import { displayDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice } from '../../shared/ui/common';
 import { useCaseCommand } from '../assessment/command';
@@ -525,7 +526,7 @@ export function DriverLayout() {
         <nav aria-label="Driver navigation">
           <Link to="/driver">My Tasks</Link> <Link to="/driver/dashboard">Overview</Link>
         </nav>
-        <button type="button" onClick={clearSession}>
+        <button type="button" onClick={() => void signOut()}>
           Log Out
         </button>
       </header>

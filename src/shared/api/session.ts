@@ -1,85 +1,114 @@
 import { useSyncExternalStore } from 'react';
-import { loginSchema, type LoginResponse } from './contracts';
-type Session = LoginResponse & { generation: string; expiresAt: number };
-let current: Session | null = null;
-const listeners = new Set<() => void>();
-let timer: ReturnType<typeof setTimeout> | undefined;
-let onClear: () => void = () => {};
-const emit = () => listeners.forEach((fn) => fn());
+import { roleSchema, type LoginResponse, type Role } from './contracts';
 
 /**
- * The session survives a page refresh in this tab only (sessionStorage):
- * closing the tab, logging out, a 401 or expiry removes it. Team decision for
- * the release; a BE refresh-token cookie would avoid storing the token at all.
+ * The access token lives in memory only. A session started by a real login is
+ * "refreshable": the BE also set an HttpOnly refresh cookie (never readable
+ * here), so the session renews itself shortly before expiry and is restored
+ * after a page reload through POST /api/auth/refresh (see ./refresh).
+ * Only this tab's role is kept in sessionStorage, as a non-secret hint that
+ * this tab was signed in and which role it expects back.
  */
-const STORAGE_KEY = 'equitransit.session';
-function store(session: Session | null) {
-  try {
-    if (session)
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          accessToken: session.accessToken,
-          tokenType: session.tokenType,
-          role: session.role,
-          expiresAt: session.expiresAt,
-        }),
-      );
-    else sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Storage may be blocked (private mode, policy): the session stays in memory only.
-  }
+type Session = LoginResponse & { generation: string; expiresAt: number; refreshable: boolean };
+let current: Session | null = null;
+const listeners = new Set<() => void>();
+let expiry: ReturnType<typeof setTimeout> | undefined;
+let renewal: ReturnType<typeof setTimeout> | undefined;
+let onClear: () => void = () => {};
+let renewer: (() => void) | null = null;
+const emit = () => listeners.forEach((fn) => fn());
+const MAX_DELAY = 2_147_483_647;
+/** Renew this long before the access token expires. */
+export const RENEW_BEFORE_MS = 60_000;
+
+const ROLE_KEY = 'equitransit.role';
+// Older builds stored the access token itself; never keep it around.
+try {
+  sessionStorage.removeItem('equitransit.session');
+} catch {
+  // Storage may be blocked; nothing was stored then either.
 }
-/** A stored, unexpired, well-formed session or null. Anything else is discarded. */
-function stored(now = Date.now()): LoginResponse | null {
+export function roleHint(): Role | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const value: unknown = JSON.parse(raw);
-    const expiresAt =
-      value && typeof value === 'object' && 'expiresAt' in value ? Number(value.expiresAt) : NaN;
-    const remaining = Math.floor((expiresAt - now) / 1000);
-    const parsed = loginSchema.safeParse({ ...(value as object), expiresIn: remaining });
-    if (!Number.isFinite(expiresAt) || remaining <= 0 || !parsed.success) {
-      sessionStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-    return parsed.data;
+    const parsed = roleSchema.safeParse(sessionStorage.getItem(ROLE_KEY));
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
+  }
+}
+function storeRole(role: Role | null) {
+  try {
+    if (role) sessionStorage.setItem(ROLE_KEY, role);
+    else sessionStorage.removeItem(ROLE_KEY);
+  } catch {
+    // Blocked storage: a reload simply asks the user to sign in again.
   }
 }
 
 export function configureSessionCleanup(cleanup: () => void) {
   onClear = cleanup;
 }
+/** Called shortly before expiry for refreshable sessions (set by ./refresh). */
+export function configureRenewal(renew: () => void) {
+  renewer = renew;
+}
+function stopTimers() {
+  clearTimeout(expiry);
+  clearTimeout(renewal);
+}
 export function clearSession() {
-  clearTimeout(timer);
+  stopTimers();
   current = null;
-  store(null);
+  storeRole(null);
   onClear();
   emit();
 }
-function begin(response: LoginResponse) {
+function schedule(session: Session) {
+  stopTimers();
+  const left = session.expiresAt - Date.now();
+  expiry = setTimeout(clearSession, Math.min(Math.max(left, 0), MAX_DELAY));
+  if (session.refreshable && renewer) {
+    const run = renewer;
+    renewal = setTimeout(run, Math.min(Math.max(left - RENEW_BEFORE_MS, 5_000), MAX_DELAY));
+  }
+}
+/** Retry a failed renewal later, while the access token is still valid. */
+export function retryRenewal(delayMs: number) {
+  if (!current?.refreshable || !renewer) return;
+  clearTimeout(renewal);
+  const left = current.expiresAt - Date.now();
+  if (left > delayMs) renewal = setTimeout(renewer, delayMs);
+}
+export function startSession(response: LoginResponse, options: { refreshable?: boolean } = {}) {
+  clearSession();
   current = {
     ...response,
     generation: crypto.randomUUID(),
     expiresAt: Date.now() + response.expiresIn * 1000,
+    refreshable: !!options.refreshable,
   };
-  timer = setTimeout(clearSession, Math.min(response.expiresIn * 1000, 2_147_483_647));
-}
-export function startSession(response: LoginResponse) {
-  clearSession();
-  begin(response);
-  store(current);
+  if (current.refreshable) storeRole(current.role);
+  schedule(current);
   emit();
 }
-/** Restores the tab's session after a refresh; a fresh generation keeps caches separate. */
-export function restoreSession() {
-  if (current) return current;
-  const saved = stored();
-  if (saved) begin(saved);
-  return current;
+/**
+ * A rotated access token for the same account keeps the generation, so cached
+ * data and in-flight requests stay valid.
+ */
+export function renewSession(response: LoginResponse) {
+  if (!current || current.role !== response.role) {
+    startSession(response, { refreshable: true });
+    return;
+  }
+  current = {
+    ...current,
+    accessToken: response.accessToken,
+    tokenType: response.tokenType,
+    expiresIn: response.expiresIn,
+    expiresAt: Date.now() + response.expiresIn * 1000,
+  };
+  schedule(current);
+  emit();
 }
 export function getSession() {
   return current;
@@ -96,5 +125,3 @@ export function useSession() {
     () => null,
   );
 }
-
-restoreSession();
