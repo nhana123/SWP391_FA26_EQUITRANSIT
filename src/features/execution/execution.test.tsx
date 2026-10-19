@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ExecutionPage } from './ExecutionPage';
 import { executionApi } from './api';
+import { incidentsApi } from '../incidents/api';
 import { overviewSchema, type ExecutionOverview } from './contracts';
 import { validateMilestone, validateWelfare, type WelfareForm } from './validation';
 import { ApiError } from '../../shared/api/client';
@@ -226,6 +227,40 @@ describe('trip progress (#81 F12)', () => {
     );
     mount('MANAGER');
     expect(await screen.findByText(/first leg has not departed yet/)).toBeInTheDocument();
+  });
+});
+
+describe('F13 capability on the execution page', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('is off by default: no incident action and no calls to unreleased routes', async () => {
+    const user = mount('MANAGER');
+    const table = await screen.findByRole('table', { name: 'Execution legs' });
+    const row = within(table).getAllByRole('row')[1];
+    expect(within(row).getByRole('button', { name: 'Add welfare check' })).toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: 'Incidents' })).toBeNull();
+    expect(screen.getByText(/backend has not released them/)).toBeInTheDocument();
+    await user.click(within(row).getByRole('button', { name: 'Add welfare check' }));
+    expect(incidentsApi.adjustments).not.toHaveBeenCalled();
+    expect(incidentsApi.customerAdjustments).not.toHaveBeenCalled();
+    expect(incidentsApi.forLeg).not.toHaveBeenCalled();
+  });
+
+  it('a customer sees no adjustments panel and makes no adjustment call', async () => {
+    mount('CUSTOMER');
+    await screen.findByRole('table', { name: 'Execution legs' });
+    expect(screen.queryByText(/backend has not released them/)).toBeNull();
+    expect(incidentsApi.customerAdjustments).not.toHaveBeenCalled();
+  });
+
+  it('mounts the F13 panels once the capability is enabled', async () => {
+    vi.stubEnv('VITE_F13_INCIDENTS', 'true');
+    mount('MANAGER');
+    const table = await screen.findByRole('table', { name: 'Execution legs' });
+    expect(
+      within(within(table).getAllByRole('row')[1]).getByRole('button', { name: 'Incidents' }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(incidentsApi.adjustments).toHaveBeenCalled());
   });
 });
 

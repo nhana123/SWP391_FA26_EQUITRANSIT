@@ -247,8 +247,8 @@ export function AssignedCasePage() {
       </div>
       <OrderTimeline orderId={current.orderId} />
       <Notice>
-        Read-only preparation view. Document review, planning, reservations and departure are not
-        available in this release.
+        The case details below are read-only. Use the links above for your role's work on this case;
+        a link appears only when your role and the case status allow it.
       </Notice>
       <MyAssignment current={current} />
       {revision ? (

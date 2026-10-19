@@ -36,6 +36,7 @@ import {
   PlanAdjustments,
   ReportIncidentForm,
 } from '../incidents/panels';
+import { incidentsEnabled } from '../incidents/capability';
 import './execution.css';
 
 export const executionKeys = {
@@ -680,7 +681,7 @@ function Workspace({ orderId }: { orderId: number }) {
                           </button>
                         </>
                       )}
-                      {writable(leg) && departed(leg) && (
+                      {incidentsEnabled() && writable(leg) && departed(leg) && (
                         <button type="button" onClick={() => open({ leg, kind: 'incidents' })}>
                           {session.role === 'DRIVER' ? 'Report incident' : 'Incidents'}
                         </button>
@@ -741,10 +742,21 @@ function Workspace({ orderId }: { orderId: number }) {
           </button>
         </div>
       )}
-      {(session.role === 'MANAGER' || session.role === 'COORDINATOR') && (
-        <PlanAdjustments planId={o.planId} manager={session.role === 'MANAGER'} />
+      {!incidentsEnabled() ? (
+        session.role !== 'CUSTOMER' && (
+          <Notice>
+            Incident reporting and plan adjustments are not available yet: the backend has not
+            released them. Record urgent welfare as an URGENT welfare check.
+          </Notice>
+        )
+      ) : (
+        <>
+          {(session.role === 'MANAGER' || session.role === 'COORDINATOR') && (
+            <PlanAdjustments planId={o.planId} manager={session.role === 'MANAGER'} />
+          )}
+          {session.role === 'CUSTOMER' && <CustomerAdjustments orderId={o.orderId} />}
+        </>
       )}
-      {session.role === 'CUSTOMER' && <CustomerAdjustments orderId={o.orderId} />}
       <section className="card" aria-label="Updates">
         <h2>Updates ({o.milestoneCount})</h2>
         {!o.milestones.length ? (
