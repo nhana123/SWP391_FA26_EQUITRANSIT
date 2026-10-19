@@ -14,7 +14,7 @@ import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
 import { ExecutionLink } from '../execution/ExecutionPage';
-import { staffTaskLink } from '../activity-operations/routes';
+import { staffDashboardLink, staffTaskLink } from '../activity-operations/routes';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { ComplianceLink } from '../compliance/link';
 import { NotificationBell } from '../activity-customer/notifications';
@@ -71,6 +71,9 @@ export function AssignedCasesLayout() {
         </Link>
         <small>Staff PORTAL</small>
         <nav aria-label="Staff navigation">
+          <NavLink to={staffDashboardLink.to} onClick={() => setMenu(false)}>
+            {staffDashboardLink.label}
+          </NavLink>
           <NavLink to="/staff/cases" onClick={() => setMenu(false)}>
             My Cases
           </NavLink>

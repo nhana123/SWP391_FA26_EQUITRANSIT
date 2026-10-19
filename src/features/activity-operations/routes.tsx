@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router-dom';
 import { AssignedCasesLayout } from '../assigned-cases/pages';
+import { StaffDashboardPage } from './StaffDashboard';
 import { StaffTaskPage } from './TaskQueue';
 
 /**
@@ -15,3 +16,11 @@ export const staffTaskRoute: RouteObject = {
   children: [{ index: true, element: <StaffTaskPage /> }],
 };
 export const staffTaskLink = { to: '/staff/tasks', label: 'My Tasks' } as const;
+
+/** Specialist/Coordinator overview; Manager and Driver mount StaffDashboardPage in their blocks. */
+export const staffDashboardRoute: RouteObject = {
+  path: '/staff/dashboard',
+  element: <AssignedCasesLayout />,
+  children: [{ index: true, element: <StaffDashboardPage /> }],
+};
+export const staffDashboardLink = { to: '/staff/dashboard', label: 'Overview' } as const;

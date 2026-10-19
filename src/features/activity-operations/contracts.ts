@@ -1,5 +1,22 @@
 import { z } from 'zod';
-import { idSchema } from '../../shared/api/contracts';
+import { idSchema, orderStatusSchema } from '../../shared/api/contracts';
+
+// Mirrors BE DashboardResponse for staff. The BE scopes it to the caller:
+// Manager = every order; Specialist/Coordinator = live case assignments;
+// Driver = orders with an active road-leg assignment. No prices or notes.
+const count = z.number().int().nonnegative().refine(Number.isSafeInteger);
+export const staffRoles = ['MANAGER', 'SPECIALIST', 'COORDINATOR', 'DRIVER'] as const;
+export const staffDashboardSchema = z.object({
+  role: z.enum(staffRoles),
+  counts: z.array(z.object({ status: orderStatusSchema, count })),
+  items: z.array(
+    z.object({ orderId: idSchema, orderNumber: z.string(), status: orderStatusSchema }),
+  ),
+  totalElements: count,
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+});
+export type StaffDashboard = z.infer<typeof staffDashboardSchema>;
 
 // Mirrors BE activity DTOs TaskPage/TaskView and TimelineResponse/TimelinePoint.
 // Neither carries prices, actual cost, notes or other internal data.

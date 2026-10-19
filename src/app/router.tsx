@@ -44,7 +44,8 @@ import { CaseAvailabilityPage } from '../features/resources/availability';
 import { PlansPage } from '../features/plans/PlansPage';
 import { PlanDetailPage } from '../features/plans/PlanDetailPage';
 import { DeparturePage, DriverHome, DriverLayout } from '../features/departure/DeparturePage';
-import { staffTaskRoute } from '../features/activity-operations/routes';
+import { staffDashboardRoute, staffTaskRoute } from '../features/activity-operations/routes';
+import { StaffDashboardPage } from '../features/activity-operations/StaffDashboard';
 import { ExecutionPage } from '../features/execution/ExecutionPage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
@@ -339,6 +340,7 @@ export const router = createBrowserRouter([
             element: <ManagerLayout />,
             children: [
               { index: true, element: <Navigate to="requests" replace /> },
+              { path: 'dashboard', element: <StaffDashboardPage /> },
               { path: 'requests', element: <ManagerQueuePage /> },
               { path: 'requests/:id', element: <ManagerCasePage /> },
               { path: 'requests/:id/settlement', element: <ManagerSettlementPage /> },
@@ -367,6 +369,7 @@ export const router = createBrowserRouter([
         element: <RoleGate roles={['SPECIALIST', 'COORDINATOR']} />,
         children: [
           staffTaskRoute,
+          staffDashboardRoute,
           {
             path: '/staff/cases',
             element: <AssignedCasesLayout />,
@@ -403,6 +406,7 @@ export const router = createBrowserRouter([
             element: <DriverLayout />,
             children: [
               { index: true, element: <DriverHome /> },
+              { path: 'dashboard', element: <StaffDashboardPage /> },
               { path: 'orders/:id/departure', element: <DeparturePage /> },
               { path: 'orders/:id/execution', element: <ExecutionPage /> },
             ],
