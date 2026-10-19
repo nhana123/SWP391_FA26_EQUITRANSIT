@@ -1,3 +1,4 @@
+import { ResourcePicker } from './ResourcePicker';
 import { useState } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { useAction } from '../../shared/lib/useAction';
@@ -129,6 +130,15 @@ export function RoadForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; pi
             Only for road legs EquiTransit operates. Do not assign internal resources to a road leg
             the customer arranges themselves.
           </p>
+          <ResourcePicker
+            kind="VEHICLE"
+            plan={plan}
+            leg={leg}
+            onSelect={(vehicleId, proof) => {
+              set({ vehicleId });
+              setChecked(proof);
+            }}
+          />
           <TextInput
             label="Vehicle ID"
             inputMode="numeric"
@@ -210,6 +220,15 @@ export function StallForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; p
           <p className="muted">
             Slots and sharing come from the customer's service request; they are not set here.
           </p>
+          <ResourcePicker
+            kind="STALL"
+            plan={plan}
+            leg={leg}
+            onSelect={(stallId, proof) => {
+              set({ stallId });
+              setChecked(proof);
+            }}
+          />
           <TextInput
             label="Stall ID"
             inputMode="numeric"
@@ -352,6 +371,7 @@ export function FlightForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; 
           />
           <TextInput
             label="Booking expires at"
+            date
             hint={dateHint}
             max={35}
             value={f.expiresAt}
@@ -421,6 +441,7 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           />
           <TextInput
             label="Starts at"
+            date
             hint={dateHint}
             max={35}
             value={f.startsAt}
@@ -429,6 +450,7 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           />
           <TextInput
             label="Ends at"
+            date
             max={35}
             value={f.endsAt}
             onChange={(endsAt) => set({ endsAt })}
@@ -465,6 +487,7 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           />
           <TextInput
             label="Reservation expires at (optional)"
+            date
             max={35}
             value={f.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
@@ -530,6 +553,7 @@ export function InsuranceForm({ plan, pinned }: { plan: PlanDetail; pinned: Pinn
           />
           <TextInput
             label="Coverage from"
+            date
             hint={dateHint}
             max={35}
             value={f.coverageFrom}
@@ -538,6 +562,7 @@ export function InsuranceForm({ plan, pinned }: { plan: PlanDetail; pinned: Pinn
           />
           <TextInput
             label="Coverage to"
+            date
             max={35}
             value={f.coverageTo}
             onChange={(coverageTo) => set({ coverageTo })}

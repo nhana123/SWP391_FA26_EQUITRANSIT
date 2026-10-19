@@ -1,3 +1,4 @@
+import { operationalTimezoneBadge } from '../plans/operational-time';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -916,6 +917,7 @@ export function ExecutionPage() {
           <small className="eyebrow">TRIP PROGRESS</small>
           <h1>Trip progress</h1>
           <p>Leg progress, recorded updates and welfare checks.</p>
+          <p className="notice">{operationalTimezoneBadge}</p>
         </div>
         <Link to={back}>Back</Link>
       </header>

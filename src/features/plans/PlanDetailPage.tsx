@@ -18,6 +18,7 @@ import {
 import { StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
 import { DeploymentNotice, planAccess, plansPath, schemaPending } from './PlansPage';
 import './plans.css';
+import { TimelineStrip } from './TimelineStrip';
 
 function LegCard({
   plan,
@@ -37,12 +38,8 @@ function LegCard({
         Leg {leg.sequenceNo} · {leg.transportMode}: {leg.startPoint} → {leg.endPoint}
       </h3>
       <p>
-        {displayDate(leg.plannedDeparture, leg.startTimezone ?? 'UTC')} →{' '}
-        {displayDate(leg.plannedArrival, leg.endTimezone ?? 'UTC')}
-        {leg.startTimezone && ` (${leg.startTimezone}`}
-        {leg.endTimezone && ` → ${leg.endTimezone}`}
-        {leg.startTimezone && ')'}. {leg.distanceKm} km — source:{' '}
-        {leg.distanceSource ?? 'not recorded'}
+        {displayDate(leg.plannedDeparture)} → {displayDate(leg.plannedArrival)}. {leg.distanceKm} km
+        — source: {leg.distanceSource ?? 'not recorded'}
         {leg.distanceConfirmedBy !== null && `, confirmed by staff ${leg.distanceConfirmedBy}`}.
       </p>
       {air && leg.plannedFlightNumber && <p>Planned flight {leg.plannedFlightNumber}.</p>}
@@ -113,6 +110,12 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
   return (
     <>
       <StaleBanner pinned={pinned} latest={plan.recordVersion} />
+      <TimelineStrip
+        legs={plan.legs}
+        quarantine={plan.quarantineReservations.filter(
+          (q) => q.status !== 'CANCELLED' && q.status !== 'EXPIRED',
+        )}
+      />
       <section className="card" aria-label="Plan summary">
         <h2>
           Plan v{plan.versionNo} <span className="badge">{plan.planStatus}</span>

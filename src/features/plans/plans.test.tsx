@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -18,6 +18,8 @@ import { ApiError } from '../../shared/api/client';
 import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
+
+vi.mock('./ResourcePicker', () => ({ ResourcePicker: () => null }));
 
 vi.mock('./api', () => ({
   PLAN_PAGE_SIZE: 20,
@@ -115,24 +117,28 @@ describe('plan versions and draft builder (#80)', () => {
     const table = await screen.findByRole('table', { name: 'Plan versions' });
     expect(within(table).getByText(/PENDING \/ PENDING \/ PENDING/)).toBeInTheDocument();
     const form = within(screen.getByRole('form', { name: 'New plan version' }));
-    // Default template: road, air, road; remove the last road leg.
+    await user.click(form.getByRole('button', { name: 'Tạo bộ ROAD → AIR → ROAD' }));
     await user.click(form.getByRole('button', { name: 'Remove leg 3' }));
     const values: [string, string][] = [
       ['Leg 1 from', 'Hanoi Stable'],
       ['Leg 1 to', 'Noi Bai Airport'],
       ['Leg 1 distance (km)', '45.5'],
-      ['Leg 1 distance source', 'Verified route'],
+      ['Leg 1 distance source', 'MANUAL_VERIFIED'],
       ['Leg 1 departs', '2027-02-01T06:00:00+07:00'],
       ['Leg 1 arrives', '2027-02-01T08:00:00+07:00'],
       ['Leg 2 from', 'HAN'],
       ['Leg 2 to', 'LHR'],
       ['Leg 2 distance (km)', '9200'],
-      ['Leg 2 distance source', 'Airline distance'],
+      ['Leg 2 distance source', 'SUPPLIER_DECLARATION'],
       ['Leg 2 departs', '2027-02-01T10:00:00+07:00'],
-      ['Leg 2 arrives', '2027-02-01T20:00:00Z'],
+      ['Leg 2 arrives', '2027-02-02T03:00:00'],
     ];
-    for (const [label, value] of values) await fill(user, form.getByLabelText(label), value);
-    await user.click(form.getByRole('button', { name: 'Create draft version' }));
+    for (const [label, value] of values) {
+      const field = form.getByLabelText(label);
+      if (field.tagName === 'SELECT') await user.selectOptions(field, value);
+      else fireEvent.change(field, { target: { value: value.replace('+07:00', '') } });
+    }
+    await user.click(form.getByRole('button', { name: '💾 Lưu Chuỗi Lịch Trình Xuống Hệ Thống' }));
     await waitFor(() => expect(plansApi.draft).toHaveBeenCalledTimes(1));
     const [orderId, body] = vi.mocked(plansApi.draft).mock.calls[0];
     expect(orderId).toBe(101);
@@ -153,10 +159,43 @@ describe('plan versions and draft builder (#80)', () => {
     ).toBeInTheDocument();
   }, 20_000);
 
+  it('connects a native drag card and shifts the remaining chain after an overlap', async () => {
+    const user = mount('/staff/cases/101/plans');
+    await screen.findByRole('table', { name: 'Plan versions' });
+    await user.click(screen.getByRole('button', { name: 'Tạo bộ ROAD → AIR → ROAD' }));
+    const chain = within(screen.getByRole('region', { name: 'Connected schedule chain' }));
+    const change = (label: string, value: string) =>
+      fireEvent.change(chain.getByLabelText(label), { target: { value } });
+    change('Leg 1 arrives', '2027-02-01T10:00');
+    change('Leg 2 departs', '2027-02-01T09:00');
+    change('Leg 2 arrives', '2027-02-01T11:00');
+    change('Leg 3 departs', '2027-02-01T13:00');
+    change('Leg 3 arrives', '2027-02-01T14:00');
+    change('Leg 3 to', 'Receiving stable');
+    await user.click(screen.getByRole('button', { name: /Tự khớp nối giờ/ }));
+    expect((chain.getByLabelText('Leg 2 departs') as HTMLInputElement).value).toContain('T12:00');
+    expect((chain.getByLabelText('Leg 3 arrives') as HTMLInputElement).value).toContain('T17:00');
+    await user.click(screen.getByRole('button', { name: '+ ROAD' }));
+    const pool = within(screen.getByRole('region', { name: 'Draft schedule cards pool' }));
+    let dragged = '';
+    const dataTransfer = {
+      setData: (_: string, value: string) => {
+        dragged = value;
+      },
+      getData: () => dragged,
+    };
+    fireEvent.dragStart(pool.getByRole('button', { name: /Nháp 1/ }), { dataTransfer });
+    fireEvent.drop(chain.getByText('Thả card vào vị trí 4'), { dataTransfer });
+    expect(chain.getByLabelText('Leg 4 from')).toHaveValue('Receiving stable');
+    expect(pool.queryByRole('button', { name: /Nháp 1/ })).toBeNull();
+  });
+
   it('prefills a new draft from an existing version instead of editing it', async () => {
     mount('/manager/requests/101/plans?from=311', 'MANAGER');
     const form = within(await screen.findByRole('form', { name: 'New plan version' }));
-    expect(form.getByRole('heading')).toHaveTextContent('based on plan 311');
+    expect(form.getByRole('heading', { name: /based on plan 311/ })).toHaveTextContent(
+      'based on plan 311',
+    );
     expect(form.getByLabelText('Leg 2 planned flight number (optional)')).toHaveValue('VN0051');
     expect(form.getByLabelText('Leg 1 distance (km)')).toHaveValue('45.5');
   });

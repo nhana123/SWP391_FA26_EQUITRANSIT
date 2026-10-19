@@ -1,4 +1,5 @@
-import { validOffsetDate, validZone, type FieldErrors } from '../../shared/lib/validation';
+import { validOffsetDate, type FieldErrors } from '../../shared/lib/validation';
+import { canonicalTime, localTimeInput, OPERATIONAL_ZONE } from './operational-time';
 import type {
   AssignmentState,
   CarrierState,
@@ -16,7 +17,6 @@ import type {
 type Result<T> = { input: T | null; errors: FieldErrors };
 const done = <T>(input: T, errors: FieldErrors): Result<T> =>
   Object.keys(errors).length ? { input: null, errors } : { input, errors };
-const opt = (v: string) => v.trim() || null;
 const version = /^[0-9a-f]{16}$/i;
 
 function req(e: FieldErrors, name: string, v: string, max: number) {
@@ -36,8 +36,9 @@ function when(e: FieldErrors, name: string, v: string, required = true) {
     if (required) e[name] = 'Enter a date.';
     return null;
   }
-  if (!validOffsetDate(t)) e[name] = 'Use an ISO date with offset, e.g. 2027-02-01T08:00:00+07:00.';
-  return t;
+  const canonical = canonicalTime(t);
+  if (!canonical) e[name] = 'Enter a valid GMT+07:00 date and time.';
+  return canonical;
 }
 function id(e: FieldErrors, name: string, v: string, required = true) {
   const t = v.trim();
@@ -91,6 +92,8 @@ export type LegForm = {
   connectionBufferMinutes: string;
   restDurationMinutes: string;
   careInstructions: string;
+  originCountryCode: string;
+  destinationCountryCode: string;
 };
 export const emptyLeg = (transportMode: LegMode): LegForm => ({
   transportMode,
@@ -107,6 +110,8 @@ export const emptyLeg = (transportMode: LegMode): LegForm => ({
   connectionBufferMinutes: '',
   restDurationMinutes: '',
   careInstructions: '',
+  originCountryCode: '',
+  destinationCountryCode: '',
 });
 const s = (v: string | number | null) => (v === null ? '' : String(v));
 /** Prefill a new draft version from an existing plan; nothing is edited in place. */
@@ -116,15 +121,17 @@ export const legToForm = (l: Leg): LegForm => ({
   endPoint: l.endPoint,
   distanceKm: l.distanceKm,
   distanceSource: s(l.distanceSource),
-  plannedDeparture: l.plannedDeparture,
-  plannedArrival: l.plannedArrival,
-  startTimezone: s(l.startTimezone),
-  endTimezone: s(l.endTimezone),
+  plannedDeparture: localTimeInput(l.plannedDeparture),
+  plannedArrival: localTimeInput(l.plannedArrival),
+  startTimezone: OPERATIONAL_ZONE,
+  endTimezone: OPERATIONAL_ZONE,
   supplierId: s(l.supplierId),
   plannedFlightNumber: s(l.plannedFlightNumber),
   connectionBufferMinutes: s(l.connectionBufferMinutes),
   restDurationMinutes: s(l.restDurationMinutes),
   careInstructions: s(l.careInstructions),
+  originCountryCode: '',
+  destinationCountryCode: '',
 });
 
 /** Field names are prefixed per leg: leg1.distanceKm, leg2.plannedDeparture… */
@@ -149,13 +156,10 @@ export function validateLegs(forms: LegForm[]): Result<LegInput[]> {
       prev &&
       departure &&
       !le.plannedDeparture &&
-      validOffsetDate(prev.plannedArrival.trim()) &&
-      Date.parse(departure) < Date.parse(prev.plannedArrival.trim())
+      canonicalTime(prev.plannedArrival) &&
+      Date.parse(departure) < Date.parse(canonicalTime(prev.plannedArrival)!)
     )
       le.plannedDeparture = `Departs before leg ${i} arrives.`;
-    for (const zone of ['startTimezone', 'endTimezone'] as const)
-      if (f[zone].trim() && !validZone(f[zone].trim()))
-        le[zone] = 'Use an IANA time zone, e.g. Asia/Ho_Chi_Minh.';
     const leg: LegInput = {
       sequenceNo: i + 1,
       transportMode: f.transportMode,
@@ -166,8 +170,8 @@ export function validateLegs(forms: LegForm[]): Result<LegInput[]> {
       distanceSource: req(le, 'distanceSource', f.distanceSource, 1000),
       plannedDeparture: departure ?? '',
       plannedArrival: arrival ?? '',
-      startTimezone: opt(f.startTimezone),
-      endTimezone: opt(f.endTimezone),
+      startTimezone: OPERATIONAL_ZONE,
+      endTimezone: OPERATIONAL_ZONE,
       supplierId: id(le, 'supplierId', f.supplierId, false),
       plannedFlightNumber:
         f.transportMode === 'AIR'

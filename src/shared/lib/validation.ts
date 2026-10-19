@@ -30,7 +30,7 @@ export function safeReturnTo(value: string | null) {
     ? value
     : '/customer/horses';
 }
-export function displayDate(value: string | null, timezone = 'UTC') {
+export function displayDate(value: string | null, timezone = 'Asia/Ho_Chi_Minh') {
   if (!value) return 'Not recorded';
   try {
     return (

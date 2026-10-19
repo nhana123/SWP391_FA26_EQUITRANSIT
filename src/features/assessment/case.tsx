@@ -56,21 +56,15 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
             ['Route', `${show(r.originCountryCode)} → ${show(r.destinationCountryCode)}`],
             ['Pickup address', show(r.originAddress)],
             ['Delivery address', show(r.destinationAddress)],
-            [
-              'Preferred departure',
-              displayDate(r.preferredDepartureAt ?? null, r.originTimezone || undefined),
-            ],
-            [
-              'Delivery deadline',
-              displayDate(r.deliveryDeadline ?? null, r.destinationTimezone || undefined),
-            ],
+            ['Preferred departure', displayDate(r.preferredDepartureAt ?? null)],
+            ['Delivery deadline', displayDate(r.deliveryDeadline ?? null)],
             ['Date flexibility', show(r.dateFlexibilityNotes)],
             ['Import type', show(r.importType)],
             ['Transit airports', r.transitAirports?.length ? r.transitAirports.join(', ') : 'None'],
             ['Receiver', show(r.receiverName)],
             ['Receiver authority', show(r.receiverAuthority)],
             ['Event', show(r.eventName)],
-            ['Event start', displayDate(r.eventStartAt ?? null, r.eventTimezone || undefined)],
+            ['Event start', displayDate(r.eventStartAt ?? null)],
             ['Special needs', show(r.specialNeeds)],
           ]}
         />

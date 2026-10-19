@@ -1,6 +1,7 @@
+import { localTimeInput } from './operational-time';
 import { Field } from '../../shared/ui/common';
 
-export const dateHint = 'ISO date with offset, e.g. 2027-02-01T08:00:00+07:00.';
+export const dateHint = 'Giờ điều hành GMT+07:00.';
 
 export function TextInput({
   label,
@@ -11,6 +12,7 @@ export function TextInput({
   max,
   area,
   inputMode,
+  date,
 }: {
   label: string;
   value: string;
@@ -20,6 +22,7 @@ export function TextInput({
   max: number;
   area?: boolean;
   inputMode?: 'decimal' | 'numeric';
+  date?: boolean;
 }) {
   return (
     <Field label={label} hint={hint} error={error}>
@@ -28,15 +31,17 @@ export function TextInput({
           <textarea
             id={id}
             maxLength={max}
-            value={value}
+            value={date ? localTimeInput(value) : value}
             onChange={(e) => onChange(e.target.value)}
           />
         ) : (
           <input
             id={id}
             maxLength={max}
+            type={date ? 'datetime-local' : 'text'}
+            step={date ? 1 : undefined}
             inputMode={inputMode}
-            value={value}
+            value={date ? localTimeInput(value) : value}
             onChange={(e) => onChange(e.target.value)}
           />
         )

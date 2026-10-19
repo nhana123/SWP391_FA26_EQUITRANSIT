@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import { useSession } from '../../shared/api/session';
@@ -9,10 +8,11 @@ import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common
 import { quotationParent } from '../quotations/navigation';
 import { usePreparationCase } from '../quotations/source';
 import { PLAN_PAGE_SIZE, plansApi } from './api';
-import { legModes, type Candidate, type LegMode } from './contracts';
-import { CommandForm, StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
-import { TextInput, dateHint } from './ui';
-import { emptyLeg, legToForm, validateLegs, type LegForm } from './validation';
+import { type Candidate } from './contracts';
+import { StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
+import { TextInput, Choice } from './ui';
+import { ScheduleBuilder } from './ScheduleBuilder';
+import { legToForm, type LegForm } from './validation';
 import './plans.css';
 
 export const schemaPending = (error: unknown) => error instanceof ApiError && error.status === 503;
@@ -81,17 +81,35 @@ function LegFields({
           onChange={(distanceKm) => onChange({ distanceKm })}
           error={err('distanceKm')}
         />
-        <TextInput
+        <Choice
           label={`Leg ${n} distance source`}
-          hint="Where the distance comes from; it feeds pricing."
-          max={1000}
           value={leg.distanceSource}
+          options={Array.from(
+            new Set([
+              'ROUTE_MATRIX',
+              'SUPPLIER_DECLARATION',
+              'MANUAL_VERIFIED',
+              ...(leg.distanceSource ? [leg.distanceSource] : []),
+            ]),
+          )}
           onChange={(distanceSource) => onChange({ distanceSource })}
           error={err('distanceSource')}
         />
         <TextInput
+          label={`Leg ${n} country from`}
+          max={2}
+          value={leg.originCountryCode}
+          onChange={(v) => onChange({ originCountryCode: v.toUpperCase() })}
+        />
+        <TextInput
+          label={`Leg ${n} country to`}
+          max={2}
+          value={leg.destinationCountryCode}
+          onChange={(v) => onChange({ destinationCountryCode: v.toUpperCase() })}
+        />
+        <TextInput
           label={`Leg ${n} departs`}
-          hint={dateHint}
+          date
           max={35}
           value={leg.plannedDeparture}
           onChange={(plannedDeparture) => onChange({ plannedDeparture })}
@@ -99,70 +117,60 @@ function LegFields({
         />
         <TextInput
           label={`Leg ${n} arrives`}
-          hint={dateHint}
+          date
           max={35}
           value={leg.plannedArrival}
           onChange={(plannedArrival) => onChange({ plannedArrival })}
           error={err('plannedArrival')}
         />
-        <TextInput
-          label={`Leg ${n} start time zone (optional)`}
-          hint="IANA, e.g. Asia/Ho_Chi_Minh."
-          max={100}
-          value={leg.startTimezone}
-          onChange={(startTimezone) => onChange({ startTimezone })}
-          error={err('startTimezone')}
-        />
-        <TextInput
-          label={`Leg ${n} end time zone (optional)`}
-          max={100}
-          value={leg.endTimezone}
-          onChange={(endTimezone) => onChange({ endTimezone })}
-          error={err('endTimezone')}
-        />
-        <TextInput
-          label={`Leg ${n} supplier ID (optional)`}
-          inputMode="numeric"
-          max={15}
-          value={leg.supplierId}
-          onChange={(supplierId) => onChange({ supplierId })}
-          error={err('supplierId')}
-        />
-        {air && (
-          <TextInput
-            label={`Leg ${n} planned flight number (optional)`}
-            max={50}
-            value={leg.plannedFlightNumber}
-            onChange={(plannedFlightNumber) => onChange({ plannedFlightNumber })}
-            error={err('plannedFlightNumber')}
-          />
-        )}
-        <TextInput
-          label={`Leg ${n} connection buffer (min, optional)`}
-          inputMode="numeric"
-          max={6}
-          value={leg.connectionBufferMinutes}
-          onChange={(connectionBufferMinutes) => onChange({ connectionBufferMinutes })}
-          error={err('connectionBufferMinutes')}
-        />
-        <TextInput
-          label={`Leg ${n} rest (min, optional)`}
-          inputMode="numeric"
-          max={6}
-          value={leg.restDurationMinutes}
-          onChange={(restDurationMinutes) => onChange({ restDurationMinutes })}
-          error={err('restDurationMinutes')}
-        />
-        <TextInput
-          label={`Leg ${n} care instructions (optional)`}
-          area
-          max={2000}
-          value={leg.careInstructions}
-          onChange={(careInstructions) => onChange({ careInstructions })}
-          error={err('careInstructions')}
-        />
+        <details className="plan-advanced">
+          <summary>Chi tiết nhà cung cấp, chuyến bay và chăm sóc</summary>
+          <div className="form-grid">
+            <TextInput
+              label={`Leg ${n} supplier ID (optional)`}
+              inputMode="numeric"
+              max={15}
+              value={leg.supplierId}
+              onChange={(supplierId) => onChange({ supplierId })}
+              error={err('supplierId')}
+            />
+            {air && (
+              <TextInput
+                label={`Leg ${n} planned flight number (optional)`}
+                max={50}
+                value={leg.plannedFlightNumber}
+                onChange={(plannedFlightNumber) => onChange({ plannedFlightNumber })}
+                error={err('plannedFlightNumber')}
+              />
+            )}
+            <TextInput
+              label={`Leg ${n} connection buffer (min, optional)`}
+              inputMode="numeric"
+              max={6}
+              value={leg.connectionBufferMinutes}
+              onChange={(connectionBufferMinutes) => onChange({ connectionBufferMinutes })}
+              error={err('connectionBufferMinutes')}
+            />
+            <TextInput
+              label={`Leg ${n} rest (min, optional)`}
+              inputMode="numeric"
+              max={6}
+              value={leg.restDurationMinutes}
+              onChange={(restDurationMinutes) => onChange({ restDurationMinutes })}
+              error={err('restDurationMinutes')}
+            />
+            <TextInput
+              label={`Leg ${n} care instructions (optional)`}
+              area
+              max={2000}
+              value={leg.careInstructions}
+              onChange={(careInstructions) => onChange({ careInstructions })}
+              error={err('careInstructions')}
+            />
+          </div>
+        </details>
       </div>
-      {count > 1 && (
+      {count >= 1 && (
         <button type="button" onClick={onRemove}>
           Remove leg {n}
         </button>
@@ -185,83 +193,24 @@ function DraftForm({
   initial: LegForm[];
   basedOn: number | null;
 }) {
-  const session = useSession()!;
-  const navigate = useNavigate();
-  const [legs, setLegs] = useState<LegForm[]>(initial);
-  const [current, setCurrent] = useState(true);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const update = (i: number, patch: Partial<LegForm>) =>
-    setLegs((all) => all.map((l, j) => (j === i ? { ...l, ...patch } : l)));
-  const add = (mode: LegMode) =>
-    setLegs((all) => (all.length < 20 ? [...all, emptyLeg(mode)] : all));
   return (
-    <CommandForm
-      label="New plan version"
-      title={basedOn ? `New draft version based on plan ${basedOn}` : 'New draft plan'}
+    <ScheduleBuilder
+      orderId={orderId}
+      revisionId={revisionId}
       pinned={pinned}
-      submitLabel="Create draft version"
-      send={(body) => plansApi.draft(orderId, body)}
-      fieldErrors={errors}
-      build={() => {
-        const r = validateLegs(legs);
-        setErrors(r.errors);
-        return r.input ? { revisionId, setAsCurrentDraft: current, legs: r.input } : null;
-      }}
-      onDone={(detail) =>
-        navigate(
-          `${plansPath(session.role as 'MANAGER' | 'COORDINATOR', orderId)}/${detail.planId}`,
-        )
-      }
-    >
-      {(locked, fields) => (
-        <>
-          <p className="muted">
-            Add every leg in order. Use one AIR leg per flight, including transit airports;
-            international travel is not a single flight. Earlier drafts of this revision become
-            superseded.
-          </p>
-          {fields.legs && (
-            <p className="field-error" role="alert">
-              {fields.legs}
-            </p>
-          )}
-          <fieldset className="plan-legs" disabled={locked}>
-            {legs.map((leg, i) => (
-              <LegFields
-                key={i}
-                leg={leg}
-                index={i}
-                count={legs.length}
-                fields={fields}
-                onChange={(patch) => update(i, patch)}
-                onRemove={() => setLegs((all) => all.filter((_, j) => j !== i))}
-              />
-            ))}
-          </fieldset>
-          <div className="actions">
-            {legModes.map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                disabled={locked || legs.length >= 20}
-                onClick={() => add(mode)}
-              >
-                Add {mode} leg
-              </button>
-            ))}
-          </div>
-          <label className="horse-choice">
-            <input
-              type="checkbox"
-              checked={current}
-              disabled={locked}
-              onChange={(e) => setCurrent(e.target.checked)}
-            />
-            <span>Make this the current draft (only if no plan is confirmed)</span>
-          </label>
-        </>
+      initial={initial}
+      basedOn={basedOn}
+      renderLeg={(leg, index, count, fields, change, remove) => (
+        <LegFields
+          leg={leg}
+          index={index}
+          count={count}
+          fields={fields}
+          onChange={change}
+          onRemove={remove}
+        />
       )}
-    </CommandForm>
+    />
   );
 }
 
@@ -431,11 +380,7 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
           revisionId={revisionId}
           pinned={pinned}
           basedOn={source.data ? source.data.planId : null}
-          initial={
-            source.data?.legs.length
-              ? source.data.legs.map(legToForm)
-              : [emptyLeg('ROAD'), emptyLeg('AIR'), emptyLeg('ROAD')]
-          }
+          initial={source.data?.legs.length ? source.data.legs.map(legToForm) : []}
         />
       )}
       <CandidatesSection orderId={orderId} />

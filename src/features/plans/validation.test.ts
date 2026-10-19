@@ -56,8 +56,8 @@ describe('plan leg builder rules (#80)', () => {
       [3, 'AIR', 10880],
       [4, 'ROAD', 45.5],
     ]);
-    // Offsets are sent exactly as entered; flight numbers only on AIR legs.
-    expect(r.input![1].plannedArrival).toBe('2027-02-01T14:30:00+08:00');
+    // Instants are converted to the canonical offset; flight numbers only on AIR legs.
+    expect(r.input![1].plannedArrival).toBe('2027-02-01T13:30:00+07:00');
     expect(r.input![0].plannedFlightNumber).toBeNull();
     expect(r.input![2].plannedFlightNumber).toBe('SQ322');
   });
@@ -76,12 +76,7 @@ describe('plan leg builder rules (#80)', () => {
     expect(r.input).toBeNull();
     expect(r.errors['leg2.plannedDeparture']).toMatch(/before leg 1 arrives/);
     expect(Object.keys(r.errors)).toEqual(
-      expect.arrayContaining([
-        'leg3.plannedArrival',
-        'leg3.startTimezone',
-        'leg3.distanceSource',
-        'leg3.distanceKm',
-      ]),
+      expect.arrayContaining(['leg3.plannedArrival', 'leg3.distanceSource', 'leg3.distanceKm']),
     );
     expect(validateLegs([]).errors.legs).toBeDefined();
     expect(validateLegs(Array.from({ length: 21 }, () => road)).errors.legs).toBeDefined();

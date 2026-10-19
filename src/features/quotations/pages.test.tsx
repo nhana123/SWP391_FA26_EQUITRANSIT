@@ -119,7 +119,7 @@ describe('quotation list and detail', () => {
       .getByRole('heading', { name: 'Quotation summary' })
       .closest('section')!;
     expect(within(summarySection).getByText('Pending')).toBeInTheDocument();
-    expect(screen.getAllByText(/\(UTC\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\(Asia\/Ho_Chi_Minh\)/).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /accept|pay|issue/i })).toBeNull();
   });
   it('shows an accepted historical version without declaring payment or expiry', async () => {
