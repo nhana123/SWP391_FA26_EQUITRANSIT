@@ -1,6 +1,6 @@
 import { ApiError, request } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
-import { taskPageSchema, timelineSchema } from './contracts';
+import { staffDashboardSchema, taskPageSchema, timelineSchema } from './contracts';
 
 export const OPERATIONS_PAGE_SIZE = 20;
 const query = (page: number) =>
@@ -10,6 +10,15 @@ function validPage(page: number) {
 }
 
 export const operationsApi = {
+  /** The caller's scoped overview; a response for another role is rejected. */
+  dashboard: async (role: string, page: number, signal?: AbortSignal) => {
+    validPage(page);
+    const result = await request(`/api/dashboard?${query(page)}`, staffDashboardSchema, {
+      signal,
+    });
+    if (result.role !== role) throw new ApiError(502, 'Dashboard scope mismatch.');
+    return result;
+  },
   /** Only the caller's live, active assigned work; other roles get no tasks. */
   tasks: (page: number, signal?: AbortSignal) => {
     validPage(page);

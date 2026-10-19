@@ -522,6 +522,9 @@ export function DriverLayout() {
         <Link className="brand" to="/driver">
           EquiTransit
         </Link>
+        <nav aria-label="Driver navigation">
+          <Link to="/driver">My Tasks</Link> <Link to="/driver/dashboard">Overview</Link>
+        </nav>
         <button type="button" onClick={clearSession}>
           Log Out
         </button>
