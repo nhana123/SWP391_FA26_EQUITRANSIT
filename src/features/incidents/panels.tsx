@@ -35,7 +35,7 @@ const notDeployed = (error: unknown) =>
  * After an uncertain failure the form locks until the user reloads and checks
  * whether the first attempt was recorded.
  */
-function useWrite(reload: () => Promise<unknown>) {
+export function useWrite(reload: () => Promise<unknown>, help: Record<string, string> = errorHelp) {
   const action = useAction();
   const [unknown, setUnknown] = useState(false);
   const code = action.error instanceof ApiError ? action.error.code : undefined;
@@ -55,7 +55,7 @@ function useWrite(reload: () => Promise<unknown>) {
     },
     notice: (
       <ErrorNotice error={action.error}>
-        {code && errorHelp[code] && <p>{errorHelp[code]}</p>}
+        {code && help[code] && <p>{help[code]}</p>}
         {unknown && (
           <>
             <p>

@@ -10,6 +10,8 @@ export const planStates = [
   'CONFIRMED',
   'ACTIVE',
   'IN_TRANSIT',
+  // Set by F14 final delivery.
+  'COMPLETED',
   'SUPERSEDED',
   'CANCELLED',
   'REJECTED',

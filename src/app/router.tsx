@@ -376,7 +376,6 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <AssignedCasesPage /> },
               { path: ':id', element: <AssignedCasePage /> },
-              { path: ':id/actual-costs', element: <StaffActualCostsPage /> },
               {
                 element: <RoleGate roles={['COORDINATOR']} />,
                 children: [
@@ -388,6 +387,7 @@ export const router = createBrowserRouter([
                   { path: ':id/plans/:planId', element: <PlanDetailPage /> },
                   { path: ':id/departure', element: <DeparturePage /> },
                   { path: ':id/execution', element: <ExecutionPage /> },
+                  { path: ':id/actual-costs', element: <StaffActualCostsPage /> },
                 ],
               },
               {

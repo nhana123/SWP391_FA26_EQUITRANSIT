@@ -37,6 +37,7 @@ import {
   ReportIncidentForm,
 } from '../incidents/panels';
 import { incidentsEnabled } from '../incidents/capability';
+import { LegHandovers } from '../handover/panels';
 import './execution.css';
 
 export const executionKeys = {
@@ -75,6 +76,11 @@ function usePinned(orderId: number, current: string | undefined) {
       ]);
     },
     adopt: (next: string) => setPinned(next),
+    /** After a write that returns no version (F14), re-pin to what loads next. */
+    async repin() {
+      setPinned(null);
+      await reload();
+    },
     reload,
   };
 }
@@ -548,7 +554,7 @@ function WelfareFormView({
 
 type Panel = {
   leg: ExecutionLeg;
-  kind: 'start' | 'complete' | 'milestone' | 'welfare' | 'incidents';
+  kind: 'start' | 'complete' | 'milestone' | 'welfare' | 'incidents' | 'handover';
   correcting?: WelfareLog;
 };
 
@@ -588,6 +594,14 @@ function Workspace({ orderId }: { orderId: number }) {
   const canStart = (leg: ExecutionLeg) =>
     leg.sequenceNo > 1 && leg.legStatus === 'CONFIRMED' && previous(leg)?.legStatus === 'COMPLETED';
   const departed = (leg: ExecutionLeg) => !!leg.actualDeparture;
+  // F14: a driver hands over their own road leg; Coordinator/Manager any leg.
+  const canHandover = (leg: ExecutionLeg) =>
+    leg.legStatus === 'IN_TRANSIT' &&
+    (session.role === 'DRIVER'
+      ? writable(leg)
+      : session.role === 'COORDINATOR' || session.role === 'MANAGER');
+  // Legs are paged; the last leg is numbered legCount.
+  const lastLeg = Math.max(o.legCount, ...o.legs.map((l) => l.sequenceNo));
   const pages = Math.ceil(
     Math.max(o.legCount, o.milestoneCount, o.welfareCount) / EXECUTION_PAGE_SIZE,
   );
@@ -681,6 +695,15 @@ function Workspace({ orderId }: { orderId: number }) {
                           </button>
                         </>
                       )}
+                      {canHandover(leg) && (
+                        <button
+                          type="button"
+                          disabled={pinned.changed}
+                          onClick={() => open({ leg, kind: 'handover' })}
+                        >
+                          Handover
+                        </button>
+                      )}
                       {incidentsEnabled() && writable(leg) && departed(leg) && (
                         <button type="button" onClick={() => open({ leg, kind: 'incidents' })}>
                           {session.role === 'DRIVER' ? 'Report incident' : 'Incidents'}
@@ -709,6 +732,17 @@ function Workspace({ orderId }: { orderId: number }) {
             />
           ) : panel.kind === 'milestone' ? (
             <MilestoneFormView key={`m-${panel.leg.legId}`} o={o} leg={panel.leg} pinned={pinned} />
+          ) : panel.kind === 'handover' ? (
+            <LegHandovers
+              key={`h-${panel.leg.legId}`}
+              legId={panel.leg.legId}
+              asDriver={session.role === 'DRIVER'}
+              finalLeg={panel.leg.sequenceNo === lastLeg}
+              onRecorded={async (message) => {
+                setNotice(message);
+                await pinned.repin();
+              }}
+            />
           ) : panel.kind === 'incidents' ? (
             session.role === 'DRIVER' ? (
               <ReportIncidentForm
