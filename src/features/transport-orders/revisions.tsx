@@ -7,6 +7,8 @@ import { useSession } from '../../shared/api/session';
 import { displayDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice } from '../../shared/ui/common';
 import { PhoneInput } from '../../shared/ui/PhoneInput';
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
+
 import { SnapshotView } from '../assessment/case';
 import { useCaseCommand } from '../assessment/command';
 import { draftForm, draftInput, journeyFields, validateDraft, type DraftForm } from './form';
@@ -280,6 +282,13 @@ function RevisionForm({
                 <PhoneInput
                   id={id}
                   maxLength={f.max}
+                  value={form[f.key]}
+                  onChange={(v) => set(f.key, v)}
+                  invalid={!!fieldError(f.key)}
+                />
+              ) : 'date' in f ? (
+                <DateTimeInput
+                  id={id}
                   value={form[f.key]}
                   onChange={(v) => set(f.key, v)}
                   invalid={!!fieldError(f.key)}

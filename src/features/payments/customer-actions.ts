@@ -42,8 +42,7 @@ export function reportAction(orderId: number, overview: Overview): ActionSpec {
       {
         name: 'transferredAt',
         label: 'Transferred at',
-        hint: 'ISO time with offset, e.g. 2026-10-18T09:00:00+07:00',
-        maxLength: 40,
+        dateTime: true,
       },
       { name: 'bankReference', label: 'Bank transfer reference', maxLength: 150 },
     ],

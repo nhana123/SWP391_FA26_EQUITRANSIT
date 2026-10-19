@@ -1,6 +1,5 @@
 import { Field } from '../../shared/ui/common';
-
-export const dateHint = 'ISO date with offset, e.g. 2027-02-01T08:00:00+07:00.';
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 
 export function TextInput({
   label,
@@ -11,6 +10,7 @@ export function TextInput({
   max,
   area,
   inputMode,
+  date,
 }: {
   label: string;
   value: string;
@@ -20,11 +20,14 @@ export function TextInput({
   max: number;
   area?: boolean;
   inputMode?: 'decimal' | 'numeric';
+  date?: boolean;
 }) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(id) =>
-        area ? (
+        date ? (
+          <DateTimeInput id={id} value={value} onChange={onChange} />
+        ) : area ? (
           <textarea
             id={id}
             maxLength={max}

@@ -108,8 +108,7 @@ export function sumMoney(values: string[]) {
 }
 
 function futureDate(value: string, label: string, now: number) {
-  if (!validOffsetDate(value))
-    return `${label}: use an ISO date with offset, e.g. 2027-01-31T12:00:00Z.`;
+  if (!validOffsetDate(value)) return `${label}: choose a date and time.`;
   if (Date.parse(value) <= now) return `${label} must be in the future.`;
   return undefined;
 }

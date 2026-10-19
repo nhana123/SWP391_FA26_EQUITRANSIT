@@ -22,7 +22,7 @@ import {
   type ReservationState,
 } from './contracts';
 import { CommandForm, type Pinned } from './hooks';
-import { Choice, TextInput, dateHint } from './ui';
+import { Choice, TextInput } from './ui';
 import {
   validateFlight,
   validateInsurance,
@@ -352,7 +352,7 @@ export function FlightForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; 
           />
           <TextInput
             label="Booking expires at"
-            hint={dateHint}
+            date
             max={35}
             value={f.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
@@ -421,7 +421,7 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           />
           <TextInput
             label="Starts at"
-            hint={dateHint}
+            date
             max={35}
             value={f.startsAt}
             onChange={(startsAt) => set({ startsAt })}
@@ -429,6 +429,7 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           />
           <TextInput
             label="Ends at"
+            date
             max={35}
             value={f.endsAt}
             onChange={(endsAt) => set({ endsAt })}
@@ -465,6 +466,7 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           />
           <TextInput
             label="Reservation expires at (optional)"
+            date
             max={35}
             value={f.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
@@ -530,7 +532,7 @@ export function InsuranceForm({ plan, pinned }: { plan: PlanDetail; pinned: Pinn
           />
           <TextInput
             label="Coverage from"
-            hint={dateHint}
+            date
             max={35}
             value={f.coverageFrom}
             onChange={(coverageFrom) => set({ coverageFrom })}
@@ -538,6 +540,7 @@ export function InsuranceForm({ plan, pinned }: { plan: PlanDetail; pinned: Pinn
           />
           <TextInput
             label="Coverage to"
+            date
             max={35}
             value={f.coverageTo}
             onChange={(coverageTo) => set({ coverageTo })}

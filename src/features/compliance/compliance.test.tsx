@@ -1,3 +1,4 @@
+import { setDate, setDateTime } from '../../test/date-time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -147,8 +148,8 @@ describe('customer legal documents (#78)', () => {
       form.getByLabelText('File'),
       new File([new Uint8Array([137, 80, 78, 71])], 'cert.png', { type: 'image/png' }),
     );
-    await type(user, form.getByLabelText('Issued date'), '2026-10-01');
-    await type(user, form.getByLabelText('Expiry date'), '2027-03-01');
+    setDate(form.getByLabelText('Issued date'), '2026-10-01');
+    setDate(form.getByLabelText('Expiry date'), '2027-03-01');
     await waitFor(() =>
       expect(form.getByRole('button', { name: 'Upload new version' })).toBeEnabled(),
     );
@@ -218,8 +219,8 @@ describe('customer legal documents (#78)', () => {
       form.getByLabelText('File'),
       new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
     );
-    await type(user, form.getByLabelText('Issued date'), '2026-10-01');
-    await type(user, form.getByLabelText('Expiry date'), '2027-03-01');
+    setDate(form.getByLabelText('Issued date'), '2026-10-01');
+    setDate(form.getByLabelText('Expiry date'), '2027-03-01');
     await waitFor(() =>
       expect(form.getByRole('button', { name: 'Upload new version' })).toBeEnabled(),
     );
@@ -325,8 +326,8 @@ describe('specialist legal compliance (#78)', () => {
     await type(user, decision.getByLabelText('Authority name'), 'Competent authority');
     await type(user, decision.getByLabelText('Application reference'), 'AUTH-1');
     await type(user, decision.getByLabelText('Source reference'), 'Decision letter');
-    await type(user, decision.getByLabelText('Decided at'), '2026-10-16T12:00:00Z');
-    await type(user, decision.getByLabelText('Expires at'), '2099-03-01T12:00:00Z');
+    setDateTime(decision.getByLabelText('Decided at'), '2026-10-16T12:00:00Z');
+    setDateTime(decision.getByLabelText('Expires at'), '2099-03-01T12:00:00Z');
     await user.click(decision.getByRole('button', { name: 'Record decision' }));
     expect(decision.getByText('Upload the authority evidence first.')).toBeInTheDocument();
     expect(complianceApi.procedure).not.toHaveBeenCalled();
@@ -372,7 +373,7 @@ describe('specialist legal compliance (#78)', () => {
     for (const label of ['Veterinary visits', 'Tests', 'Vaccine doses', 'Certificates'])
       await type(user, form.getByLabelText(label), '0');
     await type(user, form.getByLabelText('Source reference'), 'Authority guidance');
-    await type(user, form.getByLabelText('Valid until'), '2099-02-20T12:00:00Z');
+    setDateTime(form.getByLabelText('Valid until'), '2099-02-20T12:00:00Z');
     await user.click(form.getByRole('button', { name: 'Record assessment' }));
     await waitFor(() => expect(complianceApi.assess).toHaveBeenCalledTimes(1));
     expect(vi.mocked(complianceApi.assess).mock.calls[0][1]).toMatchObject({
@@ -388,7 +389,7 @@ describe('specialist legal compliance (#78)', () => {
     );
     const user = mount('SPECIALIST');
     const form = within(await screen.findByRole('form', { name: 'Clear Pre-export' }));
-    await type(user, form.getByLabelText('Clearance expires at'), '2099-01-01T00:00:00Z');
+    setDateTime(form.getByLabelText('Clearance expires at'), '2099-01-01T00:00:00Z');
     await user.click(form.getByRole('button', { name: 'Clear pre-export' }));
     expect(
       await form.findByText(/cannot be cleared: some evidence is missing/),

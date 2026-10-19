@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
@@ -88,6 +89,7 @@ function TextField({
   hint,
   max,
   area,
+  date,
 }: {
   label: string;
   value: string;
@@ -96,11 +98,14 @@ function TextField({
   hint?: string;
   max: number;
   area?: boolean;
+  date?: boolean;
 }) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(id) =>
-        area ? (
+        date ? (
+          <DateTimeInput id={id} value={value} onChange={onChange} />
+        ) : area ? (
           <textarea
             id={id}
             maxLength={max}
@@ -147,7 +152,7 @@ export function ReportIncidentForm({
     if (!f.severityLevel) next.severityLevel = 'Choose the severity.';
     const time = f.incidentTime.trim();
     if (time && (!validOffsetDate(time) || Date.parse(time) > Date.now()))
-      next.incidentTime = 'Use a past ISO date with offset, or leave empty for now.';
+      next.incidentTime = 'Choose a past date and time, or leave empty for now.';
     const description = f.description.trim();
     if (!description) next.description = 'Describe what happened.';
     const keys = f.evidence
@@ -222,7 +227,8 @@ export function ReportIncidentForm({
         </Field>
         <TextField
           label="Incident time (optional)"
-          hint="ISO date with offset; empty means now."
+          date
+          hint="Leave empty to use the current time."
           max={35}
           value={f.incidentTime}
           onChange={(incidentTime) => set({ incidentTime })}

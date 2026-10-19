@@ -28,10 +28,10 @@ export const journeyFields = [
     max: 100,
     hint: 'IANA zone, e.g. Europe/London.',
   },
-  { key: 'preferredDepartureAt', label: 'Preferred departure (ISO date with offset)', date: true },
+  { key: 'preferredDepartureAt', label: 'Preferred departure', date: true },
   {
     key: 'deliveryDeadline',
-    label: 'Latest lawful handover deadline (ISO date with offset)',
+    label: 'Latest lawful handover deadline',
     date: true,
   },
   { key: 'dateFlexibilityNotes', label: 'Date flexibility', max: 500 },
@@ -41,7 +41,7 @@ export const journeyFields = [
   { key: 'receiverAuthority', label: 'Receiver authority', max: 500 },
   { key: 'eventName', label: 'Race event name (optional)', max: 200 },
   { key: 'eventVenue', label: 'Event venue', max: 300 },
-  { key: 'eventStartAt', label: 'Event start (ISO date with offset)', date: true },
+  { key: 'eventStartAt', label: 'Event start', date: true },
   { key: 'eventTimezone', label: 'Event timezone', max: 100 },
   { key: 'specialNeeds', label: 'Special needs', max: 1000 },
 ] as const;
@@ -79,8 +79,7 @@ export function validateDraft(form: DraftForm, complete = false, now = Date.now(
   for (const f of journeyFields) {
     const value = form[f.key].trim();
     if ('max' in f && value.length > f.max) errors[f.key] = `Use at most ${f.max} characters.`;
-    if ('date' in f && value && !validOffsetDate(value))
-      errors[f.key] = 'Use an ISO date with an explicit offset, e.g. 2027-02-01T08:00:00+07:00.';
+    if ('date' in f && value && !validOffsetDate(value)) errors[f.key] = 'Choose a date and time.';
     if (
       f.key.endsWith('Timezone') &&
       value &&

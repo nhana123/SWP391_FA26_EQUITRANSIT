@@ -1,3 +1,4 @@
+import { fillDateTime } from './date-time';
 import { test, expect } from '@playwright/test';
 import type { Horse, Order, OrderDraft } from '../../src/shared/api/contracts';
 
@@ -100,12 +101,8 @@ test('customer saves a draft, submits once and retries only the failed status re
   await page.getByLabel('Destination address', { exact: true }).fill('Test destination stable');
   await page.getByLabel('Origin timezone', { exact: true }).fill('Asia/Ho_Chi_Minh');
   await page.getByLabel('Destination timezone', { exact: true }).fill('Europe/London');
-  await page
-    .getByLabel('Preferred departure (ISO date with offset)')
-    .fill('2030-02-01T08:00:00+07:00');
-  await page
-    .getByLabel('Latest lawful handover deadline (ISO date with offset)')
-    .fill('2030-02-03T18:00:00Z');
+  await fillDateTime(page.getByLabel('Preferred departure'), '2030-02-01T08:00:00+07:00');
+  await fillDateTime(page.getByLabel('Latest lawful handover deadline'), '2030-02-03T18:00:00Z');
   await page.getByLabel('Import type').selectOption('NEEDS_ADVICE');
   await page.getByRole('button', { name: '2. Horse' }).click();
   await page.getByRole('radio', { name: /Browser Test Horse/ }).check();

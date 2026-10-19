@@ -37,7 +37,7 @@ function date(
   opts: { future?: boolean; past?: boolean } = {},
 ) {
   const v = value.trim();
-  if (!validOffsetDate(v)) errors[name] = 'Use an ISO date with offset, e.g. 2027-02-01T00:00:00Z.';
+  if (!validOffsetDate(v)) errors[name] = 'Choose a date and time.';
   else if (opts.future && Date.parse(v) <= Date.now()) errors[name] = 'Use a future date.';
   else if (opts.past && Date.parse(v) > Date.now()) errors[name] = 'This cannot be in the future.';
   return v;

@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useHorse, useHorseSearch } from './hooks';
@@ -268,7 +269,15 @@ export function HorseEditor({ horse }: { horse?: Horse }) {
                 hint={'hint' in f ? f.hint : undefined}
               >
                 {(id) =>
-                  'multiline' in f ? (
+                  'type' in f && f.type === 'datetime' ? (
+                    <DateTimeInput
+                      id={id}
+                      value={form[f.key]}
+                      invalid={!!errors[f.key]}
+                      describedBy={errors[f.key] ? `${id}-error` : undefined}
+                      onChange={(v) => update(f.key, v)}
+                    />
+                  ) : 'multiline' in f ? (
                     <textarea
                       id={id}
                       maxLength={f.max}

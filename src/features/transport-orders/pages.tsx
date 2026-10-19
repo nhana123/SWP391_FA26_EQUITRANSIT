@@ -11,6 +11,8 @@ import { useHorseSearch } from '../horses/hooks';
 import { useAction } from '../../shared/lib/useAction';
 import type { FieldErrors } from '../../shared/lib/validation';
 import { PhoneInput } from '../../shared/ui/PhoneInput';
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
+
 import {
   ErrorNotice,
   Field,
@@ -412,7 +414,8 @@ export function OrderEditor({
           <section className="card">
             <h2>Journey and handover</h2>
             <p className="muted">
-              Dates must include an offset. Route timezone is separate from your device timezone.
+              Pick each date with its time zone. Route timezone is separate from your device
+              timezone.
             </p>
             <div className="form-grid">
               {journeyFields.map((f) => (
@@ -420,19 +423,21 @@ export function OrderEditor({
                   key={f.key}
                   label={f.label}
                   error={fieldError(f.key)}
-                  hint={
-                    'hint' in f
-                      ? f.hint
-                      : 'date' in f
-                        ? 'Example: 2027-02-01T08:00:00+07:00'
-                        : undefined
-                  }
+                  hint={'hint' in f ? f.hint : undefined}
                 >
                   {(id) =>
                     f.key === 'receiverPhone' ? (
                       <PhoneInput
                         id={id}
                         maxLength={f.max}
+                        value={form[f.key]}
+                        onChange={(v) => change(f.key, v)}
+                        invalid={!!fieldError(f.key)}
+                        describedBy={fieldError(f.key) ? `${id}-error` : undefined}
+                      />
+                    ) : 'date' in f ? (
+                      <DateTimeInput
+                        id={id}
                         value={form[f.key]}
                         onChange={(v) => change(f.key, v)}
                         invalid={!!fieldError(f.key)}
