@@ -110,6 +110,6 @@ describe('staff dashboard adapter', () => {
       );
     vi.stubGlobal('fetch', fetch);
     await expect(operationsApi.dashboard('DRIVER', 0)).rejects.toMatchObject({ status: 502 });
-    expect(fetch.mock.calls[0][0]).toBe('http://127.0.0.1:8080/api/dashboard?page=0&size=20');
+    expect(fetch.mock.calls[0][0]).toBe('http://localhost:8080/api/dashboard?page=0&size=20');
   });
 });

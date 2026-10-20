@@ -1,7 +1,11 @@
 import { localTimeInput } from './operational-time';
 import { Field } from '../../shared/ui/common';
+<<<<<<< HEAD
 
 export const dateHint = 'Giờ điều hành GMT+07:00.';
+=======
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
 
 export function TextInput({
   label,
@@ -27,7 +31,9 @@ export function TextInput({
   return (
     <Field label={label} hint={hint} error={error}>
       {(id) =>
-        area ? (
+        date ? (
+          <DateTimeInput id={id} value={value} onChange={onChange} />
+        ) : area ? (
           <textarea
             id={id}
             maxLength={max}

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
-import { clearSession, useSession } from '../../shared/api/session';
+import { signOut } from '../../shared/api/refresh';
+import { useSession } from '../../shared/api/session';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { Details, show, SnapshotView } from '../assessment/case';
@@ -95,7 +96,7 @@ export function AssignedCasesLayout() {
           </button>
           <span>Case preparation</span>
           <NotificationBell />
-          <button type="button" onClick={clearSession}>
+          <button type="button" onClick={() => void signOut()}>
             Log Out
           </button>
         </header>

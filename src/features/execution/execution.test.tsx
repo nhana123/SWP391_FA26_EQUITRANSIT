@@ -1,3 +1,4 @@
+import { setDateTime } from '../../test/date-time';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -128,7 +129,7 @@ describe('trip progress (#81 F12)', () => {
     await user.click(within(rows[2]).getByRole('button', { name: 'Start' }));
     const form = within(screen.getByRole('form', { name: 'Start leg 2' }));
     expect(form.queryByRole('option', { name: 'Driver report' })).toBeNull();
-    await fill(user, form.getByLabelText('Occurred at'), '2026-10-18T09:00:00Z');
+    setDateTime(form.getByLabelText('Occurred at'), '2026-10-18T09:00:00Z');
     await user.selectOptions(form.getByLabelText('Source'), 'CARRIER');
     await fill(user, form.getByLabelText('Source reference'), 'Carrier message SQ-101');
     await user.click(form.getByRole('button', { name: 'Record start' }));
@@ -160,7 +161,7 @@ describe('trip progress (#81 F12)', () => {
     );
     const form = within(screen.getByRole('form', { name: 'Add welfare check to leg 1' }));
     await user.selectOptions(form.getByLabelText('Health status'), 'URGENT');
-    await fill(user, form.getByLabelText('Occurred at'), '2026-10-18T07:10:00Z');
+    setDateTime(form.getByLabelText('Occurred at'), '2026-10-18T07:10:00Z');
     await user.selectOptions(form.getByLabelText('Source'), 'DRIVER_REPORT');
     await fill(user, form.getByLabelText('Source reference'), 'Driver call');
     await fill(user, form.getByLabelText('Temperature °C (optional)'), '39.60');
@@ -215,7 +216,7 @@ describe('trip progress (#81 F12)', () => {
     const user = mount('DRIVER');
     await user.click(await screen.findByRole('button', { name: 'Complete' }));
     const form = within(screen.getByRole('form', { name: 'Complete leg 1' }));
-    await fill(user, form.getByLabelText('Occurred at'), '2026-10-18T07:30:00Z');
+    setDateTime(form.getByLabelText('Occurred at'), '2026-10-18T07:30:00Z');
     await user.selectOptions(form.getByLabelText('Source'), 'DRIVER_REPORT');
     await fill(user, form.getByLabelText('Source reference'), 'Arrived at stable');
     await user.click(form.getByRole('button', { name: 'Record arrival' }));

@@ -232,7 +232,7 @@ describe('decision rules', () => {
   };
   it('rejects past or offset-less deadlines', () => {
     expect(validateDecision(form, Date.parse('2031-01-01T00:00:00Z')).dueAt).toMatch(/future/);
-    expect(validateDecision({ ...form, dueAt: '2030-01-01T00:00' }).dueAt).toMatch(/offset/);
+    expect(validateDecision({ ...form, dueAt: '2030-01-01T00:00' }).dueAt).toMatch(/date and time/);
   });
   it('drops the reason on approval and blanks become null', () => {
     const command = decisionCommand(form, caseOf(), 70, 'op');

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { clearSession } from '../../shared/api/session';
+import { signOut } from '../../shared/api/refresh';
 import { NotificationBell } from '../activity-customer/notifications';
 import './assessment.css';
 
@@ -55,7 +55,7 @@ export function ManagerLayout() {
           </button>
           <span>Request assessment</span>
           <NotificationBell />
-          <button type="button" onClick={clearSession}>
+          <button type="button" onClick={() => void signOut()}>
             Log Out
           </button>
         </header>

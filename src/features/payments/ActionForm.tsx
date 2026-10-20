@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { getSession, useSession } from '../../shared/api/session';
@@ -18,6 +19,8 @@ export type PaymentField = {
   multiline?: boolean;
   money?: boolean;
   readonly?: boolean;
+  /** Rendered as a date-time picker producing ISO with offset. */
+  dateTime?: boolean;
 };
 export type ActionSpec = {
   key: string;
@@ -164,6 +167,13 @@ export function PaymentActionForm({ spec, context }: { spec: ActionSpec; context
                     </option>
                   ))}
                 </select>
+              ) : field.dateTime ? (
+                <DateTimeInput
+                  id={id}
+                  value={values[field.name] ?? ''}
+                  invalid={!!fields[field.name]}
+                  onChange={(v) => setValues((cur) => ({ ...cur, [field.name]: v }))}
+                />
               ) : field.multiline ? (
                 <textarea
                   id={id}

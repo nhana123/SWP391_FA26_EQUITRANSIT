@@ -1,3 +1,4 @@
+import { fillDateTime } from './date-time';
 import { test, expect } from '@playwright/test';
 import {
   testOverview,
@@ -66,7 +67,7 @@ test('Customer uploads evidence and reports a transfer without recognizing bank 
   const form = page.getByRole('form', { name: 'Report a bank transfer' });
   await form.getByLabel('Payment obligation').selectOption('101');
   await form.getByLabel('Amount transferred (USD)').fill('50.00');
-  await form.getByLabel('Transferred at').fill('2020-01-01T00:00:00Z');
+  await fillDateTime(form.getByLabel('Transferred at'), '2020-01-01T00:00:00Z');
   await form.getByLabel('Bank transfer reference').fill('TEST-REPORT');
   await form.getByLabel('PNG or JPEG evidence').setInputFiles({
     name: 'test-proof.png',

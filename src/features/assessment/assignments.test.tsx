@@ -122,7 +122,9 @@ describe('case team', () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Replace Specialist' }));
     const form = screen.getByRole('form', { name: 'Replace Specialist' });
-    expect(within(form).getByLabelText(/Preparation deadline/)).toHaveValue('2099-01-01T00:00:00Z');
+    // The saved deadline shows in the picker with its own zone (UTC here).
+    expect(within(form).getByLabelText(/Preparation deadline/)).toHaveValue('2099-01-01T00:00');
+    expect(within(form).getByLabelText('Time zone')).toHaveValue('Z');
     expect(within(form).getByLabelText(/Note for assigned staff/)).toHaveValue(
       'Check export rules',
     );

@@ -8,6 +8,7 @@ import { PlanDetailPage } from './PlanDetailPage';
 import { plansApi } from './api';
 import { planDetailSchema } from './contracts';
 import { planDetail } from './testing';
+import { setDateTime } from '../../test/date-time';
 import { resourcesApi } from '../resources/api';
 import { quotationsApi } from '../quotations/api';
 import { pageOf, summary } from '../quotations/testing';
@@ -134,11 +135,18 @@ describe('plan versions and draft builder (#80)', () => {
       ['Leg 2 arrives', '2027-02-02T03:00:00'],
     ];
     for (const [label, value] of values) {
+<<<<<<< HEAD
       const field = form.getByLabelText(label);
       if (field.tagName === 'SELECT') await user.selectOptions(field, value);
       else fireEvent.change(field, { target: { value: value.replace('+07:00', '') } });
     }
     await user.click(form.getByRole('button', { name: '💾 Lưu Chuỗi Lịch Trình Xuống Hệ Thống' }));
+=======
+      if (/departs|arrives/.test(label)) setDateTime(form.getByLabelText(label), value);
+      else await fill(user, form.getByLabelText(label), value);
+    }
+    await user.click(form.getByRole('button', { name: 'Create draft version' }));
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
     await waitFor(() => expect(plansApi.draft).toHaveBeenCalledTimes(1));
     const [orderId, body] = vi.mocked(plansApi.draft).mock.calls[0];
     expect(orderId).toBe(101);

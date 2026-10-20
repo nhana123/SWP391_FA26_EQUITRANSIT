@@ -1,3 +1,4 @@
+import { setDateTime } from '../../test/date-time';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -136,7 +137,7 @@ describe('leg handover (F14)', () => {
     );
     const form = within(await screen.findByRole('form', { name: 'Record handover' }));
     expect(form.getByLabelText('Handover type')).toHaveValue('FINAL_RECEIVER');
-    await fill(user, form.getByLabelText('Handover time'), '2026-10-18T09:00:00Z');
+    setDateTime(form.getByLabelText('Handover time'), '2026-10-18T09:00:00Z');
     await fill(user, form.getByLabelText('Received by'), 'Jean-Pierre Dubois');
     await fill(user, form.getByLabelText(/Receiver authority/), 'STABLE_MANAGER');
     await fill(user, form.getByLabelText('Receiver signature file'), 'signatures/dubois.png');
@@ -170,7 +171,7 @@ describe('leg handover (F14)', () => {
     expect(await screen.findByText(/Markus Vance/)).toBeInTheDocument();
     const form = within(screen.getByRole('form', { name: 'Record handover' }));
     expect(form.queryByRole('option', { name: 'Final delivery to receiver' })).toBeNull();
-    await fill(user, form.getByLabelText('Handover time'), '2026-10-18T07:00:00Z');
+    setDateTime(form.getByLabelText('Handover time'), '2026-10-18T07:00:00Z');
     await fill(user, form.getByLabelText('Received by'), 'Markus Vance');
     await user.click(form.getByRole('button', { name: 'Record handover' }));
     await waitFor(() => expect(intermediate).toHaveBeenCalledTimes(1));
@@ -189,7 +190,7 @@ describe('leg handover (F14)', () => {
       <LegHandovers legId={903} asDriver={false} finalLeg onRecorded={vi.fn()} />,
     );
     const form = within(await screen.findByRole('form', { name: 'Record handover' }));
-    await fill(user, form.getByLabelText('Handover time'), '2026-10-18T09:00:00Z');
+    setDateTime(form.getByLabelText('Handover time'), '2026-10-18T09:00:00Z');
     await fill(user, form.getByLabelText('Received by'), 'Owner');
     await fill(user, form.getByLabelText('Receiver signature file'), 'sig');
     await fill(user, form.getByLabelText('Handover photo file'), 'photo');
@@ -263,7 +264,7 @@ describe('actual costs and profitability (F14)', () => {
     await user.selectOptions(form.getByLabelText('Leg'), '901');
     await user.selectOptions(form.getByLabelText('Cost type'), 'ROAD_TOLL');
     await fill(user, form.getByLabelText('Amount'), '-5');
-    await fill(user, form.getByLabelText('Incurred at'), '2026-10-18T05:00:00Z');
+    setDateTime(form.getByLabelText('Incurred at'), '2026-10-18T05:00:00Z');
     await user.click(form.getByRole('button', { name: 'Record cost' }));
     expect(await form.findByText(/non-negative amount/)).toBeInTheDocument();
     await user.clear(form.getByLabelText('Amount'));
@@ -312,7 +313,7 @@ describe('handover adapter (F14)', () => {
     await handoverApi.forLeg(false, 903);
     await handoverApi.costs(801);
     await handoverApi.customerList(101);
-    const origin = 'http://127.0.0.1:8080';
+    const origin = 'http://localhost:8080';
     expect(fetch.mock.calls.map((c) => c[0])).toEqual([
       `${origin}/api/driver/legs/903/handovers`,
       `${origin}/api/coordinator/legs/903/handovers`,

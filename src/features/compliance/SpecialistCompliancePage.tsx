@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -62,6 +63,7 @@ function TextInput({
   hint,
   max,
   area,
+  date,
 }: {
   label: string;
   value: string;
@@ -70,11 +72,14 @@ function TextInput({
   hint?: string;
   max: number;
   area?: boolean;
+  date?: boolean;
 }) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(id) =>
-        area ? (
+        date ? (
+          <DateTimeInput id={id} value={value} onChange={onChange} />
+        ) : area ? (
           <textarea
             id={id}
             maxLength={max}
@@ -120,7 +125,6 @@ function Choice<T extends string>({
     </Field>
   );
 }
-const dateHint = 'ISO date with offset, e.g. 2027-02-01T00:00:00Z.';
 
 function ReviewForm({
   orderId,
@@ -211,7 +215,7 @@ function ClearanceForm({
           <fieldset className="form-grid" disabled={locked}>
             <TextInput
               label="Clearance expires at"
-              hint={dateHint}
+              date
               max={35}
               value={expiresAt}
               onChange={setExpiresAt}
@@ -350,7 +354,7 @@ function RulesSection({
               />
               <TextInput
                 label="Effective from"
-                hint={dateHint}
+                date
                 max={35}
                 value={f.effectiveFrom}
                 onChange={(effectiveFrom) => set({ effectiveFrom })}
@@ -358,6 +362,7 @@ function RulesSection({
               />
               <TextInput
                 label="Effective to (optional)"
+                date
                 hint="Empty = open-ended, still bounded by checklist validity."
                 max={35}
                 value={f.effectiveTo}
@@ -441,7 +446,7 @@ function ChecklistForm({
             />
             <TextInput
               label="Valid until"
-              hint={dateHint}
+              date
               max={35}
               value={f.validUntil}
               onChange={(validUntil) => set({ validUntil })}
@@ -627,7 +632,7 @@ function AuthoritySection({
             />
             <TextInput
               label="Decided at"
-              hint={dateHint}
+              date
               max={35}
               value={f.decidedAt}
               onChange={(decidedAt) => set({ decidedAt })}
@@ -635,7 +640,7 @@ function AuthoritySection({
             />
             <TextInput
               label="Expires at"
-              hint={dateHint}
+              date
               max={35}
               value={f.expiresAt}
               onChange={(expiresAt) => set({ expiresAt })}
@@ -771,7 +776,7 @@ function AssessmentSection({ orderId, pinned }: { orderId: number; pinned: Pinne
               />
               <TextInput
                 label="Valid until"
-                hint={dateHint}
+                date
                 max={35}
                 value={f.validUntil}
                 onChange={(validUntil) => set({ validUntil })}

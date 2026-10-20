@@ -23,7 +23,7 @@ import {
   type ReservationState,
 } from './contracts';
 import { CommandForm, type Pinned } from './hooks';
-import { Choice, TextInput, dateHint } from './ui';
+import { Choice, TextInput } from './ui';
 import {
   validateFlight,
   validateInsurance,
@@ -372,7 +372,10 @@ export function FlightForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; 
           <TextInput
             label="Booking expires at"
             date
+<<<<<<< HEAD
             hint={dateHint}
+=======
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
             max={35}
             value={f.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
@@ -442,7 +445,10 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
           <TextInput
             label="Starts at"
             date
+<<<<<<< HEAD
             hint={dateHint}
+=======
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
             max={35}
             value={f.startsAt}
             onChange={(startsAt) => set({ startsAt })}
@@ -554,7 +560,10 @@ export function InsuranceForm({ plan, pinned }: { plan: PlanDetail; pinned: Pinn
           <TextInput
             label="Coverage from"
             date
+<<<<<<< HEAD
             hint={dateHint}
+=======
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
             max={35}
             value={f.coverageFrom}
             onChange={(coverageFrom) => set({ coverageFrom })}

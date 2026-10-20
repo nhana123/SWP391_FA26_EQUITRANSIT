@@ -58,7 +58,8 @@ import {
   ManagerSettlementPage,
   StaffActualCostsPage,
 } from '../features/settlement/pages';
-import { clearSession, useSession } from '../shared/api/session';
+import { signOut } from '../shared/api/refresh';
+import { useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
 import type { Role } from '../shared/api/contracts';
@@ -91,7 +92,7 @@ function PublicLayout() {
               <Link className="button primary" to={workspaceHome(session.role)}>
                 My Workspace
               </Link>
-              <button type="button" onClick={clearSession}>
+              <button type="button" onClick={() => void signOut()}>
                 Log Out
               </button>
             </>
@@ -221,7 +222,7 @@ function CustomerLayout() {
           </button>
           <span>International horse transport</span>
           <NotificationBell />
-          <button type="button" onClick={clearSession}>
+          <button type="button" onClick={() => void signOut()}>
             Log Out
           </button>
         </header>
@@ -246,7 +247,7 @@ function StaffLanding() {
       <Notice>
         Your account is signed in. This role workspace is not available in this release.
       </Notice>
-      <button onClick={clearSession}>Log Out</button>
+      <button onClick={() => void signOut()}>Log Out</button>
     </section>
   );
 }

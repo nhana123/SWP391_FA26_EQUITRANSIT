@@ -42,7 +42,7 @@ it('Customer handover page loads only the redacted customer handovers', async ()
     'href',
     '/customer/requests/11',
   );
-  expect(calls()).toEqual(['http://127.0.0.1:8080/api/customer/transport-orders/11/handovers']);
+  expect(calls()).toEqual(['http://localhost:8080/api/customer/transport-orders/11/handovers']);
 });
 
 it('Manager page states that costs never close a request financially', async () => {
@@ -52,7 +52,7 @@ it('Manager page states that costs never close a request financially', async () 
   ).toBeInTheDocument();
   expect(screen.getByText(/do not close a request financially/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Close transport request' })).toBeNull();
-  expect(calls()).toEqual(['http://127.0.0.1:8080/api/transport-orders/11/plans?page=0&size=20']);
+  expect(calls()).toEqual(['http://localhost:8080/api/transport-orders/11/plans?page=0&size=20']);
 });
 
 it.each([

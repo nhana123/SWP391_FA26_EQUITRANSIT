@@ -36,9 +36,14 @@ function when(e: FieldErrors, name: string, v: string, required = true) {
     if (required) e[name] = 'Enter a date.';
     return null;
   }
+<<<<<<< HEAD
   const canonical = canonicalTime(t);
   if (!canonical) e[name] = 'Enter a valid GMT+07:00 date and time.';
   return canonical;
+=======
+  if (!validOffsetDate(t)) e[name] = 'Choose a date and time.';
+  return t;
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
 }
 function id(e: FieldErrors, name: string, v: string, required = true) {
   const t = v.trim();

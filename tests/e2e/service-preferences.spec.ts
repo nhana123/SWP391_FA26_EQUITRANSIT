@@ -1,3 +1,4 @@
+import { fillDateTime } from './date-time';
 import { test, expect } from '@playwright/test';
 import { testDisclosure, testOrder } from '../../src/features/booking-services/testing';
 
@@ -191,7 +192,7 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
     await form.getByLabel('Quantity', { exact: true }).fill('1.000');
     await form.getByLabel(/Purchase unit price/).fill('812.20');
     await form.getByLabel(/Retail unit price/).fill('932.40');
-    await form.getByLabel('Offer valid until').fill('2099-01-01T00:00:00Z');
+    await fillDateTime(form.getByLabel('Offer valid until'), '2099-01-01T00:00:00Z');
     await form.getByLabel('Evidence reference', { exact: true }).fill('test-only/evidence');
     await form.getByLabel('Bundle coverage').selectOption(coverage);
     await form.getByLabel('Air stall', { exact: true }).check();

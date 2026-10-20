@@ -1,3 +1,4 @@
+import { setDateTime } from '../../test/date-time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -73,7 +74,7 @@ async function fillOffer(user: ReturnType<typeof userEvent.setup>, purchase = '8
   await fill(user, f.getByLabelText('Quantity'), '1');
   await fill(user, f.getByLabelText(/Purchase unit price/), purchase);
   await fill(user, f.getByLabelText(/Retail unit price/), '1000.00');
-  await fill(user, f.getByLabelText('Offer valid until'), '2099-01-31T12:00:00Z');
+  setDateTime(f.getByLabelText('Offer valid until'), '2099-01-31T12:00:00Z');
   await fill(user, f.getByLabelText('Evidence reference'), 'docs/offer-1.pdf');
   return f;
 }

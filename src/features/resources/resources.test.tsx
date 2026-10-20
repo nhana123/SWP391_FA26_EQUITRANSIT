@@ -1,3 +1,4 @@
+import { setDateTime } from '../../test/date-time';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -289,8 +290,8 @@ function mountProbe(role: Role = 'MANAGER') {
 async function fillProbe(user: ReturnType<typeof userEvent.setup>) {
   const form = within(await screen.findByRole('form', { name: 'Check resource availability' }));
   await user.type(form.getByLabelText('Resource ID'), '12');
-  await user.type(form.getByLabelText('Window start'), '2027-02-01T08:00:00Z');
-  await user.type(form.getByLabelText('Window end'), '2027-02-01T18:00:00Z');
+  setDateTime(form.getByLabelText('Window start'), '2027-02-01T08:00:00Z');
+  setDateTime(form.getByLabelText('Window end'), '2027-02-01T18:00:00Z');
   return form;
 }
 
@@ -366,14 +367,14 @@ describe('case availability probe (#79)', () => {
     );
     const user = mountProbe();
     const form = within(await screen.findByRole('form', { name: 'Check resource availability' }));
-    await user.type(form.getByLabelText('Window start'), '2027-02-01T18:00:00Z');
-    await user.type(form.getByLabelText('Window end'), '2027-02-01T08:00:00Z');
+    setDateTime(form.getByLabelText('Window start'), '2027-02-01T18:00:00Z');
+    setDateTime(form.getByLabelText('Window end'), '2027-02-01T08:00:00Z');
     await user.click(form.getByRole('button', { name: 'Check availability' }));
     expect(form.getByText('Enter the resource ID.')).toBeInTheDocument();
     expect(form.getByText('The end must follow the start.')).toBeInTheDocument();
     expect(resourcesApi.probe).not.toHaveBeenCalled();
     await user.clear(form.getByLabelText('Window end'));
-    await user.type(form.getByLabelText('Window end'), '2027-02-02T08:00:00Z');
+    setDateTime(form.getByLabelText('Window end'), '2027-02-02T08:00:00Z');
     await user.type(form.getByLabelText('Resource ID'), '12');
     await user.click(form.getByRole('button', { name: 'Check availability' }));
     expect(await form.findByText(/revision changed or is not eligible/)).toBeInTheDocument();

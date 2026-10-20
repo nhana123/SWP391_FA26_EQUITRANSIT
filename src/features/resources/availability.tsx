@@ -1,3 +1,4 @@
+import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
@@ -64,8 +65,8 @@ const validId = (v: string) =>
 export function validateProbe(p: Probe): FieldErrors {
   const errors: FieldErrors = {};
   if (!validId(p.resourceId)) errors.resourceId = 'Enter the resource ID.';
-  if (!validOffsetDate(p.start.trim())) errors.start = 'Use an ISO date with offset.';
-  if (!validOffsetDate(p.end.trim())) errors.end = 'Use an ISO date with offset.';
+  if (!validOffsetDate(p.start.trim())) errors.start = 'Choose a date and time.';
+  if (!validOffsetDate(p.end.trim())) errors.end = 'Choose a date and time.';
   else if (!errors.start && Date.parse(p.end) <= Date.parse(p.start))
     errors.end = 'The end must follow the start.';
   if (p.carrierSupplierId.trim() && !validId(p.carrierSupplierId))
@@ -146,25 +147,13 @@ function ProbeForm({
             />
           )}
         </Field>
-        <Field label="Window start" hint="ISO date with offset." error={errors.start}>
+        <Field label="Window start" error={errors.start}>
           {(id) => (
-            <input
-              id={id}
-              maxLength={35}
-              value={input.start}
-              onChange={(e) => update({ start: e.target.value })}
-            />
+            <DateTimeInput id={id} value={input.start} onChange={(start) => update({ start })} />
           )}
         </Field>
         <Field label="Window end" error={errors.end}>
-          {(id) => (
-            <input
-              id={id}
-              maxLength={35}
-              value={input.end}
-              onChange={(e) => update({ end: e.target.value })}
-            />
-          )}
+          {(id) => <DateTimeInput id={id} value={input.end} onChange={(end) => update({ end })} />}
         </Field>
         {input.kind === 'STALL' && (
           <Field

@@ -22,9 +22,9 @@ export const horseFields = [
   { key: 'bodyWidthCm', label: 'Body width (cm)', number: 4 },
   {
     key: 'measuredAt',
-    label: 'Measured at (ISO date with offset)',
-    max: 35,
-    hint: 'Example: 2026-10-10T09:00:00+07:00. Leave unknown values blank.',
+    label: 'Measured at',
+    type: 'datetime',
+    hint: 'Leave blank if unknown.',
   },
   { key: 'handlingNotes', label: 'Temperament / handling notes', max: 1000, multiline: true },
   {
@@ -73,7 +73,7 @@ export function validateHorse(form: HorseForm): FieldErrors {
     form.measuredAt &&
     (!validOffsetDate(form.measuredAt) || Date.parse(form.measuredAt) > Date.now())
   )
-    errors.measuredAt = 'Use a valid ISO date with offset, not in the future.';
+    errors.measuredAt = 'Choose a date and time that is not in the future.';
   return errors;
 }
 export function horseInput(form: HorseForm): HorseInput {

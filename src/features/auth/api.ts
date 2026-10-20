@@ -12,7 +12,12 @@ export const authApi = {
   register: (body: Registration) =>
     request('/api/auth/register', messageSchema, { method: 'POST', body, public: true }),
   login: (body: { email: string; password: string }) =>
-    request('/api/auth/login', loginSchema, { method: 'POST', body, public: true }),
+    request('/api/auth/login', loginSchema, {
+      method: 'POST',
+      body,
+      public: true,
+      withCookies: true,
+    }),
   email: (action: 'forgot-password' | 'resend-verification', email: string) =>
     request(`/api/auth/${action}`, messageSchema, {
       method: 'POST',

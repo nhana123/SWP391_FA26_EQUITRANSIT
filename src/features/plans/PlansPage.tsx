@@ -8,11 +8,18 @@ import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common
 import { quotationParent } from '../quotations/navigation';
 import { usePreparationCase } from '../quotations/source';
 import { PLAN_PAGE_SIZE, plansApi } from './api';
+<<<<<<< HEAD
 import { type Candidate } from './contracts';
 import { StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
 import { TextInput, Choice } from './ui';
 import { ScheduleBuilder } from './ScheduleBuilder';
 import { legToForm, type LegForm } from './validation';
+=======
+import { legModes, type Candidate, type LegMode } from './contracts';
+import { CommandForm, StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
+import { TextInput } from './ui';
+import { emptyLeg, legToForm, validateLegs, type LegForm } from './validation';
+>>>>>>> 55c74ec66bfa6adaadd524ea1817419075471b4a
 import './plans.css';
 
 export const schemaPending = (error: unknown) => error instanceof ApiError && error.status === 503;
