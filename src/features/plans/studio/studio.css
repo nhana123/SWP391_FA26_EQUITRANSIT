@@ -1,0 +1,668 @@
+.journey-studio {
+  --js-bg: #101827;
+  --js-surface: #192438;
+  --js-border: #34435b;
+  --js-text: #e5edf8;
+  --js-muted: #a0b1ca;
+  color: var(--js-text);
+  background: var(--js-bg);
+  border: 1px solid #2f3e54;
+  border-radius: 18px;
+  overflow: hidden;
+  margin: 24px 0;
+  box-shadow: 0 14px 50px #0b142028;
+  font-size: 13px;
+  color-scheme: dark;
+}
+.journey-studio * {
+  box-sizing: border-box;
+}
+.journey-studio button {
+  font: inherit;
+  border: 1px solid var(--js-border);
+  border-radius: 7px;
+  background: #25324a;
+  color: var(--js-text);
+  padding: 7px 10px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.journey-studio button:hover:not(:disabled) {
+  background: #32435e;
+  border-color: #6e8cb0;
+}
+.journey-studio button:focus-visible,
+.journey-studio input:focus-visible,
+.journey-studio select:focus-visible {
+  outline: 2px solid #65d9bb;
+  outline-offset: 3px;
+}
+.journey-studio button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.journey-studio a {
+  color: #8de0d3;
+}
+.js-toolbar {
+  padding: 15px 18px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: linear-gradient(100deg, #202d40, #152234);
+  border-bottom: 1px solid var(--js-border);
+}
+.js-brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-right: auto;
+}
+.js-brand > span {
+  font-size: 28px;
+  color: #67d9c0;
+}
+.js-brand strong {
+  display: block;
+  font-size: 19px;
+  letter-spacing: -0.4px;
+}
+.js-brand small {
+  display: block;
+  color: var(--js-muted);
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  margin-top: 2px;
+}
+.js-timezone {
+  border: 1px solid #3b526a;
+  border-radius: 20px;
+  padding: 6px 10px;
+  background: #0d1b2e;
+  color: #b7dcd8;
+  font-size: 11px;
+}
+.js-toolbar-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.journey-studio .js-save {
+  background: #13705d;
+  border-color: #31b895;
+  color: white;
+}
+.js-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 335px;
+  min-height: 720px;
+}
+.js-workspace {
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.js-canvas {
+  height: 720px;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  background-color: #101827;
+  background-image: radial-gradient(#3b4b65 1px, transparent 1px);
+  background-size: 22px 22px;
+  isolation: isolate;
+  cursor: grab;
+}
+.js-canvas:active {
+  cursor: grabbing;
+}
+.js-canvas-tip {
+  position: absolute;
+  top: 15px;
+  left: 18px;
+  color: #8196b2;
+  font-size: 10px;
+  pointer-events: none;
+  z-index: 1;
+}
+.js-world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.js-node {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--node-color) 55%, #223347);
+  border-radius: 14px;
+  background: #192539f0;
+  box-shadow: 0 12px 28px #0007;
+  backdrop-filter: blur(12px);
+  user-select: none;
+  transition: box-shadow 0.15s;
+}
+.js-node.selected {
+  outline: 2px solid var(--node-color);
+  outline-offset: 3px;
+  box-shadow: 0 0 35px color-mix(in srgb, var(--node-color) 20%, transparent);
+}
+.journey-studio .js-node-header {
+  border: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  border-radius: 13px 13px 0 0;
+  padding: 12px;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--node-color) 55%, #142135),
+    color-mix(in srgb, var(--node-color) 20%, #162338)
+  );
+  font-weight: 650;
+  cursor: grab;
+}
+.js-node-header small {
+  margin-left: auto;
+  opacity: 0.6;
+}
+.js-node-body {
+  padding: 13px;
+}
+.js-node-body strong {
+  display: block;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.js-node-body p {
+  font-size: 11px;
+  color: #b9c9de;
+  margin: 9px 0 0;
+}
+.js-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+}
+.js-chips span {
+  border: 1px solid #44536b;
+  background: #0c192b;
+  border-radius: 5px;
+  font-size: 10px;
+  padding: 3px 6px;
+}
+.journey-studio .js-pin {
+  position: absolute;
+  top: 64px;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #a5bcd4;
+  border-radius: 50%;
+  padding: 0;
+  background: #17283c;
+  z-index: 3;
+}
+.js-pin.input {
+  left: -10px;
+}
+.js-pin.output {
+  right: -10px;
+}
+.journey-studio .js-pin:hover,
+.journey-studio .js-pin.snap {
+  background: var(--node-color);
+  border-color: #ecfff9;
+  box-shadow: 0 0 18px var(--node-color);
+  transform: scale(1.3);
+}
+.js-wires {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+.js-wire-path {
+  fill: none;
+  stroke: #7c8ca6;
+  stroke-width: 3;
+  pointer-events: stroke;
+  cursor: pointer;
+  stroke-dasharray: 7 5;
+}
+.js-wire-path.road {
+  stroke: #34d399;
+  stroke-dasharray: 12 5;
+  animation: js-flow 2s linear infinite;
+}
+.js-wire-path.air {
+  stroke: #60a5fa;
+  stroke-dasharray: 12 5;
+  animation: js-flow 2s linear infinite;
+}
+.js-wire-path.bad {
+  stroke: #fb7185;
+  stroke-dasharray: 5 5;
+}
+.js-wire-path.active {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+.js-wire-path.completed {
+  stroke: #3bd0b2;
+  stroke-dasharray: none;
+}
+.js-pending-wire {
+  stroke: #99f6e4;
+  stroke-width: 3;
+  fill: none;
+  stroke-dasharray: 7 4;
+}
+.js-wire-label {
+  position: absolute;
+  z-index: 4;
+  width: 170px;
+  text-align: center;
+}
+.journey-studio .js-capsule {
+  font-size: 11px;
+  padding: 7px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  box-shadow: 0 5px 15px #0007;
+  background: #22314d;
+}
+.js-capsule span {
+  display: block;
+  font-size: 9px;
+  color: #a8bdd5;
+}
+.journey-studio .js-capsule.selected {
+  border-color: #8de0d3;
+}
+/* Capsule mirrors its wire: grey dashed = incomplete, glow = ready, red = timing gap. */
+.journey-studio .js-capsule.pending {
+  border: 1px dashed #7c8ca6;
+  color: #c3cedc;
+}
+.journey-studio .js-capsule.road {
+  border: 1px solid #34d399;
+  box-shadow:
+    0 0 12px #34d39966,
+    0 5px 15px #0007;
+}
+.journey-studio .js-capsule.air {
+  border: 1px solid #60a5fa;
+  box-shadow:
+    0 0 12px #60a5fa66,
+    0 5px 15px #0007;
+}
+.journey-studio .js-capsule.bad {
+  border: 1px solid #fb7185;
+  background: #4a1d2b;
+  box-shadow:
+    0 0 12px #fb718577,
+    0 5px 15px #0007;
+}
+.js-capsule em {
+  font-style: normal;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+.journey-studio .js-autofix {
+  margin-top: 6px;
+  font-size: 10px;
+  padding: 5px 9px;
+  border-radius: 14px;
+  background: #fb7185;
+  color: #1b0c12;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.js-preview {
+  position: absolute;
+  top: 57px;
+  left: -40px;
+  width: 260px;
+  background: #172439f5;
+  border: 1px solid #536782;
+  border-radius: 10px;
+  padding: 12px;
+  backdrop-filter: blur(15px);
+  text-align: left;
+  box-shadow: 0 10px 25px #0008;
+  font-size: 12px;
+}
+.js-preview p {
+  font-size: 11px;
+  margin: 6px 0;
+}
+.js-empty {
+  position: absolute;
+  top: 33%;
+  left: 15%;
+  width: 70%;
+  text-align: center;
+  color: #90a3be;
+  pointer-events: none;
+}
+.js-empty > div {
+  font-size: 55px;
+  color: #4d7280;
+}
+.js-empty h3 {
+  color: #cfdeec;
+  font-size: 22px;
+  letter-spacing: -0.6px;
+}
+.js-empty p {
+  max-width: 380px;
+  margin: 12px auto;
+}
+.js-statusbar {
+  background: #172235;
+  border-top: 1px solid #2b3a51;
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 12px;
+  gap: 10px;
+  align-items: center;
+  font-size: 10px;
+  color: #acbed6;
+}
+.js-statusbar div {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.js-statusbar button {
+  padding: 1px 8px;
+}
+.js-dock {
+  position: absolute;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  max-width: 96%;
+  padding: 8px;
+  border: 1px solid #4b5d75;
+  border-radius: 16px;
+  background: #243349eb;
+  box-shadow: 0 12px 30px #0008;
+  backdrop-filter: blur(18px);
+  overflow: auto;
+}
+.journey-studio .js-dock button {
+  border: 0;
+  min-width: 71px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  background: transparent;
+  padding: 7px 6px;
+}
+.js-dock span,
+.js-dock .js-template {
+  font-size: 23px;
+}
+.js-dock small {
+  font-size: 9px;
+  white-space: nowrap;
+}
+.js-dock .js-template {
+  border-left: 1px solid #4a5a73;
+  color: #bda0fb;
+}
+.js-inspector {
+  background: #182336;
+  border-left: 1px solid #34435b;
+  padding: 15px;
+  overflow: auto;
+  max-height: 760px;
+}
+.js-inspector-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+  color: #91a5c1;
+  font-size: 10px;
+}
+.js-inspector-title button {
+  border: 0;
+  padding: 1px 8px;
+  font-size: 20px;
+}
+.js-inspector-empty {
+  padding: 50px 10px;
+  text-align: center;
+  color: #9cacc4;
+}
+.js-inspector-empty > span {
+  font-size: 40px;
+  color: #4e6b8e;
+}
+.js-inspector-empty h3 {
+  font-size: 16px;
+  color: #cbd8eb;
+}
+.js-inspector-empty small {
+  font-size: 11px;
+}
+.js-inspector-type {
+  font-size: 17px;
+  font-weight: bold;
+  margin-bottom: 18px;
+}
+.journey-studio fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.js-field,
+.journey-studio .js-resource-forms label {
+  display: block;
+  font-size: 11px;
+  color: #b5c8e0;
+  margin: 12px 0;
+}
+.journey-studio input,
+.journey-studio select,
+.journey-studio textarea {
+  display: block;
+  width: 100%;
+  background: #101c2d;
+  border: 1px solid #3d4c66;
+  border-radius: 6px;
+  color: #e6effb;
+  padding: 9px;
+  font: inherit;
+  min-width: 0;
+  margin-top: 5px;
+}
+.journey-studio input:disabled,
+.journey-studio select:disabled {
+  opacity: 0.7;
+}
+.journey-studio input[type='checkbox'] {
+  display: inline-block;
+  width: auto;
+  margin-right: 5px;
+}
+.js-check {
+  display: block;
+  margin: 14px 0;
+  color: #bdd0e3;
+  font-size: 12px;
+}
+.journey-studio .js-danger {
+  color: #fda4af;
+  display: block;
+  margin: 16px 0;
+}
+.js-muted,
+.journey-studio small {
+  color: #9eb0ca;
+}
+.js-driver-actions {
+  display: grid;
+  gap: 9px;
+  padding: 12px 0;
+}
+.js-driver-actions a {
+  display: block;
+  border: 1px solid #3f5769;
+  border-radius: 6px;
+  padding: 10px;
+  background: #203649;
+}
+.js-banner {
+  padding: 10px 18px;
+  margin: 0;
+  background: #1b3b49;
+  font-size: 12px;
+}
+.js-validation {
+  margin: 0;
+  padding: 12px 35px;
+  background: #532e3b;
+  color: #ffced7;
+}
+.js-canvas-error {
+  position: absolute;
+  top: 40px;
+  left: 18px;
+  z-index: 5;
+  background: #512638;
+  padding: 8px;
+  border-radius: 6px;
+}
+.js-finalize {
+  border-top: 1px solid #40516a;
+  padding-top: 15px;
+  margin-top: 20px;
+}
+.js-finalize summary {
+  cursor: pointer;
+  font-size: 14px;
+}
+.journey-studio .card {
+  background: #18263c;
+  color: #d9e7f7;
+  padding: 12px;
+  border-color: #3e526c;
+  box-shadow: none;
+  margin: 13px 0;
+}
+.journey-studio .card h3 {
+  font-size: 14px;
+  margin: 8px 0;
+}
+.journey-studio .card .form-grid {
+  display: block;
+}
+.journey-studio .card label {
+  font-size: 11px;
+  color: #b9cee5;
+}
+.journey-studio .notice {
+  background: #1f374b;
+  color: #d9e6f6;
+  border: 1px solid #485d77;
+  padding: 10px;
+  font-size: 12px;
+}
+.journey-studio .error {
+  background: #512838;
+  color: #ffe1e6;
+}
+.js-candidate {
+  padding: 10px;
+  border: 1px solid #3a5368;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.js-candidate p {
+  margin: 6px 0;
+}
+.js-resource-forms > p,
+.js-finalize > p {
+  font-size: 11px;
+  color: #aabdce;
+}
+@keyframes js-flow {
+  to {
+    stroke-dashoffset: -68;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js-wire-path {
+    animation: none !important;
+  }
+  .js-node {
+    transition: none;
+  }
+}
+@media (max-width: 1100px) {
+  .js-body {
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+  .js-toolbar {
+    gap: 10px;
+  }
+  .js-canvas {
+    height: 660px;
+  }
+  .js-inspector {
+    max-height: 700px;
+  }
+  .js-timezone {
+    font-size: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .js-body {
+    display: block;
+  }
+  .js-inspector {
+    border-left: 0;
+    border-top: 1px solid #34435b;
+    max-height: 500px;
+  }
+  .js-canvas {
+    height: 560px;
+  }
+  .js-brand {
+    width: 100%;
+  }
+  .js-dock {
+    bottom: 55px;
+    left: 10px;
+    transform: none;
+    max-width: calc(100% - 20px);
+  }
+  .js-toolbar-actions {
+    width: 100%;
+  }
+  .js-statusbar {
+    font-size: 9px;
+  }
+  .js-canvas-tip {
+    max-width: 80%;
+    font-size: 9px;
+  }
+}

@@ -6,7 +6,7 @@ import { idSchema } from '../../shared/api/contracts';
 import { queryClient, queryKeys } from '../../shared/api/query';
 import { signOut } from '../../shared/api/refresh';
 import { useSession } from '../../shared/api/session';
-import { displayDate, type FieldErrors } from '../../shared/lib/validation';
+import { displayDate as formatDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice } from '../../shared/ui/common';
 import { useCaseCommand } from '../assessment/command';
 import { quotationParent } from '../quotations/navigation';
@@ -21,7 +21,10 @@ import {
 } from './contracts';
 import { TaskQueue } from '../activity-operations/TaskQueue';
 import { executionPath } from '../execution/ExecutionPage';
+import { JourneyStudio } from '../plans/studio/JourneyStudio';
 import './departure.css';
+
+const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
 
 export const departureKeys = {
   detail: (generation: string, orderId: number) =>
@@ -386,6 +389,14 @@ function Workspace({ orderId }: { orderId: number }) {
           .
         </p>
       </section>
+      {role === 'DRIVER' && r.planId !== null && (
+        <JourneyStudio
+          orderId={orderId}
+          planId={r.planId}
+          recordVersion={r.recordVersion}
+          mode="driver"
+        />
+      )}
       <div className="departure-gates">
         <GateCard title="Financial" gate={r.financialGate} />
         <GateCard title="Legal" gate={r.legalGate} />
@@ -494,6 +505,7 @@ export function DeparturePage() {
           <small className="eyebrow">DEPARTURE</small>
           <h1>Departure</h1>
           <p>Three server-evaluated gates, manager authorization and the driver's horse receipt.</p>
+          <p className="muted">Operational timezone: GMT+07:00 (Asia/Ho_Chi_Minh).</p>
         </div>
         <Link to={back}>Back</Link>
       </header>

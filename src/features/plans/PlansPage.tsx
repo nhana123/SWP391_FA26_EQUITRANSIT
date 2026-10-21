@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import { useSession } from '../../shared/api/session';
-import { displayDate, type FieldErrors } from '../../shared/lib/validation';
+import { displayDate as formatDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { quotationParent } from '../quotations/navigation';
 import { usePreparationCase } from '../quotations/source';
@@ -13,7 +13,10 @@ import { legModes, type Candidate, type LegMode } from './contracts';
 import { CommandForm, StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
 import { TextInput } from './ui';
 import { emptyLeg, legToForm, validateLegs, type LegForm } from './validation';
+import { JourneyStudio } from './studio/JourneyStudio';
 import './plans.css';
+
+const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
 
 export const schemaPending = (error: unknown) => error instanceof ApiError && error.status === 503;
 export function DeploymentNotice({ retry }: { retry: () => void }) {
@@ -335,6 +338,7 @@ function CandidatesSection({ orderId }: { orderId: number }) {
 
 function PlansWorkspace({ orderId }: { orderId: number }) {
   const session = useSession()!;
+  const navigate = useNavigate();
   const role = session.role as 'MANAGER' | 'COORDINATOR';
   const [params, setParams] = useSearchParams();
   const page = Math.max(0, Number.parseInt(params.get('page') ?? '0', 10) || 0);
@@ -361,6 +365,16 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
   return (
     <>
       <StaleBanner pinned={pinned} latest={caseQuery.data.recordVersion} />
+      {revisionId !== null && (
+        <JourneyStudio
+          orderId={orderId}
+          mode="edit"
+          revisionId={revisionId}
+          recordVersion={caseQuery.data.recordVersion}
+          canCompile={!pinned.changed}
+          onSaved={(planId) => navigate(`${plansPath(role, orderId)}/${planId}`)}
+        />
+      )}
       <section className="card" aria-labelledby="plans-heading">
         <h2 id="plans-heading">Plan versions</h2>
         {list.isPending ? (
@@ -420,25 +434,28 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
           />
         )}
       </section>
-      {revisionId === null ? (
-        <Notice>Plans can be drafted once the request has a current approved revision.</Notice>
-      ) : fromValid && source.isPending ? (
-        <Loading />
-      ) : (
-        <DraftForm
-          key={`${revisionId}-${fromValid ? from : 'new'}-${source.data ? 'loaded' : ''}`}
-          orderId={orderId}
-          revisionId={revisionId}
-          pinned={pinned}
-          basedOn={source.data ? source.data.planId : null}
-          initial={
-            source.data?.legs.length
-              ? source.data.legs.map(legToForm)
-              : [emptyLeg('ROAD'), emptyLeg('AIR'), emptyLeg('ROAD')]
-          }
-        />
-      )}
-      <CandidatesSection orderId={orderId} />
+      <details className="card" open={fromValid}>
+        <summary>Classic draft form and shared-stall shortlist</summary>
+        {revisionId === null ? (
+          <Notice>Plans can be drafted once the request has a current approved revision.</Notice>
+        ) : fromValid && source.isPending ? (
+          <Loading />
+        ) : (
+          <DraftForm
+            key={`${revisionId}-${fromValid ? from : 'new'}-${source.data ? 'loaded' : ''}`}
+            orderId={orderId}
+            revisionId={revisionId}
+            pinned={pinned}
+            basedOn={source.data ? source.data.planId : null}
+            initial={
+              source.data?.legs.length
+                ? source.data.legs.map(legToForm)
+                : [emptyLeg('ROAD'), emptyLeg('AIR'), emptyLeg('ROAD')]
+            }
+          />
+        )}
+        <CandidatesSection orderId={orderId} />
+      </details>
     </>
   );
 }
@@ -456,8 +473,9 @@ export function PlansPage() {
       <header className="page-heading">
         <div>
           <small className="eyebrow">OPERATIONAL PLAN</small>
-          <h1>Operational plans</h1>
-          <p>Versioned road and air legs, resources and reservations for this case.</p>
+          <h1>Operational plans · Creative Journey Studio</h1>
+          <p>Design checkpoint locations and connect ROAD and AIR journeys for this case.</p>
+          <p className="muted">Operational timezone: GMT+07:00 (Asia/Ho_Chi_Minh).</p>
         </div>
         <Link to={quotationParent(session.role, orderId)}>Back to the case</Link>
       </header>
