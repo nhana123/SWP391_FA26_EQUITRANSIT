@@ -277,7 +277,7 @@ describe('F05 extension #74', () => {
     expect(screen.getByText(/Stallion compatibility needs Coordinator review/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Wide stall/)).toBeEnabled();
   });
-  it('shows SHIPMENT rates at unselected stalls without inventing a slots-times-km formula', async () => {
+  it('shows the SHIPMENT rate after choosing a stall without inventing a slots-times-km formula', async () => {
     vi.mocked(ratesApi.get).mockResolvedValue([
       {
         product: 'AIR_STALL',
@@ -291,8 +291,10 @@ describe('F05 extension #74', () => {
         allowedUnits: ['SHIPMENT', 'SLOT_KM'],
       },
     ]);
-    await openAir();
+    const user = await openAir();
     const privateChoice = screen.getByLabelText(/Private stall/).closest('label')!;
+    expect(within(privateChoice).queryByText('325.10 USD per shipment')).toBeNull();
+    await user.click(screen.getByLabelText(/Private stall/));
     expect(await within(privateChoice).findByText('325.10 USD per shipment')).toBeInTheDocument();
     expect(screen.queryByText(/charged as slots/)).toBeNull();
   });

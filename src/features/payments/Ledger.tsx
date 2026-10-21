@@ -1,3 +1,5 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { EmptyState } from '../../components/ui/Primitives';
 import { displayDate } from '../../shared/lib/validation';
 import type { Overview, Refund } from './contracts';
 import { moneyText, outstanding } from './money';
@@ -23,7 +25,7 @@ export function PaymentLedger({
       <section className="card">
         <h2>Payment obligations</h2>
         {!data.obligations.length ? (
-          <p>No payment obligations on this page.</p>
+          <EmptyState title="No payment obligations on this page." />
         ) : (
           <div className="table-scroll">
             <table aria-label="Payment obligations">
@@ -113,9 +115,11 @@ export function PaymentLedger({
                     </td>
                     <td>{displayDate(r.transferredAt)}</td>
                     <td>
-                      {r.status === 'SUBMITTED'
-                        ? 'Reported — awaiting verification'
-                        : 'Report rejected'}
+                      <StatusBadge status={r.status}>
+                        {r.status === 'SUBMITTED'
+                          ? 'Reported — awaiting verification'
+                          : 'Report rejected'}
+                      </StatusBadge>
                     </td>
                     <td>
                       <ProofViewer orderId={orderId} fileKey={r.proofFileKey} />
@@ -205,7 +209,9 @@ export function PaymentLedger({
                     </td>
                     <td>{r.amount} USD</td>
                     <td>{r.reason}</td>
-                    <td>{r.status}</td>
+                    <td>
+                      <StatusBadge status={r.status}>{r.status}</StatusBadge>
+                    </td>
                     <td>{r.refundedAt ? displayDate(r.refundedAt) : 'Not completed'}</td>
                     {manager && (
                       <td>

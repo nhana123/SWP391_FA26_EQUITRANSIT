@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { useAction } from '../../shared/lib/useAction';
@@ -83,7 +84,8 @@ function AvailabilityCheck({
       <ErrorNotice error={action.error} />
       {result && (
         <div role="status" aria-label="Availability check">
-          <strong>{result.status}</strong> for this leg’s window (version {result.recordVersion}).
+          <StatusBadge status={result.status} /> for this leg’s window (version{' '}
+          {result.recordVersion}).
           {result.blockers.length > 0 && (
             <ul>
               {result.blockers.map((b) => (

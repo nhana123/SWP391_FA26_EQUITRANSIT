@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { cascade, connect, nodeDesign, showTime, type Journey } from './model';
 export type Selection = { kind: 'node' | 'wire'; id: string } | null;
@@ -272,7 +273,7 @@ export function JourneyStudioCanvas({
                       : `✈ Chuyến ${w.flightNumber || '—'} · Air stall ${w.stallEquipmentId ? `#${w.stallEquipmentId}` : '—'}`}
                   </p>
                   <p>
-                    ⚙ Trạng thái: {w.legStatus}
+                    Trạng thái: <StatusBadge status={w.legStatus} />
                     {state === 'bad'
                       ? ' · ⚠ Lệch giờ chuyển tiếp'
                       : state === 'pending'

@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { ReactNode } from 'react';
 import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { caseRoles, type CaseRole, type CaseStaff } from './contracts';
@@ -66,7 +67,9 @@ export function StaffDirectory({
                   <td>{caseRoleLabels[s.role]}</td>
                   <td>{s.activeCases}</td>
                   <td>
-                    <span className="badge">{availabilityLabel(s.availabilityStatus)}</span>
+                    <StatusBadge status={s.availabilityStatus}>
+                      {availabilityLabel(s.availabilityStatus)}
+                    </StatusBadge>
                   </td>
                   {renderAction && <td>{renderAction(s)}</td>}
                 </tr>

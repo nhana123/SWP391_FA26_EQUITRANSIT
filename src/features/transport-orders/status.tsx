@@ -1,3 +1,7 @@
+import { LoadedOrderFilter } from '../../components/ui/LoadedOrderFilter';
+import { CodeChip } from '../../components/ui/Primitives';
+import { OrderLifecycle } from '../../components/ui/OrderLifecycle';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { queryClient, queryKeys } from '../../shared/api/query';
@@ -71,37 +75,43 @@ export function RequestsPage() {
             <p>Start a request for one of your horses. Drafts are saved here.</p>
           </div>
         ) : (
-          <div className="table-scroll" aria-busy={query.isPlaceholderData}>
-            <table aria-label={`Your transport requests: ${query.data.totalElements} in total`}>
-              <thead>
-                <tr>
-                  <th scope="col">Request</th>
-                  <th scope="col">Route</th>
-                  <th scope="col">Delivery deadline</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {query.data.items.map((o) => (
-                  <tr key={o.orderId}>
-                    <td>
-                      <Link to={`/customer/requests/${o.orderId}`}>{o.orderNumber}</Link>
-                    </td>
-                    <td>{route(o)}</td>
-                    <td>
-                      {displayDate(
-                        o.draft.deliveryDeadline,
-                        o.draft.destinationTimezone || undefined,
-                      )}
-                    </td>
-                    <td>
-                      <span className="badge">{orderStatusLabels[o.orderStatus]}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LoadedOrderFilter items={query.data.items}>
+            {(filtered) => (
+              <div className="table-scroll" aria-busy={query.isPlaceholderData}>
+                <table aria-label={`Your transport requests: ${query.data.totalElements} in total`}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Request</th>
+                      <th scope="col">Route</th>
+                      <th scope="col">Delivery deadline</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((o) => (
+                      <tr key={o.orderId}>
+                        <td>
+                          <CodeChip value={o.orderNumber} to={`/customer/requests/${o.orderId}`} />
+                        </td>
+                        <td>{route(o)}</td>
+                        <td>
+                          {displayDate(
+                            o.draft.deliveryDeadline,
+                            o.draft.destinationTimezone || undefined,
+                          )}
+                        </td>
+                        <td>
+                          <StatusBadge status={o.orderStatus}>
+                            {orderStatusLabels[o.orderStatus]}
+                          </StatusBadge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </LoadedOrderFilter>
         )}
         {query.data && (query.data.totalPages > 1 || page > 0) && (
           <Pagination
@@ -178,7 +188,9 @@ export function AssessmentPanel({ order }: { order: Order }) {
       ) : (
         <>
           <p>
-            <span className="badge">{outcomeCopy[query.data.decision][0]}</span>
+            <StatusBadge status={query.data.decision}>
+              {outcomeCopy[query.data.decision][0]}
+            </StatusBadge>
           </p>
           <p>{outcomeCopy[query.data.decision][1]}</p>
           {query.data.reason && (
@@ -208,6 +220,7 @@ export function RequestDetailPage() {
   if (query.error) return <ErrorNotice error={query.error} />;
   return (
     <>
+      <OrderLifecycle status={query.data.orderStatus} />
       <AssessmentPanel order={query.data} />
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />

@@ -1,7 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { LoadedOrderFilter } from '../../components/ui/LoadedOrderFilter';
+import { CodeChip } from '../../components/ui/Primitives';
+import { OrderLifecycle } from '../../components/ui/OrderLifecycle';
+import { EmptyState } from '../../components/ui/Primitives';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import type { ReactNode } from 'react';
+import { WorkspaceShell } from '../../components/ui/WorkspaceShell';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
-import { signOut } from '../../shared/api/refresh';
 import { useSession } from '../../shared/api/session';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common';
@@ -18,7 +23,6 @@ import { ExecutionLink } from '../execution/ExecutionPage';
 import { staffDashboardLink, staffTaskLink } from '../activity-operations/routes';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { ComplianceLink } from '../compliance/link';
-import { NotificationBell } from '../activity-customer/notifications';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import './assigned-cases.css';
 
@@ -55,56 +59,12 @@ function StaffHeading({
 
 /** Same shell classes as FE1's customer workspace, kept in this module. */
 export function AssignedCasesLayout() {
-  const [menu, setMenu] = useState(false);
-  const location = useLocation();
-  const focusRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    focusRef.current?.focus({ preventScroll: true });
-  }, [location.pathname]);
   return (
-    <div className="workspace">
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
-      <aside className={menu ? 'sidebar open' : 'sidebar'}>
-        <Link className="brand" to="/staff/cases">
-          EquiTransit
-        </Link>
-        <small>Staff PORTAL</small>
-        <nav aria-label="Staff navigation">
-          <NavLink to={staffDashboardLink.to} onClick={() => setMenu(false)}>
-            {staffDashboardLink.label}
-          </NavLink>
-          <NavLink to="/staff/cases" onClick={() => setMenu(false)}>
-            My Cases
-          </NavLink>
-          <NavLink to={staffTaskLink.to} onClick={() => setMenu(false)}>
-            {staffTaskLink.label}
-          </NavLink>
-        </nav>
-      </aside>
-      <div className="workspace-main">
-        <header className="workspace-header">
-          <button
-            className="menu-button"
-            type="button"
-            aria-expanded={menu}
-            aria-label="Toggle navigation"
-            onClick={() => setMenu((v) => !v)}
-          >
-            Menu
-          </button>
-          <span>Case preparation</span>
-          <NotificationBell />
-          <button type="button" onClick={() => void signOut()}>
-            Log Out
-          </button>
-        </header>
-        <main id="main" ref={focusRef} tabIndex={-1} className="content">
-          <Outlet />
-        </main>
-      </div>
-    </div>
+    <WorkspaceShell
+      home="/staff/cases"
+      navigationLabel="Staff navigation"
+      links={[staffDashboardLink, { to: '/staff/cases', label: 'My Cases' }, staffTaskLink]}
+    />
   );
 }
 
@@ -133,34 +93,38 @@ export function AssignedCasesPage() {
             <p>Cases appear here when a Manager assigns you to an approved request.</p>
           </div>
         ) : (
-          <div className="table-scroll" aria-busy={query.isPlaceholderData}>
-            <table aria-label={`Assigned cases: ${query.data.totalElements} in total`}>
-              <thead>
-                <tr>
-                  <th scope="col">Request</th>
-                  <th scope="col">Route</th>
-                  <th scope="col">Delivery deadline</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {query.data.items.map((c) => (
-                  <tr key={c.orderId}>
-                    <td>
-                      <Link to={`/staff/cases/${c.orderId}`}>{c.orderNumber}</Link>
-                    </td>
-                    <td>
-                      {c.originCountryCode} → {c.destinationCountryCode}
-                    </td>
-                    <td>{displayDate(c.deliveryDeadline)}</td>
-                    <td>
-                      <span className="badge">{c.orderStatus}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LoadedOrderFilter items={query.data.items}>
+            {(filtered) => (
+              <div className="table-scroll" aria-busy={query.isPlaceholderData}>
+                <table aria-label={`Assigned cases: ${query.data.totalElements} in total`}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Request</th>
+                      <th scope="col">Route</th>
+                      <th scope="col">Delivery deadline</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c) => (
+                      <tr key={c.orderId}>
+                        <td>
+                          <CodeChip value={c.orderNumber} to={`/staff/cases/${c.orderId}`} />
+                        </td>
+                        <td>
+                          {c.originCountryCode} → {c.destinationCountryCode}
+                        </td>
+                        <td>{displayDate(c.deliveryDeadline)}</td>
+                        <td>
+                          <StatusBadge status={c.orderStatus}>{c.orderStatus}</StatusBadge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </LoadedOrderFilter>
         )}
         {query.data && (query.data.totalPages > 1 || page > 0) && (
           <Pagination
@@ -194,7 +158,7 @@ function MyAssignment({ current }: { current: ManagerCase }) {
           />
         ))
       ) : (
-        <p>No active assignment is shown for you on this case.</p>
+        <EmptyState title="No active assignment is shown for you on this case." />
       )}
     </section>
   );
@@ -249,6 +213,7 @@ export function AssignedCasePage() {
         <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
+      <OrderLifecycle status={current.orderStatus} />
       <OrderTimeline orderId={current.orderId} />
       <Notice>
         The case details below are read-only. Use the links above for your role's work on this case;

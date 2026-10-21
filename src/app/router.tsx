@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  createBrowserRouter,
-  Link,
-  NavLink,
-  Navigate,
-  Outlet,
-  useLocation,
-} from 'react-router-dom';
+import { useEffect } from 'react';
+import { Brand, WorkspaceShell } from '../components/ui/WorkspaceShell';
+import { createBrowserRouter, Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   AccountPage,
   EmailRequestPage,
@@ -67,13 +61,6 @@ import type { Role } from '../shared/api/contracts';
 // Signed-in users stay in their workspace; /staff redirects non-customers.
 function workspaceHome(role: Role) {
   return role === 'CUSTOMER' ? '/customer/horses' : '/staff';
-}
-function Brand({ to = '/' }: { to?: string }) {
-  return (
-    <Link className="brand" to={to}>
-      EquiTransit
-    </Link>
-  );
 }
 function PublicLayout() {
   const session = useSession();
@@ -173,64 +160,18 @@ export function RoleGate({ roles }: { roles: Role[] }) {
   return <Outlet />;
 }
 function CustomerLayout() {
-  const [menu, setMenu] = useState(false);
-  const location = useLocation();
-  const focusRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    focusRef.current?.focus({ preventScroll: true });
-  }, [location.pathname]);
   return (
-    <div className="workspace">
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
-      <aside className={menu ? 'sidebar open' : 'sidebar'}>
-        <Brand to="/customer/dashboard" />
-        <small>Customer PORTAL</small>
-        <nav aria-label="Customer navigation">
-          <NavLink to="/customer/dashboard" onClick={() => setMenu(false)}>
-            Dashboard
-          </NavLink>
-          <NavLink to="/customer/horses" onClick={() => setMenu(false)}>
-            My Horses
-          </NavLink>
-          <NavLink to="/customer/requests" onClick={() => setMenu(false)}>
-            Requests
-          </NavLink>
-          <NavLink to="/customer/account" onClick={() => setMenu(false)}>
-            Account
-          </NavLink>
-          <NavLink to="/customer/notification-preferences" onClick={() => setMenu(false)}>
-            Email preferences
-          </NavLink>
-        </nav>
-        <div className="support">
-          <strong>Transit Support</strong>
-          <p>Contact your assigned team.</p>
-        </div>
-      </aside>
-      <div className="workspace-main">
-        <header className="workspace-header">
-          <button
-            className="menu-button"
-            type="button"
-            aria-expanded={menu}
-            aria-label="Toggle navigation"
-            onClick={() => setMenu((v) => !v)}
-          >
-            Menu
-          </button>
-          <span>International horse transport</span>
-          <NotificationBell />
-          <button type="button" onClick={() => void signOut()}>
-            Log Out
-          </button>
-        </header>
-        <main id="main" ref={focusRef} tabIndex={-1} className="content">
-          <Outlet />
-        </main>
-      </div>
-    </div>
+    <WorkspaceShell
+      home="/customer/dashboard"
+      navigationLabel="Customer navigation"
+      links={[
+        { to: '/customer/dashboard', label: 'Dashboard' },
+        { to: '/customer/horses', label: 'My Horses' },
+        { to: '/customer/requests', label: 'Requests' },
+        { to: '/customer/account', label: 'Account' },
+        { to: '/customer/notification-preferences', label: 'Email preferences' },
+      ]}
+    />
   );
 }
 function StaffLanding() {

@@ -1,0 +1,353 @@
+/* Pricing-inspired service cards, using EquiTransit's racing green palette. */
+.service-selection .service-grid {
+  gap: 20px;
+}
+.content .service-selection .service-card {
+  position: relative;
+  min-height: 182px;
+  padding: 26px;
+  border: 1px solid #d2dfcf;
+  border-radius: 16px;
+  background: #fcfdf8;
+  box-shadow: 0 6px 16px #263d2510;
+}
+.service-card .service-area-icon {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  position: absolute;
+  top: 25px;
+  right: 20px;
+}
+.content .service-card-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 25px;
+  font-weight: 600;
+  padding-right: 35px;
+  letter-spacing: -0.5px;
+}
+.content .service-card-action {
+  padding-top: 17px;
+  border-top: 1px solid #d9e4d3;
+  margin-top: 28px;
+}
+.service-backdrop {
+  align-items: center;
+  padding: 3dvh 24px;
+  background: #132c266b;
+  backdrop-filter: blur(4px);
+}
+.service-dialog {
+  width: min(1060px, 100%);
+  border: 1px solid #d7e3d1;
+  border-radius: 20px;
+  max-height: 94dvh;
+}
+.service-dialog-head {
+  padding: 24px 30px;
+  background: #f5f8ef;
+  border-bottom: 1px solid #dfe7d7;
+}
+.service-dialog-head h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #174f31;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+.service-dialog-body {
+  padding: 26px 30px;
+  background: #fdfefb;
+}
+.service-dialog-body > .muted {
+  margin-top: 0;
+  color: #6a7864;
+  max-width: 85ch;
+}
+.content .service-dialog .service-choice-grid,
+.content .service-dialog .stall-packages,
+.content .service-dialog .care-packages {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 20px 0;
+}
+.service-choice-grid > legend,
+.care-packages > legend,
+.stall-packages > legend {
+  margin-bottom: 16px;
+  padding: 0;
+}
+.content .service-dialog .service-choice-grid:has(input[name='insurance']) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.content .service-dialog .choice-row,
+.care-package,
+.content .service-dialog .stall-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  margin: 0;
+  padding: 24px;
+  border: 1px solid #d1dfc9;
+  border-radius: 14px;
+  background: #fcfdf8;
+  box-shadow: 0 5px 13px #29412a0c;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s,
+    background 0.18s;
+}
+.content .service-dialog .choice-row:has(input:checked),
+.care-package:has(.package-heading input:checked),
+.content .service-dialog .stall-choice:has(input:checked) {
+  border-color: #45834e;
+  background: #f2f8eb;
+  box-shadow:
+    0 0 0 1px #45834e22,
+    0 6px 16px #2f59351a;
+}
+.content .service-dialog .choice-row .horse-choice,
+.content .service-dialog .choice-row .horse-choice:has(input:checked) {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: initial;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.content .service-dialog .choice-name,
+.package-heading strong,
+.stall-choice > span > strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #184e2e;
+  letter-spacing: -0.4px;
+}
+.content .service-dialog .choice-name {
+  padding-right: 30px;
+}
+.service-dialog .choice-row > .rate-tag {
+  margin: 20px 0 0;
+  padding-top: 15px;
+  border-top: 1px solid #d5e2ce;
+}
+.service-dialog .rate-tag {
+  font-size: 15px;
+  font-weight: 600;
+  color: #195631;
+  line-height: 1.6;
+}
+.service-dialog .choice-row input[type='radio'],
+.package-heading > input {
+  position: absolute;
+  top: 24px;
+  right: 23px;
+}
+.content .service-dialog input[type='radio'],
+.content .service-dialog input[type='checkbox'],
+.change-reason-options input[type='radio'] {
+  appearance: none;
+  position: relative;
+  width: 21px;
+  height: 21px;
+  min-height: 21px;
+  border: 1.5px solid #b2c6aa;
+  border-radius: 5px;
+  background: #fff;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  box-shadow: none;
+}
+.content .service-dialog .choice-row input[type='radio'],
+.content .service-dialog .package-heading > input {
+  position: absolute;
+}
+.content .service-dialog input:checked,
+.change-reason-options input:checked {
+  background: #1d6138;
+  border-color: #1d6138;
+}
+.content .service-dialog input:checked::after,
+.change-reason-options input:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 3px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.content .service-dialog input:focus-visible,
+.change-reason-options input:focus-visible {
+  outline: 2px solid #4c8758;
+  outline-offset: 4px;
+}
+.content .service-dialog input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.content .service-dialog label.package-heading {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+  padding-right: 30px;
+}
+.package-heading > span {
+  display: grid;
+  gap: 9px;
+}
+.package-heading small,
+.package-description,
+.saved-service-note {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #6e7d66;
+}
+.package-description {
+  margin: 16px 0 0;
+}
+.care-package > .rate-tag {
+  display: block;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #d5e2ce;
+}
+.content .service-dialog .duration-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.duration-options legend {
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.content .service-dialog .duration-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d8e3d0;
+  border-radius: 7px;
+  padding: 7px 9px;
+  font-size: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+.duration-options label:has(input:checked) {
+  color: #215c34;
+  border-color: #548b57;
+}
+.content .service-dialog .duration-options input {
+  width: 15px;
+  height: 15px;
+  min-height: 15px;
+  border-radius: 3px;
+}
+.content .service-dialog .duration-options input:checked::after {
+  left: 4px;
+  top: 1px;
+  width: 3px;
+  height: 7px;
+}
+.saved-provider,
+.saved-insurance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  background: #f4f8ef;
+  border: 1px solid #dce6d4;
+  padding: 15px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #486345;
+  margin: 18px 0;
+}
+.saved-insurance {
+  display: block;
+}
+.saved-insurance p {
+  margin: 7px 0;
+}
+.content .service-dialog .stall-packages {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.stall-packages > label:not(.stall-choice) {
+  grid-column: 1 / -1;
+}
+.content .service-dialog .stall-choice {
+  gap: 15px;
+}
+.stall-choice > span {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.stall-choice small {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.stall-choice .rate-tag {
+  padding-top: 12px;
+  border-top: 1px solid #d5e2ce;
+}
+.change-reason-options {
+  display: grid;
+  gap: 9px;
+}
+.content .change-reason-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #4b6549;
+  cursor: pointer;
+}
+@media (max-width: 800px) {
+  .content .service-dialog .service-choice-grid:has(input[name='insurance']),
+  .content .service-dialog .stall-packages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .service-backdrop {
+    padding: 12px;
+  }
+  .service-dialog {
+    max-height: calc(100dvh - 24px);
+    border-radius: 16px;
+  }
+  .service-dialog-head,
+  .service-dialog-body {
+    padding: 20px;
+  }
+  .service-dialog-head h3 {
+    font-size: 27px;
+  }
+  .content .service-dialog .service-choice-grid,
+  .content .service-dialog .care-packages,
+  .content .service-dialog .service-choice-grid:has(input[name='insurance']),
+  .content .service-dialog .stall-packages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .content .service-dialog .choice-row,
+  .care-package,
+  .content .service-dialog .stall-choice {
+    padding: 22px;
+  }
+}

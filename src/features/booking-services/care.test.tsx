@@ -35,16 +35,22 @@ async function open(section: string, disclosure: Disclosure = testDisclosure()) 
 }
 
 describe('horse care (FE-22)', () => {
-  it('states basic care is included and only accepts whole non-negative counts', async () => {
+  it('uses tick choices for care and duration, with no free text or numeric fields', async () => {
     const user = await open('Horse Care');
     expect(screen.getByRole('note')).toHaveTextContent('included and is not charged again');
-    const grooming = screen.getByLabelText('Grooming days');
-    await user.type(grooming, '-2.5');
-    expect(grooming).toHaveValue('25');
-    await user.clear(grooming);
-    expect(grooming).toHaveValue('');
+    const grooming = screen.getByRole('checkbox', { name: 'Grooming days' });
+    expect(grooming).not.toBeChecked();
+    await user.click(grooming);
+    expect(screen.getByRole('radio', { name: '1 day' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: '3 days' }));
+    expect(screen.getByRole('radio', { name: '3 days' })).toBeChecked();
+    await user.click(grooming);
+    expect(grooming).not.toBeChecked();
     expect(screen.getByLabelText('Extra boarding nights')).toBeInTheDocument();
     expect(screen.getByText(/quarantine days are counted separately/)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    expect(bookingApi.confirm).not.toHaveBeenCalled();
   });
 });
 
@@ -53,7 +59,8 @@ describe('veterinary (FE-22)', () => {
     const user = await open('Veterinary');
     expect(screen.getByText(/does not reduce them/)).toBeInTheDocument();
     await user.click(screen.getByLabelText('I will arrange my own veterinarian'));
-    expect(screen.getByLabelText('Provider name')).toBeInTheDocument();
+    expect(screen.getByText('Your own provider')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });
 

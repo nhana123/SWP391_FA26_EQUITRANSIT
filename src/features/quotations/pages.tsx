@@ -1,3 +1,5 @@
+import { EmptyState } from '../../components/ui/Primitives';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
@@ -134,7 +136,9 @@ export function QuotationsPage() {
                     <td>{q.version}</td>
                     <td>{q.revisionId}</td>
                     <td>
-                      <span className="badge">{quotationStatus(q, now)}</span>
+                      <StatusBadge status={quotationStatus(q, now)}>
+                        {quotationStatus(q, now)}
+                      </StatusBadge>
                     </td>
                     <td>{displayDate(q.validUntil)}</td>
                     <td>{decimal(q.total)}</td>
@@ -209,7 +213,9 @@ export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
           <div>
             <dt>Status</dt>
             <dd>
-              <span className="badge">{quotationStatus(quotation.quote, now)}</span>
+              <StatusBadge status={quotationStatus(quotation.quote, now)}>
+                {quotationStatus(quotation.quote, now)}
+              </StatusBadge>
             </dd>
           </div>
           <div>
@@ -307,7 +313,7 @@ export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
             </table>
           </div>
         ) : (
-          <p>No payment schedule recorded.</p>
+          <EmptyState title="No payment schedule recorded." />
         )}
       </section>
       <section className="card">

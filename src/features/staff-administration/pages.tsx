@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -162,7 +163,13 @@ export function StaffAdministrationPage() {
                         </td>
                         <td>{staffRoleLabels[s.role]}</td>
                         <td>
-                          {staffStatusLabels[s.accountStatus]} / {staffStatusLabels[s.staffStatus]}
+                          <StatusBadge status={s.accountStatus}>
+                            {staffStatusLabels[s.accountStatus]}
+                          </StatusBadge>{' '}
+                          /{' '}
+                          <StatusBadge status={s.staffStatus}>
+                            {staffStatusLabels[s.staffStatus]}
+                          </StatusBadge>
                         </td>
                         <td>{s.employeeCode}</td>
                         <td>{s.department ?? 'Not recorded'}</td>

@@ -1,4 +1,6 @@
-import { useId, useRef, useState } from 'react';
+import { EmptyState } from '../../components/ui/Primitives';
+import { useId, useRef, useState, useSyncExternalStore } from 'react';
+import { Icon } from '../../components/ui/Icons';
 import { Link } from 'react-router-dom';
 import { activityApi, ACTIVITY_PAGE_SIZE } from './api';
 import { ApiError } from '../../shared/api/client';
@@ -121,7 +123,7 @@ function NotificationWorkspace() {
         <section className="card">
           <h2>Your notifications</h2>
           {!data.items.length ? (
-            <p>No notifications on this page.</p>
+            <EmptyState title="No notifications on this page." />
           ) : (
             <ul className="activity-notifications">
               {data.items.map((item) => {
@@ -165,6 +167,28 @@ function NotificationWorkspace() {
 
 export function NotificationBell() {
   const session = useSession();
+  // A closed bell remains read-only and makes no request. Count only notifications
+  // already loaded for this exact session/role, never infer a server-wide total.
+  const unread = useSyncExternalStore(
+    (notify) => queryClient.getQueryCache().subscribe(notify),
+    () => {
+      if (!session) return 0;
+      const records = new Map<number, boolean>();
+      const cached = queryClient
+        .getQueryCache()
+        .findAll({
+          queryKey: activityKeys.notifications(session.generation, session.role),
+        })
+        .sort((a, b) => a.state.dataUpdatedAt - b.state.dataUpdatedAt);
+      for (const query of cached) {
+        const data = query.state.data as NotificationPage | undefined;
+        for (const item of data?.items ?? [])
+          records.set(item.notificationId, item.readAt === null);
+      }
+      return [...records.values()].filter(Boolean).length;
+    },
+    () => 0,
+  );
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const button = useRef<HTMLButtonElement>(null);
@@ -190,22 +214,16 @@ export function NotificationBell() {
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-          <path
-            d="M12 3a6 6 0 0 0-6 6v3.6l-1.7 2.9A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.5L18 12.6V9a6 6 0 0 0-6-6Z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9.5 19.5a2.5 2.5 0 0 0 5 0"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
+        <Icon name="bell" />
+        {unread > 0 && (
+          <span
+            className="notification-count"
+            title="Unread among loaded notifications"
+            aria-hidden="true"
+          >
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
       </button>
       {open && (
         <NotificationPeek
@@ -235,7 +253,7 @@ function NotificationPeek({ id, close }: { id: string; close: () => void }) {
             Unread on this page: {query.data.items.filter((item) => item.readAt === null).length}
           </p>
           {!query.data.items.length ? (
-            <p>No recent notifications.</p>
+            <EmptyState title="No recent notifications." />
           ) : (
             <ul>
               {query.data.items.map((item) => (

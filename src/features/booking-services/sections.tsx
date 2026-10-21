@@ -2,10 +2,8 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Order } from '../../shared/api/contracts';
 import type { FieldErrors } from '../../shared/lib/validation';
-import { Field } from '../../shared/ui/common';
-import { PhoneInput } from '../../shared/ui/PhoneInput';
 import type { Disclosure, Preferences, StallFit } from './contracts';
-import { arrangementPatch, textOrNull, type Arrangement } from './form';
+import { arrangementPatch, type Arrangement } from './form';
 import { RateTag, SectionRates } from './rates';
 import { recommendsWide } from './stall-options';
 
@@ -16,6 +14,7 @@ export type SectionProps = {
   update: (patch: Partial<Preferences>) => void;
   errors: FieldErrors;
   disabled: boolean;
+  airStallPriceVisible?: boolean;
 };
 
 const arrangementLabels: Record<Arrangement, string> = {
@@ -48,7 +47,7 @@ export function ChoiceGroup<T extends string>({
   error?: string;
 }) {
   return (
-    <fieldset disabled={disabled}>
+    <fieldset className="service-choice-grid" disabled={disabled}>
       <legend>{legend}</legend>
       {error && (
         <p className="field-error" role="alert">
@@ -66,9 +65,9 @@ export function ChoiceGroup<T extends string>({
               checked={value === option}
               onChange={() => onChange(option)}
             />
-            <span>{labels[option]}</span>
+            <span className="choice-name">{labels[option]}</span>
           </label>
-          {notes?.[option]}
+          {value === option && notes?.[option]}
         </div>
       ))}
       {children}
@@ -77,41 +76,15 @@ export function ChoiceGroup<T extends string>({
 }
 
 /** Provider name/phone for a customer-arranged service. */
-export function ProviderFields({
-  kind,
-  prefs,
-  update,
-  errors,
-  disabled,
-}: SectionProps & { kind: 'road' | 'veterinary' }) {
+export function ProviderFields({ kind, prefs }: SectionProps & { kind: 'road' | 'veterinary' }) {
   const nameKey = kind === 'road' ? 'roadProviderName' : 'veterinaryProviderName';
   const contactKey = kind === 'road' ? 'roadProviderContact' : 'veterinaryProviderContact';
   return (
-    <fieldset className="form-grid" disabled={disabled}>
-      <legend>Your provider (optional)</legend>
-      <Field label="Provider name" error={errors[nameKey]}>
-        {(id) => (
-          <input
-            id={id}
-            maxLength={200}
-            value={prefs[nameKey] ?? ''}
-            onChange={(e) => update({ [nameKey]: textOrNull(e.target.value) })}
-            aria-invalid={!!errors[nameKey]}
-          />
-        )}
-      </Field>
-      <Field label="Provider phone" error={errors[contactKey]}>
-        {(id) => (
-          <PhoneInput
-            id={id}
-            maxLength={16}
-            value={prefs[contactKey] ?? ''}
-            onChange={(v) => update({ [contactKey]: textOrNull(v) })}
-            invalid={!!errors[contactKey]}
-          />
-        )}
-      </Field>
-    </fieldset>
+    <div className="saved-provider">
+      <strong>Your own provider</strong>
+      {prefs[nameKey] && <span>{prefs[nameKey]}</span>}
+      {prefs[contactKey] && <span>{prefs[contactKey]}</span>}
+    </div>
   );
 }
 
@@ -143,7 +116,7 @@ export function TransportationSection(props: SectionProps) {
         disabled={disabled}
       />
       {prefs.roadArrangement === 'CUSTOMER' && <ProviderFields {...props} kind="road" />}
-      <SectionRates section="TRANSPORTATION" />
+      <SectionRates section="TRANSPORTATION" selected={prefs.roadArrangement === 'EQUITRANSIT'} />
     </>
   );
 }
@@ -178,6 +151,7 @@ export function AirStallSection({
   update,
   errors,
   disabled,
+  airStallPriceVisible = true,
 }: SectionProps) {
   const offered =
     disclosure.sections.find((section) => section.code === 'AIR_STALL')?.options ?? [];
@@ -196,10 +170,6 @@ export function AirStallSection({
         Slot size is a configuration you request. Airline space is{' '}
         {disclosure.carrierConfirmation === 'NOT_CONFIRMED' ? 'not confirmed' : 'not shown here'}{' '}
         until our team books it with the carrier.
-      </p>
-      <p>
-        Air stall rate: <RateTag product="AIR_STALL" />{' '}
-        <span className="muted">(unit rate only; quantities and amounts come from the server)</span>
       </p>
       <p>
         Shared and Wide are Request Share preferences. Matching, flight assignment and physical
@@ -222,7 +192,7 @@ export function AirStallSection({
           {errors.airStall}
         </p>
       )}
-      <fieldset disabled={disabled}>
+      <fieldset className="stall-packages" disabled={disabled}>
         <legend>Air stall preference</legend>
         <label className="horse-choice">
           <input
@@ -239,6 +209,9 @@ export function AirStallSection({
               type="radio"
               name="airStall"
               checked={prefs.airStall === s.option}
+              onClick={() => {
+                if (prefs.airStall === s.option) update({ airStall: s.option });
+              }}
               onChange={() => update({ airStall: s.option })}
             />
             <span>
@@ -249,7 +222,10 @@ export function AirStallSection({
                   ? 'Private configuration requested'
                   : 'Request Share — not matched or booked'}
               </small>
-              <RateTag product="AIR_STALL" />
+              <RateTag
+                product="AIR_STALL"
+                selected={airStallPriceVisible && prefs.airStall === s.option}
+              />
               <small>
                 {s.status === 'ELIGIBLE'
                   ? "Fits the approved limits for your horse's recorded measurements."

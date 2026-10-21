@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../shared/api/client';
 import type { Order } from '../../shared/api/contracts';
-import { Field } from '../../shared/ui/common';
 import { useCaseCommand } from '../assessment/command';
 import { bookingApi } from './api';
 import type { Confirmation, ConfirmCommand, Disclosure, Preferences } from './contracts';
@@ -115,25 +114,34 @@ export function ConfirmBar({
       )}
       {!draft && (
         <fieldset disabled={command.locked || disabled}>
-          <Field
-            label="Reason for changing services"
-            hint={`Required for a submitted request, up to ${MAX_REASON} characters. A new revision is created for assessment.`}
-            error={reasonError ?? command.fields.changeReason}
-          >
-            {(id) => (
-              <textarea
-                id={id}
-                value={reason}
-                maxLength={MAX_REASON}
-                onChange={(e) => {
-                  setReason(e.target.value);
-                  command.reset();
-                  onFailure(null);
-                }}
-                aria-invalid={!!reasonError}
-              />
-            )}
-          </Field>
+          <legend>Reason for changing services</legend>
+          <div className="change-reason-options">
+            {[
+              'Update care requirements',
+              'Change transport or service providers',
+              'Adjust stall or insurance preferences',
+            ].map((value) => (
+              <label key={value}>
+                <input
+                  type="radio"
+                  name="serviceChangeReason"
+                  value={value}
+                  checked={reason === value}
+                  onChange={() => {
+                    setReason(value);
+                    command.reset();
+                    onFailure(null);
+                  }}
+                />
+                <span>{value}</span>
+              </label>
+            ))}
+          </div>
+          {(reasonError ?? command.fields.changeReason) && (
+            <p className="field-error" role="alert">
+              {reasonError ?? command.fields.changeReason}
+            </p>
+          )}
         </fieldset>
       )}
       <button

@@ -1,3 +1,6 @@
+import { FormSection } from '../../components/ui/FormSection';
+import { Icon, type IconName } from '../../components/ui/Icons';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -73,9 +76,9 @@ export function HorsesPage() {
                     <td>{h.name}</td>
                     <td>{h.sexCode || 'Not recorded'}</td>
                     <td>
-                      <span className="badge">
+                      <StatusBadge status={h.measurementsComplete ? 'Recorded' : 'Incomplete'}>
                         {h.measurementsComplete ? 'Recorded' : 'Incomplete'}
-                      </span>
+                      </StatusBadge>
                     </td>
                     <td>
                       <Link to={`/customer/horses/${h.horseId}`}>View profile</Link>
@@ -161,6 +164,33 @@ export function HorseEditPage() {
   if (query.error) return <ErrorNotice error={query.error} />;
   return <HorseEditor key={id} horse={query.data} />;
 }
+const horseFormGroups: { title: string; description: string; icon: IconName; keys: string[] }[] = [
+  {
+    title: 'Identity & passport',
+    description: 'Start with the details that identify your horse.',
+    icon: 'horse',
+    keys: ['name', 'dateOfBirth', 'breed', 'microchipId', 'passportNumber'],
+  },
+  {
+    title: 'Measurements',
+    description:
+      'Accurate measurements help the team assess transport fit. Unknown values can stay blank.',
+    icon: 'chart',
+    keys: ['weightKg', 'heightCm', 'bodyWidthCm', 'measuredAt'],
+  },
+  {
+    title: 'Daily care & handling',
+    description: 'Help the transport team understand your horse’s routine and temperament.',
+    icon: 'headset',
+    keys: ['handlingNotes', 'feedWaterRequirements', 'stallPreferences'],
+  },
+  {
+    title: 'Veterinary & special care',
+    description: 'Record any extra care needs and the source of veterinary instructions.',
+    icon: 'shield',
+    keys: ['specialCareNotes', 'veterinaryInstructions', 'veterinaryInstructionSource'],
+  },
+];
 export function HorseEditor({ horse }: { horse?: Horse }) {
   const [form, setForm] = useState<HorseForm>(() => horseForm(horse));
   const [baseline, setBaseline] = useState(() => horseForm(horse));
@@ -226,7 +256,7 @@ export function HorseEditor({ horse }: { horse?: Horse }) {
         Unknown measurements can stay blank. Clearing an optional field removes its saved value.
         Profile changes do not change submitted snapshots.
       </Notice>
-      <form onSubmit={submit}>
+      <form className="profile-editor" onSubmit={submit}>
         <ErrorNotice error={action.error}>
           {(conflict || uncertain) && (
             <button type="button" onClick={() => void loadLatest()}>
@@ -255,72 +285,96 @@ export function HorseEditor({ horse }: { horse?: Horse }) {
             </button>
           </section>
         )}
-        <section className="card">
-          <h2>Horse identity and care</h2>
-          <div className="form-grid">
-            {horseFields.map((f) => (
-              <Field
-                key={f.key}
-                label={f.label}
-                error={
-                  errors[f.key] ||
-                  (action.error instanceof ApiError ? action.error.fields[f.key] : undefined)
-                }
-                hint={'hint' in f ? f.hint : undefined}
-              >
-                {(id) =>
-                  'type' in f && f.type === 'datetime' ? (
-                    <DateTimeInput
-                      id={id}
-                      value={form[f.key]}
-                      invalid={!!errors[f.key]}
-                      describedBy={errors[f.key] ? `${id}-error` : undefined}
-                      onChange={(v) => update(f.key, v)}
-                    />
-                  ) : 'multiline' in f ? (
-                    <textarea
-                      id={id}
-                      maxLength={f.max}
-                      value={form[f.key]}
-                      onChange={(e) => update(f.key, e.target.value)}
-                    />
-                  ) : (
-                    <input
-                      id={id}
-                      required={f.key === 'name'}
-                      type={'type' in f ? f.type : 'text'}
-                      inputMode={'number' in f ? 'decimal' : undefined}
-                      maxLength={'max' in f ? f.max : undefined}
-                      value={form[f.key]}
-                      aria-invalid={!!errors[f.key]}
-                      aria-describedby={errors[f.key] ? `${id}-error` : undefined}
-                      onChange={(e) => update(f.key, e.target.value)}
-                    />
-                  )
-                }
-              </Field>
-            ))}
-            <Field label="Sex">
-              {(id) => (
-                <select
-                  id={id}
-                  value={form.sexCode}
-                  onChange={(e) => update('sexCode', e.target.value)}
-                >
-                  <option value="">Not recorded</option>
-                  <option value="STALLION">Stallion</option>
-                  <option value="MARE">Mare</option>
-                  <option value="GELDING">Gelding</option>
-                </select>
-              )}
-            </Field>
-          </div>
+        <section className="card form-card">
+          <header className="form-card-header">
+            <div>
+              <span className="eyebrow">HORSE PROFILE</span>
+              <h2>Horse identity and care</h2>
+              <p>A clear profile helps your team plan a more considered journey.</p>
+            </div>
+            <span className="form-required-note">
+              <span>*</span> Required information
+            </span>
+          </header>
+          {horseFormGroups.map((group, index) => (
+            <FormSection
+              key={group.title}
+              title={group.title}
+              description={group.description}
+              icon={group.icon}
+              index={String(index + 1).padStart(2, '0')}
+            >
+              <div className="form-grid">
+                {horseFields
+                  .filter((f) => group.keys.includes(f.key))
+                  .map((f) => (
+                    <Field
+                      key={f.key}
+                      label={f.label}
+                      error={
+                        errors[f.key] ||
+                        (action.error instanceof ApiError ? action.error.fields[f.key] : undefined)
+                      }
+                      hint={'hint' in f ? f.hint : undefined}
+                    >
+                      {(id) =>
+                        'type' in f && f.type === 'datetime' ? (
+                          <DateTimeInput
+                            id={id}
+                            value={form[f.key]}
+                            invalid={!!errors[f.key]}
+                            describedBy={errors[f.key] ? `${id}-error` : undefined}
+                            onChange={(v) => update(f.key, v)}
+                          />
+                        ) : 'multiline' in f ? (
+                          <textarea
+                            id={id}
+                            maxLength={f.max}
+                            value={form[f.key]}
+                            onChange={(e) => update(f.key, e.target.value)}
+                          />
+                        ) : (
+                          <input
+                            id={id}
+                            required={f.key === 'name'}
+                            type={'type' in f ? f.type : 'text'}
+                            inputMode={'number' in f ? 'decimal' : undefined}
+                            maxLength={'max' in f ? f.max : undefined}
+                            value={form[f.key]}
+                            aria-invalid={!!errors[f.key]}
+                            aria-describedby={errors[f.key] ? `${id}-error` : undefined}
+                            onChange={(e) => update(f.key, e.target.value)}
+                          />
+                        )
+                      }
+                    </Field>
+                  ))}
+                {index === 0 && (
+                  <Field label="Sex">
+                    {(id) => (
+                      <select
+                        id={id}
+                        value={form.sexCode}
+                        onChange={(e) => update('sexCode', e.target.value)}
+                      >
+                        <option value="">Not recorded</option>
+                        <option value="STALLION">Stallion</option>
+                        <option value="MARE">Mare</option>
+                        <option value="GELDING">Gelding</option>
+                      </select>
+                    )}
+                  </Field>
+                )}
+              </div>
+            </FormSection>
+          ))}
         </section>
-        <div className="actions">
+        <div className="actions form-save-bar">
           <button
             className="primary"
             disabled={action.pending || conflict || uncertain || (!!horse && !dirty)}
           >
+            <Icon name="check" size={17} />
             {action.pending ? 'Saving…' : 'Save Horse Profile'}
           </button>
           <Link to="/customer/horses">Back to horses</Link>

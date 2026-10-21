@@ -1,5 +1,7 @@
-import { useId, type ReactNode } from 'react';
+import { isValidElement, useId, type ReactNode } from 'react';
 import { ApiError } from '../api/client';
+import { Skeleton } from '../../components/ui/Primitives';
+import { useSession } from '../api/session';
 export function Field({
   label,
   children,
@@ -12,11 +14,20 @@ export function Field({
   hint?: string;
 }) {
   const id = useId();
+  const control = children(id);
+  const required = isValidElement<{ required?: boolean }>(control) && control.props.required;
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      {children(id)}
-      {hint && <small>{hint}</small>}
+    <div className={`field ${error ? 'field-has-error' : ''}`}>
+      <div className="field-label-row">
+        <label htmlFor={id}>{label}</label>
+        {required && (
+          <span className="required-marker" aria-hidden="true">
+            *
+          </span>
+        )}
+      </div>
+      <div className="field-control">{control}</div>
+      {hint && <small className="field-hint">{hint}</small>}
       {error && (
         <span id={`${id}-error`} className="field-error" role="alert">
           {error}
@@ -44,9 +55,10 @@ export function Notice({ children }: { children: ReactNode }) {
 }
 export function Loading() {
   return (
-    <p role="status" className="loading">
-      Loading…
-    </p>
+    <div role="status" className="loading" aria-live="polite">
+      <span className="loading-label">Loading…</span>
+      <Skeleton />
+    </div>
   );
 }
 export function PageHeading({
@@ -58,10 +70,11 @@ export function PageHeading({
   description: string;
   children?: ReactNode;
 }) {
+  const session = useSession();
   return (
     <header className="page-heading">
       <div>
-        <small className="eyebrow">STABLE OPERATIONS · CUSTOMER</small>
+        <small className="eyebrow">EQUITRANSIT · {session?.role ?? 'JOURNEY MANAGEMENT'}</small>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>

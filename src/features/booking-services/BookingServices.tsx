@@ -28,17 +28,8 @@ import { validatePreferences } from './form';
 import { InsuranceSection } from './insurance-section';
 import { AirStallSection, TransportationSection, type SectionProps } from './sections';
 import { ServiceCard, ServiceDialog } from './service-cards';
+import { serviceSections } from './catalog';
 import './booking.css';
-
-const fallbackTitles: Record<SectionCode, string> = {
-  TRANSPORTATION: 'Transportation',
-  AIR_STALL: 'Available Air Stalls for Your Horse',
-  HORSE_CARE: 'Horse Care',
-  VETERINARY: 'Veterinary',
-  QUARANTINE: 'Quarantine Packages',
-  INSURANCE: 'Insurance',
-  ADDITIONAL_CHARGES: 'Additional Charges',
-};
 
 // One component per booking section.
 
@@ -83,6 +74,7 @@ function BookingEditor({
   });
   const initialSaved = savedPreferences(initialDisclosure, initialOrder);
   const [saved, setSaved] = useState<Preferences>(initialSaved);
+  const [airStallTouched, setAirStallTouched] = useState(false);
   const [prefs, setPrefs] = useState<Preferences>(() => ({
     ...initialSaved,
     airStall: initialSaved.airStall ?? (recommendsWide(initialDisclosure) ? 'WIDE' : null),
@@ -187,18 +179,20 @@ function BookingEditor({
     }
   }
   const titleOf = (code: SectionCode) =>
-    disclosure.sections.find((s) => s.code === code)?.title ?? fallbackTitles[code];
+    disclosure.sections.find((s) => s.code === code)?.title ?? serviceSections[code].title;
   const props: SectionProps = {
     order,
     disclosure,
     prefs,
     update: (patch) => {
       if (blocked) return;
+      if (patch.airStall !== undefined) setAirStallTouched(true);
       setPrefs((p) => ({ ...p, ...patch }));
       setMutationError(null);
     },
     errors,
     disabled: blocked,
+    airStallPriceVisible: saved.airStall !== null || airStallTouched,
   };
   const accessError = [
     previewError,
@@ -212,9 +206,8 @@ function BookingEditor({
     <RatesProvider query={rates}>
       <div className="booking">
         <Notice>
-          Choices here are requests for your horse in this order. They are not a quote, a payment or
-          a confirmed booking. Rates shown next to options are today&apos;s catalog unit rates, not
-          your quote.
+          Choose a service to see its current unit price. Final costs require a quotation; selecting
+          services does not confirm a booking.
         </Notice>
         {confirmedNotice && <Notice>{confirmedNotice} This is not a quote or a payment.</Notice>}
         {awaitingRefresh && (
@@ -262,6 +255,22 @@ function BookingEditor({
               code={code}
               title={titleOf(code)}
               open={open === code}
+              selected={
+                {
+                  TRANSPORTATION: prefs.roadArrangement !== null,
+                  AIR_STALL:
+                    prefs.airStall !== null && (saved.airStall !== null || airStallTouched),
+                  HORSE_CARE:
+                    prefs.enhancedCare === true ||
+                    (prefs.groomingDays ?? 0) > 0 ||
+                    (prefs.boardingNights ?? 0) > 0 ||
+                    !!prefs.escortNotes?.trim(),
+                  VETERINARY: prefs.veterinaryArrangement !== null,
+                  QUARANTINE: prefs.quarantinePackage !== null,
+                  INSURANCE: prefs.insurance !== null,
+                  ADDITIONAL_CHARGES: false,
+                }[code]
+              }
               onOpen={() => setOpen(open === code ? null : code)}
             />
           ))}

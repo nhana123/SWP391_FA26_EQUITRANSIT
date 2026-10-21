@@ -84,22 +84,30 @@ async function open(section: string) {
 
 describe('unit prices inside service options (FE-26)', () => {
   it('shows the exact server rate next to the EquiTransit option, own provider uncharged', async () => {
-    await open('Transportation');
+    const user = await open('Transportation');
+    expect(screen.queryByText('2.00 USD per km')).toBeNull();
+    await user.click(screen.getByLabelText('Arranged by EquiTransit'));
     const equi = screen.getByLabelText('Arranged by EquiTransit').closest('.choice-row')!;
     expect(await within(equi as HTMLElement).findByText('2.00 USD per km')).toBeInTheDocument();
-    const own = screen.getByLabelText('I will arrange my own provider').closest('.choice-row')!;
-    expect(within(own as HTMLElement).getByText(/not charged by EquiTransit/)).toBeInTheDocument();
     const airfare = within(screen.getByRole('dialog')).getByRole('listitem', { name: 'Airfare' });
     expect(within(airfare).getByText('Awaiting pricing/assessment')).toBeInTheDocument();
     expect(ratesApi.get).toHaveBeenCalledWith(11, expect.any(AbortSignal));
+    await user.click(screen.getByLabelText('I will arrange my own provider'));
+    const own = screen.getByLabelText('I will arrange my own provider').closest('.choice-row')!;
+    expect(within(own as HTMLElement).getByText(/not charged by EquiTransit/)).toBeInTheDocument();
+    expect(screen.queryByText('2.00 USD per km')).toBeNull();
   });
 
   it('never shows a missing rate as zero or free', async () => {
-    await open('Quarantine Packages');
+    const user = await open('Quarantine Packages');
+    expect(screen.queryByText('Awaiting pricing')).toBeNull();
+    await user.click(screen.getByLabelText('Standard package'));
     const standard = screen.getByLabelText('Standard package').closest('.choice-row')!;
     expect(within(standard as HTMLElement).getByText('Awaiting pricing')).toBeInTheDocument();
     // Not in the catalog at all: still awaiting, never 0.
     const enhanced = screen.getByLabelText('Enhanced package').closest('.choice-row')!;
+    expect(within(enhanced as HTMLElement).queryByText('Awaiting pricing')).toBeNull();
+    await user.click(screen.getByLabelText('Enhanced package'));
     expect(within(enhanced as HTMLElement).getByText('Awaiting pricing')).toBeInTheDocument();
     expect(screen.queryByText(/\b0(\.00)? USD/)).toBeNull();
   });
@@ -120,10 +128,12 @@ describe('unit prices inside service options (FE-26)', () => {
   });
 
   it('insurance: no premium for none or existing cover', async () => {
-    await open('Insurance');
+    const user = await open('Insurance');
+    expect(screen.queryByText(/300.00 USD/)).toBeNull();
+    await user.click(screen.getByLabelText('No insurance through EquiTransit'));
     expect(screen.getByText('No premium')).toBeInTheDocument();
-    expect(screen.getByText('No new premium')).toBeInTheDocument();
-    // The section card also previews the rate; the option tag is inside the popup.
+    expect(screen.queryByLabelText('I already have a policy that covers this journey')).toBeNull();
+    await user.click(screen.getByLabelText('Request new mortality cover'));
     expect(
       within(screen.getByRole('dialog')).getByText(
         /300.00 USD per policy · final amount needs assessment/,
@@ -134,9 +144,27 @@ describe('unit prices inside service options (FE-26)', () => {
   it('keeps choices usable when rates fail to load', async () => {
     vi.mocked(ratesApi.get).mockRejectedValue(new ApiError(502, 'Rates could not be loaded.'));
     const user = await open('Horse Care');
+    expect(screen.queryByText('Price unavailable right now')).toBeNull();
+    await user.click(screen.getByRole('checkbox', { name: 'Grooming days' }));
+    await user.click(screen.getByRole('radio', { name: '2 days' }));
+    expect(screen.getByRole('radio', { name: '2 days' })).toBeChecked();
     expect(await screen.findAllByText('Price unavailable right now')).not.toHaveLength(0);
-    await user.type(screen.getByLabelText('Grooming days'), '2');
-    expect(screen.getByLabelText('Grooming days')).toHaveValue('2');
+  });
+
+  it('keeps section cards concise and hides other prices when an optional service is selected or cleared', async () => {
+    const user = await open('Horse Care');
+    const cards = document.querySelectorAll('.service-card');
+    expect(cards).toHaveLength(7);
+    for (const card of cards)
+      expect(card).not.toHaveTextContent(/USD|per km|per policy|Loading price/);
+    expect(screen.queryByText('45.50 USD per person-day')).toBeNull();
+    await user.click(screen.getByRole('checkbox', { name: 'Grooming days' }));
+    await user.click(screen.getByRole('radio', { name: '2 days' }));
+    expect(await screen.findByText('45.50 USD per person-day')).toBeInTheDocument();
+    expect(screen.queryByText('2.00 USD per km')).toBeNull();
+    await user.click(screen.getByRole('checkbox', { name: 'Grooming days' }));
+    expect(screen.queryByText('45.50 USD per person-day')).toBeNull();
+    expect(bookingApi.confirm).not.toHaveBeenCalled();
   });
 });
 

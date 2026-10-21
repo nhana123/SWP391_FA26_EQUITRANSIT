@@ -1,3 +1,5 @@
+import { EmptyState } from '../../components/ui/Primitives';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
@@ -69,9 +71,9 @@ export function ReadinessCard({ overview }: { overview: Overview }) {
     <section className="card" aria-label={`${phaseLabels[r.phase]} readiness`}>
       <h2>
         {phaseLabels[r.phase]}:{' '}
-        <span className={`badge ${r.status === 'READY' ? '' : 'warn'}`}>
+        <StatusBadge status={r.status === 'READY' ? 'Cleared' : 'Pending'}>
           {r.status === 'READY' ? 'Cleared' : 'Pending'}
-        </span>
+        </StatusBadge>
       </h2>
       <p className="muted">
         Revision ID {overview.revisionId}. Checked {displayDate(r.asOf)}
@@ -129,7 +131,7 @@ export function RequirementsTable({
                 <tr key={r.requirementId}>
                   <td>{r.documentType}</td>
                   <td>
-                    <span className="badge">{r.status}</span>
+                    <StatusBadge status={r.status}>{r.status}</StatusBadge>
                   </td>
                   <td>{r.documentVersionId ?? 'Not submitted'}</td>
                   <td>
@@ -218,7 +220,7 @@ export function DocumentsSection({
       ) : documents.error ? (
         <ErrorNotice error={documents.error} />
       ) : !documents.data!.length ? (
-        <p>No documents uploaded yet.</p>
+        <EmptyState title="No documents uploaded yet." />
       ) : (
         <div className="table-scroll">
           <table aria-label="Document versions">

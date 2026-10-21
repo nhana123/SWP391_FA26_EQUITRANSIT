@@ -59,8 +59,15 @@ export function rateText(rate: ServiceRate | undefined, status: RatesState['stat
 }
 
 /** Inline current rate next to a service choice. */
-export function RateTag({ product }: { product: ServiceProduct }) {
+export function RateTag({
+  product,
+  selected = true,
+}: {
+  product: ServiceProduct;
+  selected?: boolean;
+}) {
   const { status, byProduct } = useContext(RatesContext);
+  if (!selected) return null;
   return <small className="rate-tag">{rateText(byProduct.get(product), status)}</small>;
 }
 
@@ -80,8 +87,17 @@ const modeNotes: Partial<Record<ServiceRate['pricingMode'], string>> = {
 };
 
 /** All catalog rates of one booking section, as price cards. Never a quote total. */
-export function SectionRates({ section, title }: { section: SectionCode; title?: string }) {
+export function SectionRates({
+  section,
+  title,
+  selected = true,
+}: {
+  section: SectionCode;
+  title?: string;
+  selected?: boolean;
+}) {
   const { status, byProduct } = useContext(RatesContext);
+  if (!selected) return null;
   const rows = [...byProduct.values()].filter((r) => r.uiSection === section);
   if (status === 'ready' && rows.length === 0) return null;
   const heading = title ?? 'Current unit rates';

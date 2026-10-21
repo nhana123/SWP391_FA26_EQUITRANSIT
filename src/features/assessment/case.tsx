@@ -1,3 +1,6 @@
+import { OrderLifecycle } from '../../components/ui/OrderLifecycle';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { EmptyState } from '../../components/ui/Primitives';
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { queryClient } from '../../shared/api/query';
@@ -94,7 +97,7 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
             ]}
           />
         ) : (
-          <p>No horse was captured in this revision.</p>
+          <EmptyState title="No horse was captured in this revision." />
         )}
       </section>
       <section className="card">
@@ -268,6 +271,7 @@ export function ManagerCasePage() {
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
+      <OrderLifecycle status={current.orderStatus} />
       <OrderTimeline orderId={current.orderId} />
       {receipt && (
         <Notice>
@@ -280,7 +284,10 @@ export function ManagerCasePage() {
       <section className="card">
         <Details
           rows={[
-            ['Status', <span className="badge">{current.orderStatus}</span>],
+            [
+              'Status',
+              <StatusBadge status={current.orderStatus}>{current.orderStatus}</StatusBadge>,
+            ],
             [
               'Current decision',
               current.decision ? outcomeLabels[current.decision.decision] : 'Not decided',
