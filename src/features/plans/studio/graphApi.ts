@@ -145,7 +145,7 @@ export function compileBody(
         plannedArrival: canonical(w.plannedArrival),
         startTimezone: TIMEZONE,
         endTimezone: TIMEZONE,
-        supplierId: null,
+        supplierId: w.supplierId ?? null,
         plannedFlightNumber: w.flightNumber || null,
         connectionBufferMinutes: nodes[i].dwellMinutes,
         restDurationMinutes: nodes[i].nodeType === 'REST_STOP' ? nodes[i].dwellMinutes : null,

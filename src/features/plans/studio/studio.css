@@ -599,6 +599,45 @@
 .js-candidate p {
   margin: 6px 0;
 }
+.js-supplier-picker {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--js-border);
+  border-radius: 9px;
+  background: #132333;
+}
+.js-supplier-picker .js-field {
+  margin: 0 0 7px;
+}
+.js-supplier-picker > input,
+.js-supplier-picker > select {
+  margin: 0 0 8px;
+  width: 100%;
+  min-width: 0;
+}
+.js-supplier-picker small {
+  color: var(--js-muted);
+  font-size: 11px;
+}
+.js-supplier-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+.js-supplier-actions button {
+  padding: 4px 7px;
+  font-size: 11px;
+}
+.js-supplier-picker .js-supplier-fallback {
+  padding: 4px 0;
+  margin-top: 7px;
+  background: transparent;
+  border-color: transparent;
+  color: #8de0d3;
+  font-size: 11px;
+  text-align: left;
+}
 .js-resource-forms > p,
 .js-finalize > p {
   font-size: 11px;

@@ -233,6 +233,20 @@ describe('Journey Studio role safety and write consistency', () => {
     expect(graphApi.compile).not.toHaveBeenCalled();
   });
 
+  it('preserves the carrier from authorized plan detail when compiling a fork', async () => {
+    const detail = planDetailSchema.parse(planDetail());
+    detail.legs[0].supplierId = 73;
+    vi.mocked(plansApi.get).mockResolvedValue(detail);
+    vi.mocked(graphApi.compile).mockResolvedValue(graph({ planId: 312 }));
+    const user = mount('COORDINATOR');
+    await user.click(await screen.findByRole('button', { name: 'Soạn phiên bản mới' }));
+    await user.click(screen.getByRole('button', { name: 'Select road' }));
+    expect(screen.getByRole('textbox', { name: 'Hãng vận chuyển · ID' })).toHaveValue('73');
+    await user.click(screen.getByRole('button', { name: /Compile & lưu sơ đồ/ }));
+    await waitFor(() => expect(graphApi.compile).toHaveBeenCalled());
+    expect(vi.mocked(graphApi.compile).mock.calls[0][1].draft.legs[0].supplierId).toBe(73);
+  });
+
   it('lets a legacy draft without graph nodes start a new graph draft', async () => {
     vi.mocked(graphApi.get).mockResolvedValue(
       graph({ checkpointNodes: [], wires: [], editable: false }),

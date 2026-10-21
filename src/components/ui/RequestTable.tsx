@@ -6,7 +6,7 @@ import { StatusBadge } from './StatusBadge';
 import { OrderLifecycle } from './OrderLifecycle';
 import { orderStatusLabels } from '../../features/transport-orders/status-contracts';
 type Item = { orderId: number; orderNumber: string; status: string };
-const filters = ['All', 'Active', 'Confirmed', 'Completed'] as const;
+const filters = ['All', 'Active', 'Confirmed', 'In Transit', 'Completed'] as const;
 export function RequestTable({
   items,
   label,
@@ -25,6 +25,7 @@ export function RequestTable({
       item.orderNumber.toLowerCase().includes(search.trim().toLowerCase()) &&
       (filter === 'All' ||
         (filter === 'Confirmed' && item.status === 'CONFIRMED') ||
+        (filter === 'In Transit' && item.status === 'IN_TRANSIT') ||
         (filter === 'Completed' && ['DELIVERED', 'COMPLETED', 'CLOSED'].includes(item.status)) ||
         (filter === 'Active' &&
           !['DELIVERED', 'COMPLETED', 'CLOSED', 'REJECTED', 'CANCELLED', 'CANCELED'].includes(
