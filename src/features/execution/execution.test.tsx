@@ -15,6 +15,12 @@ import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
+vi.mock('../plans/studio/JourneyStudio', () => ({
+  JourneyStudio: ({ mode }: { mode: string }) => (
+    <div data-testid="journey-studio" data-mode={mode} />
+  ),
+}));
+
 vi.mock('../incidents/api', () => ({
   incidentsApi: {
     adjustments: vi.fn(() => new Promise(() => {})),
@@ -99,11 +105,11 @@ beforeEach(() => {
   queryClient.clear();
   vi.mocked(executionApi.get).mockResolvedValue(overview());
 });
-function mount(role: Role) {
+function mount(role: Role, search = '') {
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role });
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/x/101/execution']}>
+      <MemoryRouter initialEntries={['/x/101/execution' + search]}>
         <Routes>
           <Route path="/x/:id/execution" element={<ExecutionPage />} />
         </Routes>
@@ -118,6 +124,43 @@ const fill = async (user: ReturnType<typeof userEvent.setup>, field: HTMLElement
 };
 
 describe('trip progress (#81 F12)', () => {
+  it('embeds the customer graph as a customer-only view', async () => {
+    mount('CUSTOMER', '?legId=901&action=welfare');
+    expect(await screen.findByTestId('journey-studio')).toHaveAttribute('data-mode', 'customer');
+    expect(screen.queryByRole('form')).toBeNull();
+    const legs = screen.getByRole('table', { name: 'Execution legs' });
+    expect(legs).toHaveTextContent('1 Feb 2027, 13:00 (Asia/Ho_Chi_Minh)');
+    expect(legs).not.toHaveTextContent('(UTC)');
+  });
+
+  it('opens an eligible driver welfare action from a canvas link', async () => {
+    const user = mount('DRIVER', '?legId=901&action=welfare');
+    expect(
+      await screen.findByRole('form', { name: 'Add welfare check to leg 1' }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('journey-studio')).toHaveAttribute('data-mode', 'driver');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(executionApi.welfare).not.toHaveBeenCalled();
+  });
+
+  it('does not open a driver AIR action from a canvas link', async () => {
+    mount('DRIVER', '?legId=902&action=start');
+    await screen.findByRole('table', { name: 'Execution legs' });
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(executionApi.start).not.toHaveBeenCalled();
+  });
+
+  it('keeps the first departure on the receipt and departure page', async () => {
+    vi.mocked(executionApi.get).mockResolvedValue(
+      overview({ legs: [leg(1)], legCount: 1, welfareLogs: [], welfareCount: 0 }),
+    );
+    mount('DRIVER', '?legId=901&action=start');
+    await screen.findByRole('table', { name: 'Execution legs' });
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(executionApi.start).not.toHaveBeenCalled();
+  });
+
   it('starts the next leg only after the previous one completed, without a driver source on AIR', async () => {
     vi.mocked(executionApi.start).mockResolvedValue(receipt());
     const user = mount('COORDINATOR');

@@ -20,6 +20,20 @@ import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
+vi.mock('./studio/JourneyStudio', () => ({
+  JourneyStudio: ({
+    orderId,
+    planId,
+    mode,
+  }: {
+    orderId: number;
+    planId?: number;
+    mode: string;
+  }) => (
+    <div data-testid="journey-studio" data-order={orderId} data-plan={planId} data-mode={mode} />
+  ),
+}));
+
 vi.mock('./api', () => ({
   PLAN_PAGE_SIZE: 20,
   plansApi: {
@@ -115,6 +129,7 @@ describe('plan versions and draft builder (#80)', () => {
     const user = mount('/staff/cases/101/plans');
     const table = await screen.findByRole('table', { name: 'Plan versions' });
     expect(within(table).getByText(/PENDING \/ PENDING \/ PENDING/)).toBeInTheDocument();
+    await user.click(screen.getByText('Classic draft form and shared-stall shortlist'));
     const form = within(screen.getByRole('form', { name: 'New plan version' }));
     // Default template: road, air, road; remove the last road leg.
     await user.click(form.getByRole('button', { name: 'Remove leg 3' }));
@@ -183,7 +198,8 @@ describe('plan versions and draft builder (#80)', () => {
         windowEnd: '2027-02-01T17:00:00Z',
       },
     ]);
-    mount('/staff/cases/101/plans');
+    const user = mount('/staff/cases/101/plans');
+    await user.click(await screen.findByText('Classic draft form and shared-stall shortlist'));
     const table = await screen.findByRole('table', { name: 'Shared stall candidates' });
     expect(within(table).getByText(/over 3/)).toBeInTheDocument();
     expect(within(table).queryByRole('button')).toBeNull();
@@ -198,11 +214,29 @@ describe('plan versions and draft builder (#80)', () => {
 });
 
 describe('plan detail (#80)', () => {
+  it('mounts the studio for the selected plan and keeps detailed evidence forms available', async () => {
+    const user = mount('/staff/cases/101/plans/311');
+    const studio = await screen.findByTestId('journey-studio');
+    expect(studio).toHaveAttribute('data-order', '101');
+    expect(studio).toHaveAttribute('data-plan', '311');
+    expect(studio).toHaveAttribute('data-mode', 'edit');
+    const summary = screen.getByText(
+      'Resource assignments, reservation evidence and plan confirmation',
+    );
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+    await user.click(summary);
+    expect(summary.closest('details')).toHaveAttribute('open');
+    expect(screen.getByRole('form', { name: 'Confirm plan' })).toBeInTheDocument();
+  });
+
   it('lists readable blockers and keeps a HELD flight visibly unconfirmed', async () => {
-    mount('/staff/cases/101/plans/311');
+    const user = mount('/staff/cases/101/plans/311');
     const blockers = await screen.findByRole('list', { name: 'Confirmation blockers' });
     expect(within(blockers).getByText(/road leg has no vehicle/)).toBeInTheDocument();
     expect(within(blockers).getByText('SOMETHING_NEW')).toBeInTheDocument();
+    await user.click(
+      screen.getByText('Resource assignments, reservation evidence and plan confirmation'),
+    );
     const air = screen.getByRole('region', { name: 'Leg 2' });
     const resources = within(within(air).getByRole('list', { name: 'Leg 2 resources' }));
     expect(resources.getByText('HELD')).toHaveClass('warn');
@@ -227,6 +261,9 @@ describe('plan detail (#80)', () => {
     });
     vi.mocked(plansApi.road).mockResolvedValue(detail({ recordVersion: '000000000001A2B4' }));
     const user = mount('/staff/cases/101/plans/311');
+    await user.click(
+      await screen.findByText('Resource assignments, reservation evidence and plan confirmation'),
+    );
     const form = within(
       await screen.findByRole('form', { name: 'Assign road resources to leg 1' }),
     );
@@ -277,6 +314,9 @@ describe('plan detail (#80)', () => {
       .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
       .mockResolvedValueOnce(detail());
     const user = mount('/staff/cases/101/plans/311');
+    await user.click(
+      await screen.findByText('Resource assignments, reservation evidence and plan confirmation'),
+    );
     const stall = within(await screen.findByRole('form', { name: 'Assign stall to leg 2' }));
     await fill(user, stall.getByLabelText('Stall ID'), '12');
     await user.click(stall.getByRole('button', { name: 'Check stall availability' }));
@@ -310,6 +350,9 @@ describe('plan detail (#80)', () => {
       ]),
     );
     const user = mount('/staff/cases/101/plans/311');
+    await user.click(
+      await screen.findByText('Resource assignments, reservation evidence and plan confirmation'),
+    );
     const form = within(await screen.findByRole('form', { name: 'Confirm plan' }));
     await waitFor(() => expect(form.getAllByRole('option')).toHaveLength(2));
     expect(form.getAllByRole('option').map((o) => o.textContent)).toEqual([

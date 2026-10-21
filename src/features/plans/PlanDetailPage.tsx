@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import { useSession } from '../../shared/api/session';
-import { displayDate } from '../../shared/lib/validation';
+import { displayDate as formatDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
 import { plansApi } from './api';
 import { blockerText, editablePlan, type Leg, type PlanDetail } from './contracts';
@@ -17,7 +17,10 @@ import {
 } from './forms';
 import { StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
 import { DeploymentNotice, planAccess, plansPath, schemaPending } from './PlansPage';
+import { JourneyStudio } from './studio/JourneyStudio';
 import './plans.css';
+
+const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
 
 function LegCard({
   plan,
@@ -32,17 +35,17 @@ function LegCard({
 }) {
   const air = leg.transportMode === 'AIR';
   return (
-    <section className="card plan-leg-card" aria-label={`Leg ${leg.sequenceNo}`}>
+    <section
+      className="card plan-leg-card"
+      id={`plan-resources-leg-${leg.legId}`}
+      aria-label={`Leg ${leg.sequenceNo}`}
+    >
       <h3>
         Leg {leg.sequenceNo} · {leg.transportMode}: {leg.startPoint} → {leg.endPoint}
       </h3>
       <p>
-        {displayDate(leg.plannedDeparture, leg.startTimezone ?? 'UTC')} →{' '}
-        {displayDate(leg.plannedArrival, leg.endTimezone ?? 'UTC')}
-        {leg.startTimezone && ` (${leg.startTimezone}`}
-        {leg.endTimezone && ` → ${leg.endTimezone}`}
-        {leg.startTimezone && ')'}. {leg.distanceKm} km — source:{' '}
-        {leg.distanceSource ?? 'not recorded'}
+        {displayDate(leg.plannedDeparture)} → {displayDate(leg.plannedArrival)}. {leg.distanceKm} km
+        — source: {leg.distanceSource ?? 'not recorded'}
         {leg.distanceConfirmedBy !== null && `, confirmed by staff ${leg.distanceConfirmedBy}`}.
       </p>
       {air && leg.plannedFlightNumber && <p>Planned flight {leg.plannedFlightNumber}.</p>}
@@ -90,6 +93,8 @@ function LegCard({
 
 function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number }) {
   const session = useSession()!;
+  const navigate = useNavigate();
+  const { hash } = useLocation();
   const role = session.role as 'MANAGER' | 'COORDINATOR';
   const query = useQuery({
     queryKey: planKeys.detail(session.generation, orderId, planId),
@@ -151,37 +156,55 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
           </Notice>
         )}
       </section>
-      {plan.legs.map((leg) => (
-        <LegCard key={leg.legId} plan={plan} leg={leg} pinned={pinned} editable={editable} />
-      ))}
-      <section className="card" aria-label="Quarantine and insurance">
-        <h2>Quarantine and insurance</h2>
-        <ul>
-          {plan.quarantineReservations.map((q) => (
-            <li key={q.reservationId}>
-              Quarantine at {q.facilityName}: {displayDate(q.startsAt)} → {displayDate(q.endsAt)},{' '}
-              <span className="badge">{q.status}</span>
-            </li>
-          ))}
-          {plan.insurancePolicies.map((p) => (
-            <li key={p.policyId}>
-              Insurance {p.insurerName} {p.policyNumber}: {displayDate(p.coverageFrom)} →{' '}
-              {displayDate(p.coverageTo)}, <span className="badge">{p.status}</span>
-              {p.verifiedBy === null && ' — not verified'}
-            </li>
-          ))}
-          {!plan.quarantineReservations.length && !plan.insurancePolicies.length && (
-            <li>Nothing recorded yet.</li>
+      <JourneyStudio
+        orderId={orderId}
+        planId={planId}
+        mode="edit"
+        revisionId={plan.revisionId}
+        recordVersion={plan.recordVersion}
+        canCompile={editable && !pinned.changed}
+        onSaved={(nextId) => {
+          if (nextId !== planId) navigate(`${plansPath(role, orderId)}/${nextId}`);
+          else
+            void query.refetch().then(({ data }) => {
+              if (data) pinned.adopt(data.recordVersion);
+            });
+        }}
+      />
+      <details className="card" id="plan-resources" open={hash.startsWith('#plan-')}>
+        <summary>Resource assignments, reservation evidence and plan confirmation</summary>
+        {plan.legs.map((leg) => (
+          <LegCard key={leg.legId} plan={plan} leg={leg} pinned={pinned} editable={editable} />
+        ))}
+        <section className="card" id="plan-reservations" aria-label="Quarantine and insurance">
+          <h2>Quarantine and insurance</h2>
+          <ul>
+            {plan.quarantineReservations.map((q) => (
+              <li key={q.reservationId}>
+                Quarantine at {q.facilityName}: {displayDate(q.startsAt)} → {displayDate(q.endsAt)},{' '}
+                <span className="badge">{q.status}</span>
+              </li>
+            ))}
+            {plan.insurancePolicies.map((p) => (
+              <li key={p.policyId}>
+                Insurance {p.insurerName} {p.policyNumber}: {displayDate(p.coverageFrom)} →{' '}
+                {displayDate(p.coverageTo)}, <span className="badge">{p.status}</span>
+                {p.verifiedBy === null && ' — not verified'}
+              </li>
+            ))}
+            {!plan.quarantineReservations.length && !plan.insurancePolicies.length && (
+              <li>Nothing recorded yet.</li>
+            )}
+          </ul>
+          {editable && (
+            <>
+              <QuarantineForm plan={plan} pinned={pinned} />
+              <InsuranceForm plan={plan} pinned={pinned} />
+            </>
           )}
-        </ul>
-        {editable && (
-          <>
-            <QuarantineForm plan={plan} pinned={pinned} />
-            <InsuranceForm plan={plan} pinned={pinned} />
-          </>
-        )}
-      </section>
-      {editable && <ConfirmForm plan={plan} pinned={pinned} />}
+        </section>
+        <div id="plan-confirmation">{editable && <ConfirmForm plan={plan} pinned={pinned} />}</div>
+      </details>
     </>
   );
 }
@@ -203,6 +226,7 @@ export function PlanDetailPage() {
           <small className="eyebrow">OPERATIONAL PLAN</small>
           <h1>Plan detail</h1>
           <p>Legs, resources, reservations and confirmation blockers.</p>
+          <p className="muted">Operational timezone: GMT+07:00 (Asia/Ho_Chi_Minh).</p>
         </div>
         <Link to={plansPath(session.role as 'MANAGER' | 'COORDINATOR', orderId)}>
           Back to plan versions

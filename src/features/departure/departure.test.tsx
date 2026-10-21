@@ -11,6 +11,12 @@ import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
+vi.mock('../plans/studio/JourneyStudio', () => ({
+  JourneyStudio: ({ mode }: { mode: string }) => (
+    <div data-testid="journey-studio" data-mode={mode} />
+  ),
+}));
+
 vi.mock('./api', () => ({
   departureApi: {
     get: vi.fn(),

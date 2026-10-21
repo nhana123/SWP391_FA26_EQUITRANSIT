@@ -6,7 +6,7 @@ import { ApiError } from '../../shared/api/client';
 import { idSchema, type Role } from '../../shared/api/contracts';
 import { queryClient, queryKeys } from '../../shared/api/query';
 import { useSession } from '../../shared/api/session';
-import { displayDate, type FieldErrors } from '../../shared/lib/validation';
+import { displayDate as formatDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { useCaseCommand } from '../assessment/command';
 import { EXECUTION_PAGE_SIZE, executionApi } from './api';
@@ -39,7 +39,10 @@ import {
 } from '../incidents/panels';
 import { incidentsEnabled } from '../incidents/capability';
 import { LegHandovers } from '../handover/panels';
+import { JourneyStudio } from '../plans/studio/JourneyStudio';
 import './execution.css';
+
+const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
 
 export const executionKeys = {
   all: (generation: string, orderId: number) =>
@@ -613,6 +616,28 @@ function Workspace({ orderId }: { orderId: number }) {
     setNotice('');
     setPanel(next);
   };
+  // Canvas links open only an action already available on this authorized page.
+  // A query string cannot make a first leg start here or permit a driver AIR write.
+  const linkedLeg = o.legs.find((leg) => String(leg.legId) === params.get('legId'));
+  const linkedAction = params.get('action');
+  const linkedPanel: Panel | null =
+    linkedLeg && writable(linkedLeg) && !pinned.changed
+      ? linkedAction === 'start' && canStart(linkedLeg)
+        ? { leg: linkedLeg, kind: 'start' }
+        : linkedAction === 'complete' && linkedLeg.legStatus === 'IN_TRANSIT'
+          ? { leg: linkedLeg, kind: 'complete' }
+          : (linkedAction === 'welfare' || linkedAction === 'milestone') && departed(linkedLeg)
+            ? { leg: linkedLeg, kind: linkedAction }
+            : null
+      : null;
+  const activePanel = panel ?? linkedPanel;
+  const closePanel = () => {
+    setPanel(null);
+    const next = new URLSearchParams(params);
+    next.delete('legId');
+    next.delete('action');
+    setParams(next, { replace: true });
+  };
   return (
     <>
       {pinned.changed && (
@@ -627,6 +652,14 @@ function Workspace({ orderId }: { orderId: number }) {
         </div>
       )}
       {notice && <Notice>{notice}</Notice>}
+      {(session.role === 'DRIVER' || session.role === 'CUSTOMER') && (
+        <JourneyStudio
+          orderId={orderId}
+          planId={o.planId}
+          recordVersion={o.recordVersion}
+          mode={session.role === 'DRIVER' ? 'driver' : 'customer'}
+        />
+      )}
       <section className="card" aria-label="Legs">
         <h2>Legs</h2>
         <p className="muted">
@@ -647,7 +680,7 @@ function Workspace({ orderId }: { orderId: number }) {
             </thead>
             <tbody>
               {o.legs.map((leg) => (
-                <tr key={leg.legId}>
+                <tr key={leg.legId} id={`leg-${leg.legId}`}>
                   <td>
                     {leg.sequenceNo} · {leg.transportMode}
                   </td>
@@ -724,49 +757,54 @@ function Workspace({ orderId }: { orderId: number }) {
           </table>
         </div>
       </section>
-      {panel && (
-        <div className="execution-panel">
-          {panel.kind === 'start' || panel.kind === 'complete' ? (
+      {activePanel && (
+        <div className="execution-panel" id="execution-action">
+          {activePanel.kind === 'start' || activePanel.kind === 'complete' ? (
             <TransitionFormView
-              key={`${panel.kind}-${panel.leg.legId}`}
+              key={`${activePanel.kind}-${activePanel.leg.legId}`}
               o={o}
-              leg={panel.leg}
+              leg={activePanel.leg}
               pinned={pinned}
-              kind={panel.kind}
+              kind={activePanel.kind}
             />
-          ) : panel.kind === 'milestone' ? (
-            <MilestoneFormView key={`m-${panel.leg.legId}`} o={o} leg={panel.leg} pinned={pinned} />
-          ) : panel.kind === 'handover' ? (
+          ) : activePanel.kind === 'milestone' ? (
+            <MilestoneFormView
+              key={`m-${activePanel.leg.legId}`}
+              o={o}
+              leg={activePanel.leg}
+              pinned={pinned}
+            />
+          ) : activePanel.kind === 'handover' ? (
             <LegHandovers
-              key={`h-${panel.leg.legId}`}
-              legId={panel.leg.legId}
+              key={`h-${activePanel.leg.legId}`}
+              legId={activePanel.leg.legId}
               asDriver={session.role === 'DRIVER'}
-              finalLeg={panel.leg.sequenceNo === lastLeg}
+              finalLeg={activePanel.leg.sequenceNo === lastLeg}
               onRecorded={async (message) => {
                 setNotice(message);
                 await pinned.repin();
               }}
             />
-          ) : panel.kind === 'incidents' ? (
+          ) : activePanel.kind === 'incidents' ? (
             session.role === 'DRIVER' ? (
               <ReportIncidentForm
-                key={`i-${panel.leg.legId}`}
-                legId={panel.leg.legId}
+                key={`i-${activePanel.leg.legId}`}
+                legId={activePanel.leg.legId}
                 asDriver
                 onReported={(i) =>
                   setNotice(`Incident ${i.incidentId} reported. Staff have been alerted.`)
                 }
               />
             ) : (
-              <LegIncidents key={`i-${panel.leg.legId}`} legId={panel.leg.legId} />
+              <LegIncidents key={`i-${activePanel.leg.legId}`} legId={activePanel.leg.legId} />
             )
           ) : (
             <WelfareFormView
-              key={`w-${panel.leg.legId}-${panel.correcting?.welfareLogId ?? 'new'}`}
+              key={`w-${activePanel.leg.legId}-${activePanel.correcting?.welfareLogId ?? 'new'}`}
               o={o}
-              leg={panel.leg}
+              leg={activePanel.leg}
               pinned={pinned}
-              correcting={panel.correcting ?? null}
+              correcting={activePanel.correcting ?? null}
               onDone={(r) =>
                 r.incidentId !== null &&
                 setNotice(
@@ -775,7 +813,7 @@ function Workspace({ orderId }: { orderId: number }) {
               }
             />
           )}
-          <button type="button" onClick={() => setPanel(null)}>
+          <button type="button" onClick={closePanel}>
             Close
           </button>
         </div>
@@ -832,7 +870,7 @@ function Workspace({ orderId }: { orderId: number }) {
           </ul>
         )}
       </section>
-      <section className="card" aria-label="Welfare checks">
+      <section className="card" id="journey-welfare-log" aria-label="Welfare checks">
         <h2>Welfare checks ({o.welfareCount})</h2>
         {!o.welfareLogs.length ? (
           <p>No welfare checks recorded{session.role === 'CUSTOMER' ? ' for you yet' : ''}.</p>
@@ -920,6 +958,7 @@ export function ExecutionPage() {
           <small className="eyebrow">TRIP PROGRESS</small>
           <h1>Trip progress</h1>
           <p>Leg progress, recorded updates and welfare checks.</p>
+          <p className="muted">Operational timezone: GMT+07:00 (Asia/Ho_Chi_Minh).</p>
         </div>
         <Link to={back}>Back</Link>
       </header>
