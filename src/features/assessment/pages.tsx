@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+import { LoadedOrderFilter } from '../../components/ui/LoadedOrderFilter';
+import { CodeChip } from '../../components/ui/Primitives';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { reviewStates, type ReviewState } from './contracts';
@@ -57,38 +59,42 @@ export function ManagerQueuePage() {
             <p>{emptyCopy[state]}</p>
           </div>
         ) : (
-          <div className="table-scroll" aria-busy={query.isPlaceholderData}>
-            <table
-              aria-label={`${reviewStateLabels[state]}: ${query.data.totalElements} request${
-                query.data.totalElements === 1 ? '' : 's'
-              }`}
-            >
-              <thead>
-                <tr>
-                  <th scope="col">Request</th>
-                  <th scope="col">Route</th>
-                  <th scope="col">Delivery deadline</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {query.data.items.map((c) => (
-                  <tr key={c.orderId}>
-                    <td>
-                      <Link to={`/manager/requests/${c.orderId}`}>{c.orderNumber}</Link>
-                    </td>
-                    <td>
-                      {c.originCountryCode} → {c.destinationCountryCode}
-                    </td>
-                    <td>{displayDate(c.deliveryDeadline)}</td>
-                    <td>
-                      <span className="badge">{c.orderStatus}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LoadedOrderFilter items={query.data.items}>
+            {(filtered) => (
+              <div className="table-scroll" aria-busy={query.isPlaceholderData}>
+                <table
+                  aria-label={`${reviewStateLabels[state]}: ${query.data.totalElements} request${
+                    query.data.totalElements === 1 ? '' : 's'
+                  }`}
+                >
+                  <thead>
+                    <tr>
+                      <th scope="col">Request</th>
+                      <th scope="col">Route</th>
+                      <th scope="col">Delivery deadline</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c) => (
+                      <tr key={c.orderId}>
+                        <td>
+                          <CodeChip value={c.orderNumber} to={`/manager/requests/${c.orderId}`} />
+                        </td>
+                        <td>
+                          {c.originCountryCode} → {c.destinationCountryCode}
+                        </td>
+                        <td>{displayDate(c.deliveryDeadline)}</td>
+                        <td>
+                          <StatusBadge status={c.orderStatus}>{c.orderStatus}</StatusBadge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </LoadedOrderFilter>
         )}
         {/* page > 0 keeps a way back when a bookmarked page no longer exists. */}
         {query.data && (query.data.totalPages > 1 || page > 0) && (

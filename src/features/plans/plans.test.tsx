@@ -128,7 +128,9 @@ describe('plan versions and draft builder (#80)', () => {
     vi.mocked(plansApi.draft).mockResolvedValue(detail({ planId: 312, versionNo: 2 }));
     const user = mount('/staff/cases/101/plans');
     const table = await screen.findByRole('table', { name: 'Plan versions' });
-    expect(within(table).getByText(/PENDING \/ PENDING \/ PENDING/)).toBeInTheDocument();
+    expect(
+      within(table).getByRole('cell', { name: /PENDING \/ PENDING \/ PENDING/ }),
+    ).toBeInTheDocument();
     await user.click(screen.getByText('Classic draft form and shared-stall shortlist'));
     const form = within(screen.getByRole('form', { name: 'New plan version' }));
     // Default template: road, air, road; remove the last road leg.
@@ -239,7 +241,7 @@ describe('plan detail (#80)', () => {
     );
     const air = screen.getByRole('region', { name: 'Leg 2' });
     const resources = within(within(air).getByRole('list', { name: 'Leg 2 resources' }));
-    expect(resources.getByText('HELD')).toHaveClass('warn');
+    expect(resources.getByText('HELD')).toHaveClass('status-warning');
     expect(resources.getByText(/no booking evidence/)).toBeInTheDocument();
     // AIR legs get stall/flight forms only; ROAD legs vehicle/driver only.
     expect(within(air).queryByRole('form', { name: /Assign road resources/ })).toBeNull();

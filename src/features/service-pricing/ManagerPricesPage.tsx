@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -214,7 +215,7 @@ export function ManagerPricesPage() {
                       <span className="muted">{unitLabel(t.unit)}</span>
                     </td>
                     <td>
-                      <span className="badge">{effectLabel(t)}</span>
+                      <StatusBadge status={effectLabel(t)}>{effectLabel(t)}</StatusBadge>
                     </td>
                     <td>{displayDate(t.effectiveFrom)}</td>
                     <td>{t.effectiveTo ? displayDate(t.effectiveTo) : 'No planned end'}</td>

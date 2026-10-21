@@ -1,10 +1,11 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, Outlet, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import { queryClient, queryKeys } from '../../shared/api/query';
-import { signOut } from '../../shared/api/refresh';
+import { WorkspaceShell } from '../../components/ui/WorkspaceShell';
 import { useSession } from '../../shared/api/session';
 import { displayDate as formatDate, type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice, Field, Loading, Notice } from '../../shared/ui/common';
@@ -129,8 +130,7 @@ function GateCard({ title, gate }: { title: string; gate: Gate }) {
   return (
     <section className="card departure-gate" aria-label={`${title} gate`}>
       <h3>
-        {title}:{' '}
-        <span className={`badge ${gate.status === 'PASS' ? '' : 'warn'}`}>{gate.status}</span>
+        {title}: <StatusBadge status={gate.status}>{gate.status}</StatusBadge>
       </h3>
       {gate.blockers.length ? (
         <ul>
@@ -371,8 +371,15 @@ function Workspace({ orderId }: { orderId: number }) {
       <section className="card" aria-label="Departure summary">
         <h2>Departure readiness</h2>
         <p>
-          Request {r.orderStatus}; plan {r.planVersionNo !== null ? `v${r.planVersionNo}` : 'none'}
-          {r.planStatus && ` (${r.planStatus})`}; first leg {r.firstLegStatus ?? 'not planned'}
+          Request <StatusBadge status={r.orderStatus} />; plan{' '}
+          {r.planVersionNo !== null ? `v${r.planVersionNo}` : 'none'}
+          {r.planStatus && (
+            <>
+              {' '}
+              (<StatusBadge status={r.planStatus} />)
+            </>
+          )}
+          ; first leg <StatusBadge status={r.firstLegStatus} />
           {r.firstLegActualDeparture && `, departed ${displayDate(r.firstLegActualDeparture)}`}.
         </p>
         <p className="muted">
@@ -424,13 +431,8 @@ function Workspace({ orderId }: { orderId: number }) {
               <li key={x.receiptId}>
                 Receipt {x.receiptId}, {displayDate(x.receivedAt)} at {x.locationDescription ?? '—'}
                 : identity{' '}
-                <span className={`badge ${x.identityCheckResult === 'MATCHED' ? '' : 'warn'}`}>
-                  {x.identityCheckResult}
-                </span>
-                , status{' '}
-                <span className={`badge ${x.receiptStatus === 'ACCEPTED' ? '' : 'warn'}`}>
-                  {x.receiptStatus}
-                </span>
+                <StatusBadge status={x.identityCheckResult}>{x.identityCheckResult}</StatusBadge>,
+                status <StatusBadge status={x.receiptStatus}>{x.receiptStatus}</StatusBadge>
               </li>
             ))}
           </ul>
@@ -530,22 +532,14 @@ export function DepartureLink({ orderId, orderStatus }: { orderId: number; order
 /** Minimal driver workspace; the task queue (#82 part B) lists the driver's orders. */
 export function DriverLayout() {
   return (
-    <div className="driver-shell">
-      <header className="driver-header">
-        <Link className="brand" to="/driver">
-          EquiTransit
-        </Link>
-        <nav aria-label="Driver navigation">
-          <Link to="/driver">My Tasks</Link> <Link to="/driver/dashboard">Overview</Link>
-        </nav>
-        <button type="button" onClick={() => void signOut()}>
-          Log Out
-        </button>
-      </header>
-      <main>
-        <Outlet />
-      </main>
-    </div>
+    <WorkspaceShell
+      home="/driver"
+      navigationLabel="Driver navigation"
+      links={[
+        { to: '/driver', label: 'My Tasks' },
+        { to: '/driver/dashboard', label: 'Overview' },
+      ]}
+    />
   );
 }
 /** Driver home: the live assigned road legs; each opens its departure. */

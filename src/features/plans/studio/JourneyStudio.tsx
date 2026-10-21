@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -834,7 +835,7 @@ export function JourneyStudio({
             <>
               <div className="js-inspector-type">
                 {wire.transportMode === 'ROAD' ? '🚛' : '✈'} Chặng {wire.sequenceNo} ·{' '}
-                {wire.legStatus}
+                <StatusBadge status={wire.legStatus} />
               </div>
               <fieldset disabled={!editable}>
                 <label className="js-field">

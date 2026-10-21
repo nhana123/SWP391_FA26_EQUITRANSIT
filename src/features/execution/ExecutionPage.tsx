@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -663,7 +664,7 @@ function Workspace({ orderId }: { orderId: number }) {
       <section className="card" aria-label="Legs">
         <h2>Legs</h2>
         <p className="muted">
-          Request {o.orderStatus}. Last update{' '}
+          Request <StatusBadge status={o.orderStatus} />. Last update{' '}
           {o.lastUpdateAt ? displayDate(o.lastUpdateAt) : 'none yet'}. Completing the last leg does
           not mark delivery; delivery and closure are separate steps.
         </p>
@@ -685,7 +686,7 @@ function Workspace({ orderId }: { orderId: number }) {
                     {leg.sequenceNo} · {leg.transportMode}
                   </td>
                   <td>
-                    <span className="badge">{leg.legStatus}</span>
+                    <StatusBadge status={leg.legStatus}>{leg.legStatus}</StatusBadge>
                   </td>
                   <td>
                     {displayDate(leg.plannedDeparture)} → {displayDate(leg.plannedArrival)}
@@ -882,9 +883,7 @@ function Workspace({ orderId }: { orderId: number }) {
               return (
                 <li key={w.welfareLogId}>
                   <strong>
-                    <span className={`badge ${w.healthStatus === 'NORMAL' ? '' : 'warn'}`}>
-                      {w.healthStatus}
-                    </span>
+                    <StatusBadge status={w.healthStatus}>{w.healthStatus}</StatusBadge>
                   </strong>{' '}
                   · leg {leg?.sequenceNo ?? w.legId} · {displayDate(w.occurredAt)}
                   <span className="muted">

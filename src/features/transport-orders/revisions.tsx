@@ -1,3 +1,5 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { EmptyState } from '../../components/ui/Primitives';
 import { useState, type FormEvent } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
@@ -85,7 +87,7 @@ export function RevisionHistory({ order }: { order: Order }) {
       ) : query.error ? (
         <ErrorNotice error={query.error} />
       ) : !query.data.length ? (
-        <p>No submitted revisions yet.</p>
+        <EmptyState title="No submitted revisions yet." />
       ) : (
         <div className="table-scroll" aria-busy={query.isPlaceholderData}>
           <table aria-label="Submitted revisions, newest first">
@@ -155,7 +157,7 @@ function ChangeReceiptCard({ orderId, receipt }: { orderId: number; receipt: Cha
     <section className="card" aria-labelledby="change-heading">
       <h2 id="change-heading">Change request {receipt.changeRequestId}</h2>
       <p>
-        <span className="badge">{changeLabels[query.data.status]}</span>
+        <StatusBadge status={query.data.status}>{changeLabels[query.data.status]}</StatusBadge>
       </p>
       <p>
         {query.data.status === 'PENDING'

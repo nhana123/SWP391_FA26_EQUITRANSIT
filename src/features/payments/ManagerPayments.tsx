@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
@@ -156,7 +157,7 @@ export function ManagerPayments(props: WorkspaceProps) {
           <div className="bank-receipt">
             <p>
               Bank receipt {bank.transactionId}: {bank.amountReceived} {bank.currency} received,{' '}
-              {bank.status}, posted {displayDate(bank.postedAt)}.
+              <StatusBadge status={bank.status} />, posted {displayDate(bank.postedAt)}.
             </p>
             <p>The received amount is not a statement of remaining allocatable funds.</p>
             <button

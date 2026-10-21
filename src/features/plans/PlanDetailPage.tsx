@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
@@ -53,20 +54,23 @@ function LegCard({
         {leg.vehicleId !== null && <li>Vehicle {leg.vehicleId}</li>}
         {leg.staffAssignments.map((a) => (
           <li key={a.assignmentId}>
-            {a.roleInTrip} staff {a.staffId}: <span className="badge">{a.status}</span>
+            {a.roleInTrip} staff {a.staffId}:{' '}
+            <StatusBadge status={a.status}>{a.status}</StatusBadge>
             {a.bufferMinutes !== null && ` (buffer ${a.bufferMinutes} min)`}
           </li>
         ))}
         {leg.stallAssignments.map((s) => (
           <li key={s.stallAssignmentId}>
-            Stall {s.stallId}: {s.slotQuantity} slot(s), {s.sharingCode}, fit {s.fitStatus}, carrier{' '}
-            {s.carrierAcceptanceStatus}, <span className="badge">{s.status}</span>
+            Stall {s.stallId}: {s.slotQuantity} slot(s), {s.sharingCode}, fit{' '}
+            <StatusBadge status={s.fitStatus} />, carrier{' '}
+            <StatusBadge status={s.carrierAcceptanceStatus} />,{' '}
+            <StatusBadge status={s.status}>{s.status}</StatusBadge>
           </li>
         ))}
         {leg.flightReservations.map((r) => (
           <li key={r.reservationId}>
             {r.airlineName} {r.flightNumber}:{' '}
-            <span className={`badge ${r.status === 'CONFIRMED' ? '' : 'warn'}`}>{r.status}</span>
+            <StatusBadge status={r.status}>{r.status}</StatusBadge>
             {r.reservationReference && `, ref ${r.reservationReference}`}, {r.usableCapacitySlots}{' '}
             usable slot(s)
             {r.expiresAt && `, expires ${displayDate(r.expiresAt)}`}
@@ -120,7 +124,8 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
       <StaleBanner pinned={pinned} latest={plan.recordVersion} />
       <section className="card" aria-label="Plan summary">
         <h2>
-          Plan v{plan.versionNo} <span className="badge">{plan.planStatus}</span>
+          Plan v{plan.versionNo}{' '}
+          <StatusBadge status={plan.planStatus}>{plan.planStatus}</StatusBadge>
           {plan.currentPlan && <span className="badge"> current</span>}
         </h2>
         <p>
@@ -130,8 +135,9 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
             ` Linked to accepted quotation ${plan.acceptedQuoteId}.`}
         </p>
         <p>
-          Gates — financial: {plan.financialGateStatus}, operational: {plan.operationalGateStatus},
-          legal: {plan.docGateStatus}
+          Gates — financial: <StatusBadge status={plan.financialGateStatus} />, operational:{' '}
+          <StatusBadge status={plan.operationalGateStatus} />, legal:{' '}
+          <StatusBadge status={plan.docGateStatus} />
           {plan.gatesCheckedAt && ` (checked ${displayDate(plan.gatesCheckedAt)})`}. A confirmed
           plan does not authorize departure on its own.
         </p>
@@ -182,13 +188,13 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
             {plan.quarantineReservations.map((q) => (
               <li key={q.reservationId}>
                 Quarantine at {q.facilityName}: {displayDate(q.startsAt)} → {displayDate(q.endsAt)},{' '}
-                <span className="badge">{q.status}</span>
+                <StatusBadge status={q.status}>{q.status}</StatusBadge>
               </li>
             ))}
             {plan.insurancePolicies.map((p) => (
               <li key={p.policyId}>
                 Insurance {p.insurerName} {p.policyNumber}: {displayDate(p.coverageFrom)} →{' '}
-                {displayDate(p.coverageTo)}, <span className="badge">{p.status}</span>
+                {displayDate(p.coverageTo)}, <StatusBadge status={p.status}>{p.status}</StatusBadge>
                 {p.verifiedBy === null && ' — not verified'}
               </li>
             ))}

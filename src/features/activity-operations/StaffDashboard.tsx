@@ -1,8 +1,11 @@
+import { PortfolioMetrics } from '../../components/ui/PortfolioMetrics';
+import { EmptyState } from '../../components/ui/Primitives';
+import { RequestTable } from '../../components/ui/RequestTable';
+import { Icon } from '../../components/ui/Icons';
 import { Link } from 'react-router-dom';
 import type { Role } from '../../shared/api/contracts';
 import { useSession } from '../../shared/api/session';
 import { Notice } from '../../shared/ui/common';
-import { orderStatusLabels } from '../transport-orders/status-contracts';
 import {
   ActivityHeading,
   ActivityPager,
@@ -53,13 +56,21 @@ export function StaffDashboardPage() {
   const tasks = taskLinks[session.role];
   return (
     <>
-      <ActivityHeading title="Overview">
+      <ActivityHeading title="Overview" />
+      <section className="dashboard-hero">
+        <div>
+          <small className="eyebrow">PRECISION IN EVERY HANDOVER</small>
+          <h2>Your operations, in perspective.</h2>
+          <p>Review your portfolio and focus on the requests that need your attention today.</p>
+        </div>
         {tasks && (
-          <Link className="button primary" to={tasks}>
+          <Link className="button" to={tasks}>
+            <Icon name="check" size={17} />
             My Tasks
+            <Icon name="arrow" size={16} />
           </Link>
         )}
-      </ActivityHeading>
+      </section>
       <p className="muted">
         {scopes[session.role]} Counts show request statuses only; they are not a staff schedule or
         availability.
@@ -71,50 +82,24 @@ export function StaffDashboardPage() {
       />
       {data && !query.error && (
         <>
-          <section className="card">
+          <section className="portfolio-overview">
             <h2>Status overview</h2>
             {!data.counts.length ? (
-              <p>No request statuses to display.</p>
+              <EmptyState title="No request statuses to display." />
             ) : (
-              <dl className="activity-metrics">
-                {data.counts.map((entry) => (
-                  <div key={entry.status}>
-                    <dt>{orderStatusLabels[entry.status]}</dt>
-                    <dd>{entry.count}</dd>
-                  </div>
-                ))}
-              </dl>
+              <PortfolioMetrics counts={data.counts} />
             )}
           </section>
           <section className="card">
             <h2>Requests</h2>
-            {!data.items.length ? (
-              <p>No requests on this page.</p>
-            ) : (
-              <div className="table-scroll">
-                <table aria-label="Dashboard orders">
-                  <thead>
-                    <tr>
-                      <th scope="col">Request</th>
-                      <th scope="col">Current status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.items.map((order) => {
-                      const to = dashboardOrderPath(session.role, order);
-                      return (
-                        <tr key={order.orderId}>
-                          <td>
-                            {to ? <Link to={to}>{order.orderNumber}</Link> : order.orderNumber}
-                          </td>
-                          <td>{orderStatusLabels[order.status]}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <RequestTable
+              items={data.items}
+              label="Dashboard orders"
+              emptyMessage="No requests on this page."
+              path={(order) =>
+                dashboardOrderPath(session.role, order as StaffDashboard['items'][number])
+              }
+            />
             <ActivityPager {...data} page={paging.page} onPage={paging.setPage} />
           </section>
         </>

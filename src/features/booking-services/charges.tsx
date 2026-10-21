@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
 import { displayDate } from '../../shared/lib/validation';
 import type { Charge, Disclosure, SectionCode } from './contracts';
@@ -58,7 +59,9 @@ export function ChargeRows({ charges, currency }: { charges: Charge[]; currency:
               <td>{c.label}</td>
               <td>{c.mandatory ? 'Required' : c.selected ? 'Optional, selected' : 'Optional'}</td>
               <td>
-                {statusLabels[c.pricingStatus] ?? c.pricingStatus}
+                <StatusBadge status={c.pricingStatus}>
+                  {statusLabels[c.pricingStatus] ?? c.pricingStatus}
+                </StatusBadge>
                 {c.blockers.length > 0 && (
                   <small className="muted"> ({c.blockers.join(', ')})</small>
                 )}

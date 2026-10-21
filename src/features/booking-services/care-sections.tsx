@@ -1,13 +1,11 @@
-import { Field } from '../../shared/ui/common';
-import type { Preferences } from './contracts';
-import { arrangementPatch, textOrNull } from './form';
+import { arrangementPatch } from './form';
 import { RateTag, SectionRates } from './rates';
 import { ChoiceGroup, ProviderFields, type SectionProps } from './sections';
 
 const offered = (props: SectionProps, code: string) =>
   props.disclosure.sections.find((s) => s.code === code)?.options ?? [];
 
-/** Whole non-negative days/nights only; blank means "not requested" (null). */
+/** The duration is chosen explicitly; saved nonstandard durations remain available. */
 function CountField({
   label,
   hint,
@@ -22,25 +20,53 @@ function CountField({
   product: 'GROOMING' | 'BOARDING';
 }) {
   const value = props.prefs[field];
+  const active = value !== null && value > 0;
+  const unit = field === 'groomingDays' ? 'day' : 'night';
+  const durations = [...new Set([1, 2, 3, 5, 7, 14, 30, ...(active ? [value] : [])])].sort(
+    (a, b) => a - b,
+  );
   return (
-    <div>
-      <Field label={label} hint={hint} error={props.errors[field]}>
-        {(id) => (
-          <input
-            id={id}
-            inputMode="numeric"
-            maxLength={3}
-            value={value === null ? '' : String(value)}
-            onChange={(e) => {
-              const raw = e.target.value.trim();
-              if (raw === '') props.update({ [field]: null } as Partial<Preferences>);
-              else if (/^\d{1,3}$/.test(raw))
-                props.update({ [field]: Number(raw) } as Partial<Preferences>);
-            }}
-          />
-        )}
-      </Field>
-      <RateTag product={product} />
+    <div className="care-package">
+      <label className="package-heading">
+        <span>
+          <strong>{label}</strong>
+          <small>{hint}</small>
+        </span>
+        <input
+          type="checkbox"
+          aria-label={label}
+          checked={active}
+          onChange={(e) => props.update({ [field]: e.target.checked ? 1 : null })}
+        />
+      </label>
+      <p className="package-description">
+        {active ? 'Choose your duration' : `Starts with 1 ${unit}`}
+      </p>
+      {active && (
+        <fieldset className="duration-options">
+          <legend>{label} duration</legend>
+          {durations.map((count) => (
+            <label key={count}>
+              <input
+                type="radio"
+                name={field}
+                checked={value === count}
+                onChange={() => props.update({ [field]: count })}
+              />
+              <span>
+                {count} {unit}
+                {count === 1 ? '' : 's'}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {props.errors[field] && (
+        <p className="field-error" role="alert">
+          {props.errors[field]}
+        </p>
+      )}
+      <RateTag product={product} selected={active} />
     </div>
   );
 }
@@ -53,25 +79,29 @@ export function HorseCareSection(props: SectionProps) {
       <p className="notice" role="note">
         Basic care during the journey is included and is not charged again.
       </p>
-      <fieldset className="form-grid" disabled={disabled}>
+      <fieldset className="care-packages" disabled={disabled}>
         <legend>Additional care</legend>
         {options.includes('ENHANCED') && (
-          <div className="choice-row">
-            <label className="horse-choice">
+          <div className="care-package">
+            <label className="package-heading">
+              <span>
+                <strong>Enhanced care</strong>
+                <small>Additional attention throughout the journey</small>
+              </span>
               <input
                 type="checkbox"
                 checked={prefs.enhancedCare === true}
                 onChange={(e) => update({ enhancedCare: e.target.checked })}
               />
-              <span>Enhanced care (optional, charged separately)</span>
             </label>
-            <RateTag product="ENHANCED_CARE" />
+            <p className="package-description">Optional care upgrade</p>
+            <RateTag product="ENHANCED_CARE" selected={prefs.enhancedCare === true} />
           </div>
         )}
         {options.includes('GROOMING') && (
           <CountField
             label="Grooming days"
-            hint="Leave empty if not needed."
+            hint="Daily grooming and routine care"
             field="groomingDays"
             product="GROOMING"
             props={props}
@@ -80,29 +110,44 @@ export function HorseCareSection(props: SectionProps) {
         {options.includes('BOARDING') && (
           <CountField
             label="Extra boarding nights"
-            hint="Nights outside quarantine only; quarantine days are counted separately."
+            hint="Outside quarantine; quarantine days are counted separately."
             field="boardingNights"
             product="BOARDING"
             props={props}
           />
         )}
         {options.includes('ESCORT') && (
-          <Field
-            label="Escort support request (optional)"
-            hint="Requested only; scope and provider are confirmed by our team."
-            error={errors.escortNotes}
-          >
-            {(id) => (
-              <textarea
-                id={id}
-                maxLength={1000}
-                value={prefs.escortNotes ?? ''}
-                onChange={(e) => update({ escortNotes: textOrNull(e.target.value) })}
+          <div className="care-package">
+            <label className="package-heading">
+              <span>
+                <strong>Escort support</strong>
+                <small>Request dedicated journey support</small>
+              </span>
+              <input
+                type="checkbox"
+                aria-label="Escort support"
+                checked={!!prefs.escortNotes?.trim()}
+                onChange={(e) =>
+                  update({
+                    escortNotes: e.target.checked
+                      ? (prefs.escortNotes ?? 'Escort support requested')
+                      : null,
+                  })
+                }
               />
+            </label>
+            <p className="package-description">Scope subject to team confirmation</p>
+            {prefs.escortNotes && prefs.escortNotes !== 'Escort support requested' && (
+              <p className="saved-service-note">{prefs.escortNotes}</p>
             )}
-          </Field>
+            {errors.escortNotes && (
+              <p role="alert" className="field-error">
+                {errors.escortNotes}
+              </p>
+            )}
+            <RateTag product="ESCORT" selected={!!prefs.escortNotes?.trim()} />
+          </div>
         )}
-        {options.includes('ESCORT') && <RateTag product="ESCORT" />}
       </fieldset>
     </>
   );
@@ -142,6 +187,7 @@ export function VeterinarySection(props: SectionProps) {
       )}
       <SectionRates
         section="VETERINARY"
+        selected={prefs.veterinaryArrangement === 'EQUITRANSIT'}
         title="Current veterinary unit rates (required counts are set by assessment)"
       />
     </>

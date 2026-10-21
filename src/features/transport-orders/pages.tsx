@@ -1,6 +1,11 @@
+import { FormSection } from '../../components/ui/FormSection';
+import { Icon, type IconName } from '../../components/ui/Icons';
+import { EmptyState } from '../../components/ui/Primitives';
 import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { serviceSections } from '../booking-services/catalog';
+import { sectionCodes } from '../booking-services/contracts';
 import { queryClient, queryKeys } from '../../shared/api/query';
 import { getSession, useSession } from '../../shared/api/session';
 import { ApiError } from '../../shared/api/client';
@@ -87,21 +92,34 @@ function HorsePicker({
 }) {
   const { search, setSearch, page, setPage, query } = useHorseSearch();
   return (
-    <section className="card">
-      <h2>Select one horse</h2>
-      <p>One request is for one horse belonging to your account.</p>
-      <Field label="Search your horses">
-        {(id) => (
-          <input
-            id={id}
-            type="search"
-            maxLength={150}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        )}
-      </Field>
-      {value && <p>Selected horse ID: {value}</p>}
+    <section className="card form-card horse-selection">
+      <header className="form-card-header">
+        <div>
+          <span className="eyebrow">YOUR TRAVEL COMPANION</span>
+          <h2>Select one horse</h2>
+          <p>Choose the horse for this journey. Each request is for one horse.</p>
+        </div>
+        <span className="selection-summary" aria-live="polite">
+          <Icon name={value ? 'check' : 'horse'} size={16} />
+          {value
+            ? `Selected: ${query.data?.items.find((h) => String(h.horseId) === value)?.name ?? `Horse #${value}`}`
+            : 'No horse selected'}
+        </span>
+      </header>
+      <div className="horse-search">
+        <Field label="Search your horses">
+          {(id) => (
+            <input
+              id={id}
+              type="search"
+              placeholder="Search by horse name…"
+              maxLength={150}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          )}
+        </Field>
+      </div>
       {error && (
         <p role="alert" className="field-error">
           {error}
@@ -116,13 +134,16 @@ function HorsePicker({
           <legend>Your horses</legend>
           {query.data.items.length ? (
             query.data.items.map((h) => (
-              <label key={h.horseId} className="horse-choice">
+              <label key={h.horseId} className="horse-choice horse-profile-choice">
                 <input
                   type="radio"
                   name="horse"
                   checked={value === String(h.horseId)}
                   onChange={() => onChange(String(h.horseId))}
                 />
+                <span className="horse-choice-icon">
+                  <Icon name="horse" size={24} />
+                </span>
                 <span>
                   <strong>{h.name}</strong>
                   <small>
@@ -132,13 +153,18 @@ function HorsePicker({
               </label>
             ))
           ) : (
-            <p>
-              No horses found. <Link to="/customer/horses/new">Add a horse</Link>.
-            </p>
+            <EmptyState
+              title="No horses found."
+              description="Try another name or add a horse profile."
+            >
+              <Link className="button" to="/customer/horses/new">
+                Add a horse
+              </Link>
+            </EmptyState>
           )}
         </fieldset>
       )}
-      {query.data && (
+      {query.data && query.data.totalPages > 1 && (
         <Pagination
           page={page}
           pages={query.data.totalPages}
@@ -154,6 +180,40 @@ export type ServicesSlotProps = {
   preferences: ServicePreferences | null;
   onSaved: (order: Order) => void;
 };
+const journeyFormGroups: { title: string; description: string; icon: IconName; keys: string[] }[] =
+  [
+    {
+      title: 'Route & destinations',
+      description: 'Where your horse starts and where the journey ends.',
+      icon: 'pin',
+      keys: [
+        'originCountryCode',
+        'destinationCountryCode',
+        'originAddress',
+        'destinationAddress',
+        'originTimezone',
+        'destinationTimezone',
+      ],
+    },
+    {
+      title: 'Travel schedule',
+      description: 'Choose the preferred travel window. Each time keeps its selected UTC offset.',
+      icon: 'clock',
+      keys: ['preferredDepartureAt', 'deliveryDeadline', 'dateFlexibilityNotes'],
+    },
+    {
+      title: 'Receiving contact',
+      description: 'Who will receive your horse at the destination.',
+      icon: 'user',
+      keys: ['receiverName', 'receiverPhone', 'receiverEmail', 'receiverAuthority'],
+    },
+    {
+      title: 'Event & additional needs',
+      description: 'Add event details and any requests the team should consider.',
+      icon: 'file',
+      keys: ['eventName', 'eventVenue', 'eventStartAt', 'eventTimezone', 'specialNeeds'],
+    },
+  ];
 export function OrderEditor({
   order,
   servicesSlot,
@@ -165,7 +225,16 @@ export function OrderEditor({
   const [form, setForm] = useState(() => draftForm(order?.draft));
   const [baseline, setBaseline] = useState(() => draftForm(order?.draft));
   const [services, setServices] = useState(order?.draft.services || null);
-  const [step, setStep] = useState(0);
+  const location = useLocation();
+  const [step, setStep] = useState(() => {
+    const requested = (location.state as { requestStep?: unknown } | null)?.requestStep;
+    return typeof requested === 'number' &&
+      Number.isInteger(requested) &&
+      requested >= 0 &&
+      requested <= 3
+      ? requested
+      : 0;
+  });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [latest, setLatest] = useState<Order | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
@@ -222,7 +291,11 @@ export function OrderEditor({
       await adopt(saved);
       if (getSession()?.generation !== session.generation) return;
       setSavedMessage('Draft saved. This is not a confirmed booking.');
-      if (!current) navigate(`/customer/requests/${saved.orderId}`, { replace: true });
+      if (!current)
+        navigate(`/customer/requests/${saved.orderId}`, {
+          replace: true,
+          state: { requestStep: step },
+        });
     });
   }
   async function refreshSubmission() {
@@ -411,84 +484,107 @@ export function OrderEditor({
       </nav>
       <fieldset className="editor-fields" disabled={!isDraft || action.pending || frozenSubmit}>
         {step === 0 && (
-          <section className="card">
-            <h2>Journey and handover</h2>
-            <p className="muted">
-              Pick each date with its time zone. Route timezone is separate from your device
-              timezone.
-            </p>
-            <div className="form-grid">
-              {journeyFields.map((f) => (
-                <Field
-                  key={f.key}
-                  label={f.label}
-                  error={fieldError(f.key)}
-                  hint={'hint' in f ? f.hint : undefined}
-                >
-                  {(id) =>
-                    f.key === 'receiverPhone' ? (
-                      <PhoneInput
-                        id={id}
-                        maxLength={f.max}
-                        value={form[f.key]}
-                        onChange={(v) => change(f.key, v)}
-                        invalid={!!fieldError(f.key)}
-                        describedBy={fieldError(f.key) ? `${id}-error` : undefined}
-                      />
-                    ) : 'date' in f ? (
-                      <DateTimeInput
-                        id={id}
-                        value={form[f.key]}
-                        onChange={(v) => change(f.key, v)}
-                        invalid={!!fieldError(f.key)}
-                        describedBy={fieldError(f.key) ? `${id}-error` : undefined}
-                      />
-                    ) : (
-                      <input
-                        id={id}
-                        type={f.key === 'receiverEmail' ? 'email' : 'text'}
-                        maxLength={'max' in f ? f.max : 35}
-                        value={form[f.key]}
-                        onChange={(e) => change(f.key, e.target.value)}
-                        aria-invalid={!!fieldError(f.key)}
-                        aria-describedby={fieldError(f.key) ? `${id}-error` : undefined}
-                      />
-                    )
-                  }
-                </Field>
-              ))}
-              <Field label="Import type" error={fieldError('importType')}>
-                {(id) => (
-                  <select
-                    id={id}
-                    value={form.importType}
-                    aria-invalid={!!fieldError('importType')}
-                    aria-describedby={fieldError('importType') ? `${id}-error` : undefined}
-                    onChange={(e) => change('importType', e.target.value)}
-                  >
-                    <option value="">Not recorded</option>
-                    <option value="TEMPORARY">Temporary</option>
-                    <option value="PERMANENT">Permanent</option>
-                    <option value="NEEDS_ADVICE">Needs advice</option>
-                  </select>
-                )}
-              </Field>
-              <Field
-                label="Transit airports (comma separated)"
-                error={fieldError('transitAirports')}
+          <section className="card form-card">
+            <header className="form-card-header">
+              <div>
+                <span className="eyebrow">TRANSPORT REQUEST</span>
+                <h2>Journey and handover</h2>
+                <p>Plan the route, timing and handover details in a few clear steps.</p>
+              </div>
+              <span className="form-required-note">Drafts can be completed later</span>
+            </header>
+            {journeyFormGroups.map((group, index) => (
+              <FormSection
+                key={group.title}
+                title={group.title}
+                description={group.description}
+                icon={group.icon}
+                index={String(index + 1).padStart(2, '0')}
               >
-                {(id) => (
-                  <input
-                    id={id}
-                    value={form.transitAirports}
-                    maxLength={50}
-                    aria-invalid={!!fieldError('transitAirports')}
-                    aria-describedby={fieldError('transitAirports') ? `${id}-error` : undefined}
-                    onChange={(e) => change('transitAirports', e.target.value)}
-                  />
-                )}
-              </Field>
-            </div>
+                <div className="form-grid">
+                  {journeyFields
+                    .filter((f) => group.keys.includes(f.key))
+                    .map((f) => (
+                      <Field
+                        key={f.key}
+                        label={f.label}
+                        error={fieldError(f.key)}
+                        hint={'hint' in f ? f.hint : undefined}
+                      >
+                        {(id) =>
+                          f.key === 'receiverPhone' ? (
+                            <PhoneInput
+                              id={id}
+                              maxLength={f.max}
+                              value={form[f.key]}
+                              onChange={(v) => change(f.key, v)}
+                              invalid={!!fieldError(f.key)}
+                              describedBy={fieldError(f.key) ? `${id}-error` : undefined}
+                            />
+                          ) : 'date' in f ? (
+                            <DateTimeInput
+                              id={id}
+                              value={form[f.key]}
+                              onChange={(v) => change(f.key, v)}
+                              invalid={!!fieldError(f.key)}
+                              describedBy={fieldError(f.key) ? `${id}-error` : undefined}
+                            />
+                          ) : (
+                            <input
+                              id={id}
+                              type={f.key === 'receiverEmail' ? 'email' : 'text'}
+                              maxLength={'max' in f ? f.max : 35}
+                              value={form[f.key]}
+                              onChange={(e) => change(f.key, e.target.value)}
+                              aria-invalid={!!fieldError(f.key)}
+                              aria-describedby={fieldError(f.key) ? `${id}-error` : undefined}
+                            />
+                          )
+                        }
+                      </Field>
+                    ))}
+
+                  {index === 0 && (
+                    <>
+                      {' '}
+                      <Field label="Import type" error={fieldError('importType')}>
+                        {(id) => (
+                          <select
+                            id={id}
+                            value={form.importType}
+                            aria-invalid={!!fieldError('importType')}
+                            aria-describedby={fieldError('importType') ? `${id}-error` : undefined}
+                            onChange={(e) => change('importType', e.target.value)}
+                          >
+                            <option value="">Not recorded</option>
+                            <option value="TEMPORARY">Temporary</option>
+                            <option value="PERMANENT">Permanent</option>
+                            <option value="NEEDS_ADVICE">Needs advice</option>
+                          </select>
+                        )}
+                      </Field>
+                      <Field
+                        label="Transit airports (comma separated)"
+                        error={fieldError('transitAirports')}
+                      >
+                        {(id) => (
+                          <input
+                            id={id}
+                            value={form.transitAirports}
+                            maxLength={50}
+                            aria-invalid={!!fieldError('transitAirports')}
+                            aria-describedby={
+                              fieldError('transitAirports') ? `${id}-error` : undefined
+                            }
+                            onChange={(e) => change('transitAirports', e.target.value)}
+                          />
+                        )}
+                      </Field>
+                    </>
+                  )}
+                </div>
+              </FormSection>
+            ))}
           </section>
         )}
         {step === 1 && (
@@ -500,9 +596,70 @@ export function OrderEditor({
         )}
       </fieldset>
       {step === 2 && (
-        <section className="card">
-          <h2>Service preferences</h2>
-          {current && servicesSlot ? (
+        <section className="card form-card service-selection">
+          <header className="form-card-header">
+            <div>
+              <span className="eyebrow">CARE ALONG THE WAY</span>
+              <h2>Service preferences</h2>
+              <p>Choose what your horse needs.</p>
+            </div>
+            <span className="form-required-note">7 service areas</span>
+          </header>
+          {!current || (isDraft && dirty) || !current.draft.horseId ? (
+            <div className="service-setup">
+              <div className="service-setup-prompt" role="status">
+                <span className="service-setup-icon">
+                  <Icon name="orders" size={24} />
+                </span>
+                <div>
+                  <h3>
+                    {!form.horseId
+                      ? 'Choose your horse first'
+                      : 'Save your draft to load service options'}
+                  </h3>
+                  <p>
+                    Available options, stall suitability and current rates are loaded for the horse
+                    saved in this request.
+                  </p>
+                </div>
+                {!form.horseId ? (
+                  <button type="button" onClick={() => setStep(1)}>
+                    Choose a horse
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={save}
+                    disabled={action.pending || !isDraft || frozenSubmit || conflict || uncertain}
+                  >
+                    {action.pending ? 'Saving…' : 'Save draft & load services'}
+                  </button>
+                )}
+              </div>
+              <ul className="service-overview" aria-label="Service areas available after saving">
+                {sectionCodes.map((code) => (
+                  <li key={code}>
+                    <span className="service-area-icon">
+                      <Icon name={serviceSections[code].icon} />
+                    </span>
+                    <div>
+                      <strong>{serviceSections[code].title}</strong>
+                      <p>{serviceSections[code].hint}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted">
+                Saving a draft does not submit a request or confirm a booking.
+              </p>
+            </div>
+          ) : frozenSubmit ? (
+            <Notice>
+              Resolve the pending submission above before changing service choices. Your saved
+              preferences are preserved.
+            </Notice>
+          ) : servicesSlot ? (
             servicesSlot({
               order: current,
               preferences: services,

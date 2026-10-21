@@ -21,8 +21,8 @@ beforeEach(() => {
   queryClient.clear();
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role: 'CUSTOMER' });
 });
-async function openInsurance() {
-  vi.mocked(bookingApi.get).mockResolvedValue(testDisclosure());
+async function openInsurance(disclosure = testDisclosure()) {
+  vi.mocked(bookingApi.get).mockResolvedValue(disclosure);
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
@@ -39,42 +39,41 @@ describe('insurance (FE-23)', () => {
   it('offers one exclusive choice and nothing is selected by default', async () => {
     await openInsurance();
     const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(4);
+    expect(radios).toHaveLength(3);
     radios.forEach((r) => expect(r).not.toBeChecked());
   });
 
-  it('requires a reference for an existing policy and explains verification', async () => {
-    const user = await openInsurance();
-    await user.click(screen.getByLabelText(/already have a policy/));
-    expect(screen.getByText(/must be verified/)).toBeInTheDocument();
-    expect(screen.getByText('Enter your existing policy reference.')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Existing policy reference'), 'POL-1');
-    expect(screen.queryByText('Enter your existing policy reference.')).toBeNull();
+  it('removes existing-policy entry from new choices and keeps historical policies readable', async () => {
+    await openInsurance(
+      testDisclosure({ selected: { insurance: 'EXISTING', existingPolicyReference: 'POL-1' } }),
+    );
+    expect(screen.queryByLabelText(/already have a policy/)).toBeNull();
+    expect(screen.getByText('POL-1')).toBeInTheDocument();
+    expect(screen.getByText('Previously recorded policy')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 
-  it('keeps declared value as exact text and rejects exponents or negatives', async () => {
-    const user = await openInsurance();
+  it('keeps recorded declared value as exact text without requiring data entry', async () => {
+    const user = await openInsurance(
+      testDisclosure({ selected: { insurance: 'MORTALITY', declaredValue: '50000.10' } }),
+    );
     await user.click(screen.getByLabelText(/new mortality cover/));
     expect(screen.getByText(/not active, accepted or paid/)).toBeInTheDocument();
-    const value = screen.getByLabelText(/Declared value/);
-    await user.type(value, '1e5');
-    expect(screen.getByText(/positive amount/)).toBeInTheDocument();
-    await user.clear(value);
-    await user.type(value, '50000.10');
-    expect(value).toHaveValue('50000.10');
-    expect(screen.queryByText(/positive amount/)).toBeNull();
+    expect(screen.getByText('50000.10 USD')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 
   it('switching to no insurance clears reference and declared value', async () => {
-    const user = await openInsurance();
-    await user.click(screen.getByLabelText(/already have a policy/));
-    await user.type(screen.getByLabelText('Existing policy reference'), 'POL-1');
-    await user.type(screen.getByLabelText(/Declared value/), '100');
+    const user = await openInsurance(
+      testDisclosure({
+        selected: { insurance: 'EXISTING', existingPolicyReference: 'POL-1', declaredValue: '100' },
+      }),
+    );
     await user.click(screen.getByLabelText(/No insurance/));
-    expect(screen.queryByLabelText(/Declared value/)).toBeNull();
-    await user.click(screen.getByLabelText(/already have a policy/));
-    expect(screen.getByLabelText('Existing policy reference')).toHaveValue('');
-    expect(screen.getByLabelText(/Declared value/)).toHaveValue('');
+    expect(screen.queryByText('POL-1')).toBeNull();
+    expect(screen.queryByText('100 USD')).toBeNull();
+    await user.click(screen.getByLabelText(/new mortality cover/));
+    expect(screen.queryByText('Recorded horse value')).toBeNull();
   });
 });
 

@@ -80,14 +80,15 @@ describe('live preview (FE-27)', () => {
     // longer depends on how fast the machine types relative to the debounce.
     fireEvent.click(screen.getByLabelText('Arranged by EquiTransit'));
     fireEvent.click(screen.getByLabelText('I will arrange my own provider'));
-    fireEvent.change(screen.getByLabelText('Provider name'), { target: { value: 'Trucks' } });
+    fireEvent.click(screen.getByLabelText('Arranged by EquiTransit'));
+    fireEvent.click(screen.getByLabelText('I will arrange my own provider'));
     await waitFor(() => expect(bookingApi.preview).toHaveBeenCalledTimes(1), settled);
     // Nothing further is sent once the choice settled.
     await new Promise((r) => setTimeout(r, PREVIEW_DEBOUNCE_MS + 100));
     expect(bookingApi.preview).toHaveBeenCalledTimes(1);
     expect(vi.mocked(bookingApi.preview).mock.calls[0][1].services).toMatchObject({
       roadArrangement: 'CUSTOMER',
-      roadProviderName: 'Trucks',
+      roadProviderName: null,
     });
   });
 

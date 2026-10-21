@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -406,14 +407,16 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
                       {p.currentPlan && <span className="badge"> current</span>}
                     </td>
                     <td>
-                      <span className="badge">{p.planStatus}</span>
+                      <StatusBadge status={p.planStatus}>{p.planStatus}</StatusBadge>
                     </td>
                     <td>{p.revisionId}</td>
                     <td>
                       {displayDate(p.plannedStartTime)} → {displayDate(p.plannedEndTime)}
                     </td>
                     <td>
-                      {p.financialGateStatus} / {p.operationalGateStatus} / {p.docGateStatus}
+                      <StatusBadge status={p.financialGateStatus} /> /{' '}
+                      <StatusBadge status={p.operationalGateStatus} /> /{' '}
+                      <StatusBadge status={p.docGateStatus} />
                     </td>
                     <td>
                       <Link to={`${plansPath(role, orderId)}/${p.planId}`}>

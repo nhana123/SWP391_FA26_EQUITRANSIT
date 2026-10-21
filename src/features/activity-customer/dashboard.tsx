@@ -1,6 +1,9 @@
+import { PortfolioMetrics } from '../../components/ui/PortfolioMetrics';
+import { EmptyState } from '../../components/ui/Primitives';
+import { RequestTable } from '../../components/ui/RequestTable';
+import { Icon } from '../../components/ui/Icons';
 import { Link } from 'react-router-dom';
 import { Notice } from '../../shared/ui/common';
-import { orderStatusLabels } from '../transport-orders/status-contracts';
 import { activityApi } from './api';
 import {
   ActivityHeading,
@@ -24,11 +27,21 @@ export function CustomerDashboardPage() {
   const data = query.data;
   return (
     <>
-      <ActivityHeading title="My dashboard">
-        <Link className="button primary" to="/customer/requests/new">
+      <ActivityHeading title="My dashboard" />
+      <section className="dashboard-hero">
+        <div>
+          <small className="eyebrow">YOUR HORSES. ONE CONNECTED JOURNEY.</small>
+          <h2>Every journey, thoughtfully coordinated.</h2>
+          <p>
+            Follow your requests, review the next step and keep your horses moving with confidence.
+          </p>
+        </div>
+        <Link className="button" to="/customer/requests/new">
+          <Icon name="plus" size={17} />
           Request transport
+          <Icon name="arrow" size={16} />
         </Link>
-      </ActivityHeading>
+      </section>
       <ActivityReadState
         pending={query.isPending}
         error={query.error}
@@ -36,50 +49,23 @@ export function CustomerDashboardPage() {
       />
       {data && !query.error && (
         <>
-          <section className="card">
+          <section className="portfolio-overview">
             <h2>Request status overview</h2>
             <p>Counts cover all your requests, including those outside this page.</p>
             {!data.counts.length ? (
-              <p>No request statuses to display.</p>
+              <EmptyState title="No request statuses to display." />
             ) : (
-              <dl className="activity-metrics">
-                {data.counts.map((entry) => (
-                  <div key={entry.status}>
-                    <dt>{orderStatusLabels[entry.status]}</dt>
-                    <dd>{entry.count}</dd>
-                  </div>
-                ))}
-              </dl>
+              <PortfolioMetrics counts={data.counts} />
             )}
           </section>
           <section className="card">
             <h2>Your transport requests</h2>
-            {!data.items.length ? (
-              <p>No transport requests on this page.</p>
-            ) : (
-              <div className="table-scroll">
-                <table aria-label="Dashboard requests">
-                  <thead>
-                    <tr>
-                      <th scope="col">Request</th>
-                      <th scope="col">Current status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.items.map((order) => (
-                      <tr key={order.orderId}>
-                        <td>
-                          <Link to={`/customer/requests/${order.orderId}`}>
-                            {order.orderNumber}
-                          </Link>
-                        </td>
-                        <td>{orderStatusLabels[order.status]}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <RequestTable
+              items={data.items}
+              label="Dashboard requests"
+              emptyMessage="No transport requests on this page."
+              path={(order) => `/customer/requests/${order.orderId}`}
+            />
             <ActivityPager {...data} page={paging.page} onPage={paging.setPage} />
           </section>
         </>

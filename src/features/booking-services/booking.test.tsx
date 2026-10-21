@@ -57,17 +57,25 @@ describe('booking shell (FE-20)', () => {
     expect(screen.getByLabelText('I will arrange my own provider')).not.toBeChecked();
   });
 
-  it('asks for provider details only when self-arranged and clears them otherwise', async () => {
-    const { user } = mountBooking();
+  it('keeps saved provider details readable and clears them only when choosing EquiTransit', async () => {
+    const { user } = mountBooking(
+      testDisclosure({
+        selected: {
+          roadArrangement: 'CUSTOMER',
+          roadProviderName: 'My trucks',
+          roadProviderContact: '+84901234567',
+        },
+      }),
+    );
     await user.click(await screen.findByRole('button', { name: 'Transportation' }));
     await user.click(screen.getByLabelText('I will arrange my own provider'));
-    await user.type(screen.getByLabelText('Provider name'), 'My trucks');
-    await user.type(screen.getByLabelText('Provider phone'), '12');
-    expect(screen.getByText(/8–15 digits/)).toBeInTheDocument();
+    expect(screen.getByText('My trucks')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
     await user.click(screen.getByLabelText('Arranged by EquiTransit'));
-    expect(screen.queryByLabelText('Provider name')).toBeNull();
+    expect(screen.queryByText('My trucks')).toBeNull();
     await user.click(screen.getByLabelText('I will arrange my own provider'));
-    expect(screen.getByLabelText('Provider name')).toHaveValue('');
+    expect(screen.queryByText('My trucks')).toBeNull();
+    expect(screen.getByText('Your own provider')).toBeInTheDocument();
   });
 
   it('opening and closing sections never confirms and marks edits as unconfirmed', async () => {

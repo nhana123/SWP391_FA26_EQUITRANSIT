@@ -1,3 +1,5 @@
+import { EmptyState } from '../../components/ui/Primitives';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -286,12 +288,8 @@ function IncidentRow({ incident, legId }: { incident: Incident; legId: number })
     <li>
       <strong>
         {typeLabels[incident.incidentType as IncidentType] ?? incident.incidentType} ·{' '}
-        <span
-          className={`badge ${incident.severityLevel === 'CRITICAL' || incident.severityLevel === 'HIGH' ? 'warn' : ''}`}
-        >
-          {incident.severityLevel}
-        </span>{' '}
-        · <span className="badge">{incident.status}</span>
+        <StatusBadge status={incident.severityLevel}>{incident.severityLevel}</StatusBadge> ·{' '}
+        <StatusBadge status={incident.status}>{incident.status}</StatusBadge>
       </strong>
       <div>
         Incident {incident.incidentId}
@@ -381,7 +379,7 @@ export function LegIncidents({ legId }: { legId: number }) {
       ) : query.error ? (
         <ErrorNotice error={query.error} />
       ) : !query.data.length ? (
-        <p>No incidents reported on this leg.</p>
+        <EmptyState title="No incidents reported on this leg." />
       ) : (
         <ul className="execution-list">
           {query.data.map((i) => (
@@ -539,9 +537,9 @@ function AdjustmentRow({
         Adjustment {a.adjustmentId}: {changeSummary(a.proposedChanges)}
       </strong>
       <div>
-        Status <span className="badge">{a.approvalStatus}</span> · customer{' '}
-        <span className={`badge ${consented ? '' : 'warn'}`}>{a.customerDecision}</span> ·
-        additional cost {a.additionalCostEstimate}
+        Status <StatusBadge status={a.approvalStatus}>{a.approvalStatus}</StatusBadge> · customer{' '}
+        <StatusBadge status={a.customerDecision}>{a.customerDecision}</StatusBadge> · additional
+        cost {a.additionalCostEstimate}
       </div>
       <div className="muted">
         Proposed {a.proposedAt ? displayDate(a.proposedAt) : ''} by{' '}
@@ -720,8 +718,8 @@ export function CustomerAdjustments({ orderId }: { orderId: number }) {
             <strong>{a.summary ?? `Change ${a.adjustmentId}`}</strong>
             <div>
               Additional cost {a.additionalCost} · your decision{' '}
-              <span className="badge">{a.customerDecision}</span> · status{' '}
-              <span className="badge">{a.approvalStatus}</span>
+              <StatusBadge status={a.customerDecision}>{a.customerDecision}</StatusBadge> · status{' '}
+              <StatusBadge status={a.approvalStatus}>{a.approvalStatus}</StatusBadge>
             </div>
             {a.customerResponseNotes && <div>Your notes: {a.customerResponseNotes}</div>}
             {a.customerDecision === 'PENDING' && (

@@ -1,11 +1,10 @@
-import { Field } from '../../shared/ui/common';
 import type { Preferences } from './contracts';
-import { insurancePatch, textOrNull } from './form';
+import { insurancePatch } from './form';
 import { RateTag } from './rates';
 import { ChoiceGroup, type SectionProps } from './sections';
 
 type Coverage = NonNullable<Preferences['insurance']>;
-const coverages: Coverage[] = ['NONE', 'EXISTING', 'MORTALITY', 'COMBINED'];
+const coverages: Coverage[] = ['NONE', 'MORTALITY', 'COMBINED'];
 const labels: Record<Coverage, string> = {
   NONE: 'No insurance through EquiTransit',
   EXISTING: 'I already have a policy that covers this journey',
@@ -29,6 +28,13 @@ export function InsuranceSection(props: SectionProps) {
   const coverage = prefs.insurance;
   return (
     <>
+      {coverage === 'EXISTING' && (
+        <aside className="saved-insurance">
+          <strong>Previously recorded policy</strong>
+          <p>{prefs.existingPolicyReference ?? 'Reference not recorded'}</p>
+          <small>Kept with this request. Choose another option to replace it.</small>
+        </aside>
+      )}
       {/* One mutually exclusive choice: mortality and combined never stack. */}
       <ChoiceGroup
         legend="Insurance for this journey"
@@ -46,40 +52,24 @@ export function InsuranceSection(props: SectionProps) {
         disabled={disabled}
       />
       {coverage && <p className="muted">{notes[coverage]}</p>}
-      {coverage && coverage !== 'NONE' && (
-        <fieldset className="form-grid" disabled={disabled}>
-          <legend>Policy details</legend>
-          {coverage === 'EXISTING' && (
-            <Field label="Existing policy reference" error={errors.existingPolicyReference}>
-              {(id) => (
-                <input
-                  id={id}
-                  maxLength={100}
-                  value={prefs.existingPolicyReference ?? ''}
-                  onChange={(e) => update({ existingPolicyReference: textOrNull(e.target.value) })}
-                  aria-invalid={!!errors.existingPolicyReference}
-                />
-              )}
-            </Field>
-          )}
-          <Field
-            label={`Declared value of the horse (${disclosure.currency}, optional)`}
-            hint="The value you declare for cover. It is not a premium or a price."
-            error={errors.declaredValue}
-          >
-            {(id) => (
-              <input
-                id={id}
-                inputMode="decimal"
-                maxLength={19}
-                value={prefs.declaredValue ?? ''}
-                // Kept as typed text; never converted to a number.
-                onChange={(e) => update({ declaredValue: textOrNull(e.target.value.trim()) })}
-                aria-invalid={!!errors.declaredValue}
-              />
-            )}
-          </Field>
-        </fieldset>
+      {coverage && coverage !== 'NONE' && prefs.declaredValue !== null && (
+        <div className="saved-insurance">
+          <strong>Recorded horse value</strong>
+          <p>
+            {prefs.declaredValue} {disclosure.currency}
+          </p>
+          <small>Declared value, not an insurance premium.</small>
+        </div>
+      )}
+      {errors.existingPolicyReference && (
+        <p className="field-error" role="alert">
+          Choose a new coverage option; the saved policy reference needs review.
+        </p>
+      )}
+      {errors.declaredValue && (
+        <p className="field-error" role="alert">
+          {errors.declaredValue}
+        </p>
       )}
     </>
   );

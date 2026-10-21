@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/Primitives';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
@@ -58,7 +59,7 @@ export function TaskQueue() {
           </button>
         </ErrorNotice>
       ) : !tasks.data.items.length ? (
-        <p>No active tasks are assigned to you right now.</p>
+        <EmptyState title="No active tasks are assigned to you right now." />
       ) : (
         <div className="table-scroll" aria-busy={tasks.isPlaceholderData}>
           <table aria-label="My active tasks">

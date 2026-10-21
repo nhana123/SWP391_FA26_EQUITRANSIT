@@ -141,12 +141,12 @@ describe('confirm service choices (FE-24)', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm service choices' }));
     expect(await screen.findByText(/Explain the change/)).toBeInTheDocument();
     expect(bookingApi.confirm).not.toHaveBeenCalled();
-    await user.type(screen.getByLabelText('Reason for changing services'), 'Need road');
+    await user.click(screen.getByRole('radio', { name: 'Change transport or service providers' }));
     await user.click(screen.getByRole('button', { name: 'Confirm service choices' }));
     await waitFor(() =>
       expect(bookingApi.confirm).toHaveBeenCalledWith(
         11,
-        expect.objectContaining({ changeReason: 'Need road' }),
+        expect.objectContaining({ changeReason: 'Change transport or service providers' }),
       ),
     );
   });

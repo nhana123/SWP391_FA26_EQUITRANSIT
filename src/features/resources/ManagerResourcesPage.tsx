@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState, type FormEvent } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -99,7 +100,7 @@ const columns: {
         <td>{d.horseCapacity}</td>
         <td>{d.climateSystemType}</td>
         <td>
-          <span className="badge">{d.status}</span>
+          <StatusBadge status={d.status}>{d.status}</StatusBadge>
         </td>
         <WindowCells w={d.window} />
       </>
@@ -116,7 +117,7 @@ const columns: {
         </td>
         <td>{d.weightLimitKg === null ? pending('Limit') : `${d.weightLimitKg} kg`}</td>
         <td>
-          <span className="badge">{d.status}</span>
+          <StatusBadge status={d.status}>{d.status}</StatusBadge>
         </td>
         <WindowCells w={d.window} />
       </>
@@ -130,7 +131,9 @@ const columns: {
         <td>{[d.contactName, d.email, d.phone].filter(Boolean).join(' · ') || '—'}</td>
         <td>{d.services.join(', ') || '—'}</td>
         <td>
-          <span className="badge">{d.active ? 'Active' : 'Archived'}</span>
+          <StatusBadge status={d.active ? 'Active' : 'Archived'}>
+            {d.active ? 'Active' : 'Archived'}
+          </StatusBadge>
         </td>
       </>
     ),
@@ -152,7 +155,7 @@ const columns: {
         <td>{p.data.policyCode}</td>
         <td>{p.version}</td>
         <td>
-          <span className="badge">{p.data.status}</span>
+          <StatusBadge status={p.data.status}>{p.data.status}</StatusBadge>
         </td>
         <td>{policyScope(p.data.stallId, p.data.carrierSupplierId)}</td>
         <td>{p.data.slotQuantity}</td>
