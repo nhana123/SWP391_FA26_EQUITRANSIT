@@ -76,6 +76,13 @@ describe('Journey compilation and scheduling', () => {
     expect(localTime('2027-02-01T01:00:00Z')).toBe('2027-02-01T08:00');
     expect(offsetTime('2027-02-01T08:00')).toBe('2027-02-01T08:00:00+07:00');
   });
+  it('carries only the selected supplier into the existing plan leg draft contract', () => {
+    const journey = route();
+    journey.wires[0].supplierId = 21;
+    const body = compileBody(journey, 21, '0123456789abcdef', 'operation-1');
+    expect(body.draft.legs[0].supplierId).toBe(21);
+    expect(body.draft.legs[1].supplierId).toBeNull();
+  });
   it('uses only actual observations to identify the last recorded checkpoint', () => {
     const j = cascade(route());
     j.wires[0].legStatus = 'COMPLETED';

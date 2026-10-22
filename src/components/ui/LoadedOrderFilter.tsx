@@ -16,6 +16,7 @@ export function LoadedOrderFilter<T extends { orderNumber: string; orderStatus: 
       item.orderNumber.toLowerCase().includes(search.trim().toLowerCase()) &&
       (filter === 'All' ||
         (filter === 'Confirmed' && item.orderStatus === 'CONFIRMED') ||
+        (filter === 'In Transit' && item.orderStatus === 'IN_TRANSIT') ||
         (filter === 'Completed' &&
           ['DELIVERED', 'COMPLETED', 'CLOSED'].includes(item.orderStatus)) ||
         (filter === 'Active' &&
@@ -37,7 +38,7 @@ export function LoadedOrderFilter<T extends { orderNumber: string; orderStatus: 
           />
         </label>
         <div className="filter-pills" aria-label="Filter loaded requests">
-          {['All', 'Active', 'Confirmed', 'Completed'].map((f) => (
+          {['All', 'Active', 'Confirmed', 'In Transit', 'Completed'].map((f) => (
             <button type="button" key={f} aria-pressed={f === filter} onClick={() => setFilter(f)}>
               {f}
             </button>

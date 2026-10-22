@@ -1,5 +1,7 @@
 # EquiTransit — Báo Cáo Kiểm Toán Kỹ Thuật Toàn Diện
 
+> Snapshot lịch sử trước khi UI được commit/merge qua PR #110. Trạng thái Git, lint và kiểm chứng tiếp theo đã được cập nhật trong [STUDIO_CONTINUATION_REVIEW.md](docs/STUDIO_CONTINUATION_REVIEW.md); không dùng các nhận định workspace bên dưới như trạng thái hiện tại.
+
 **Ngày kiểm toán:** 2026-10-21  
 **Phạm vi:** FE `feature/heritage-logistics-ui` và BE `feature/creative-journey-studio`  
 **Nguyên tắc:** Chỉ kết luận dựa trên code, migration, test và wiring đang có; test unit/integration không được coi là bằng chứng production E2E nếu chưa có môi trường DB/API thật.

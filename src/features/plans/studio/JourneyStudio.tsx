@@ -30,6 +30,7 @@ import {
   type Wire,
 } from './model';
 import { ResourceAttachment } from './ResourceAttachment';
+import { SupplierPicker } from './SupplierPicker';
 import './studio.css';
 
 type Props = {
@@ -254,11 +255,12 @@ function NodeInspector({
           </>
         )}
         {node.nodeType === 'AIRPORT_HANDOVER' && (
-          <Field
-            label="Supplier ID đơn vị mặt đất"
-            type="number"
-            value={d.groundHandlerSupplierId?.toString() ?? ''}
-            onChange={(s) => detail({ groundHandlerSupplierId: s ? Number(s) : null })}
+          <SupplierPicker
+            key={node.nodeKey}
+            label="Đơn vị mặt đất"
+            disabled={!editable}
+            value={d.groundHandlerSupplierId ?? null}
+            onChange={(groundHandlerSupplierId) => detail({ groundHandlerSupplierId })}
           />
         )}
         {node.nodeType === 'QUARANTINE' && (
@@ -281,11 +283,12 @@ function NodeInspector({
                 ))}
               </select>
             </label>
-            <Field
-              label="Supplier ID cơ sở"
-              type="number"
-              value={d.facilitySupplierId?.toString() ?? ''}
-              onChange={(s) => detail({ facilitySupplierId: s ? Number(s) : null })}
+            <SupplierPicker
+              key={node.nodeKey}
+              label="Cơ sở cách ly"
+              disabled={!editable}
+              value={d.facilitySupplierId ?? null}
+              onChange={(facilitySupplierId) => detail({ facilitySupplierId })}
             />
             <label className="js-field">
               Giai đoạn
@@ -340,11 +343,12 @@ function NodeInspector({
               value={d.receiverPhone ?? ''}
               onChange={(s) => detail({ receiverPhone: s || null })}
             />
-            <Field
-              label="Supplier ID bảo hiểm"
-              type="number"
-              value={d.insurerSupplierId?.toString() ?? ''}
-              onChange={(s) => detail({ insurerSupplierId: s ? Number(s) : null })}
+            <SupplierPicker
+              key={node.nodeKey}
+              label="Nhà bảo hiểm"
+              disabled={!editable}
+              value={d.insurerSupplierId ?? null}
+              onChange={(insurerSupplierId) => detail({ insurerSupplierId })}
             />
             <Field
               label="Số hợp đồng bảo hiểm dự kiến"
@@ -421,6 +425,8 @@ export function JourneyStudio({
     !!planId && editRole && !!query.data?.editable && !fork && unlocked && writeReady;
   const canFork =
     !!query.data &&
+    !!detail.data &&
+    detail.data.planId === query.data.planId &&
     (query.data.editable ||
       (detail.data?.planStatus === 'DRAFT' && !query.data.checkpointNodes.length));
   // Adopt new server resources/status without discarding the user's canvas layout.
@@ -627,6 +633,10 @@ export function JourneyStudio({
                   ...journey,
                   wires: journey.wires.map((w) => ({
                     ...w,
+                    // The public graph omits suppliers. Preserve only the already
+                    // authorized internal detail when forking a staff draft.
+                    supplierId:
+                      detail.data?.legs.find((l) => l.legId === w.legId)?.supplierId ?? null,
                     legId: undefined,
                     vehicleId: null,
                     driverStaffId: null,
@@ -657,7 +667,7 @@ export function JourneyStudio({
           Đang tải hành trình…
         </p>
       )}
-      <ErrorNotice error={query.error ?? error} />
+      <ErrorNotice error={query.error ?? detail.error ?? error} />
       {message && (
         <p className="js-banner" role="status">
           {message}
@@ -702,6 +712,7 @@ export function JourneyStudio({
             selection={selection}
             select={select}
             driverMode={mode === 'driver'}
+            resourceDetailsVisible={mode === 'edit'}
             onAutoFix={editable ? () => semantic(cascade(journey)) : undefined}
           />
           <div className="js-statusbar">
@@ -867,6 +878,15 @@ export function JourneyStudio({
                       <option>SUPPLIER_DECLARATION</option>
                     </select>
                   </label>
+                )}
+                {editRole && (
+                  <SupplierPicker
+                    key={wire.id}
+                    label="Hãng vận chuyển"
+                    disabled={!editable}
+                    value={wire.supplierId ?? leg?.supplierId ?? null}
+                    onChange={(supplierId) => updateWire({ supplierId })}
+                  />
                 )}
                 <DateField
                   label="Khởi hành"

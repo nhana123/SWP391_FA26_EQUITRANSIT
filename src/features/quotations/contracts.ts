@@ -56,6 +56,8 @@ export const quoteLineSchema = z.object({
 });
 export type QuoteLine = z.infer<typeof quoteLineSchema>;
 export const quoteScheduleSchema = z.object({
+  // Older servers omit the key; payment creation stays unavailable then.
+  scheduleId: idSchema.nullish(),
   sequenceNo: z.number().int().positive(),
   paymentStage: z.string().min(1).max(50),
   amountDue: quoteMoneySchema,

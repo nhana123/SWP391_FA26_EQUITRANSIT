@@ -58,6 +58,8 @@ export type Wire = {
   fromNodeKey: string;
   toNodeKey: string;
   transportMode: 'ROAD' | 'AIR';
+  /** Staff-only draft value; the public graph projection intentionally omits it. */
+  supplierId?: number | null;
   distanceKm: string;
   distanceSource: string;
   plannedDeparture: string;

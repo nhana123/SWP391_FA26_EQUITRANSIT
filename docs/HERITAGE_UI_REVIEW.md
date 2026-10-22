@@ -1,6 +1,6 @@
 # EquiTransit interface review — 21 October 2026
 
-Branch: `feature/heritage-logistics-ui`, based on the previously published Journey Studio frontend commit `8450038`. This interface work is local and has not been published or merged.
+The Heritage redesign was published as `4b0e987` and is already on `dev` through [PR #110](https://github.com/nhana123/SWP391_FA26_EQUITRANSIT_FE/pull/110). The next Studio continuation uses the separate branch `feature/studio-supplier-pickers`; see `STUDIO_CONTINUATION_REVIEW.md`. The continuation agent did not perform the earlier merge.
 
 ## Result
 

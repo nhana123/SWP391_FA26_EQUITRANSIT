@@ -48,7 +48,7 @@ export function ResourceAttachment({
         mode: 'AIR',
         start: leg.plannedDeparture,
         end: leg.plannedArrival,
-        carrierSupplierId: null,
+        carrierSupplierId: leg.supplierId,
         legId: leg.legId,
       });
       if (checked.status !== 'AVAILABLE') {
@@ -85,7 +85,7 @@ export function ResourceAttachment({
             mode: air ? 'AIR' : 'ROAD',
             start: leg.plannedDeparture,
             end: leg.plannedArrival,
-            carrierSupplierId: null,
+            carrierSupplierId: air ? leg.supplierId : null,
             legId: leg.legId,
           },
         },

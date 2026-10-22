@@ -313,17 +313,25 @@ export function validateQuarantine(
   if (startsAt && endsAt && !e.startsAt && !e.endsAt && !after(startsAt, endsAt))
     e.endsAt = 'The reservation must end after it starts.';
   if (!f.status) e.status = 'Choose the reservation state.';
+  const confirmed = f.status === 'CONFIRMED';
+  const expiresAt = when(e, 'expiresAt', f.expiresAt, confirmed);
+  if (confirmed && expiresAt && !e.expiresAt && Date.parse(expiresAt) <= Date.now())
+    e.expiresAt = 'Confirmed reservations require an expiry in the future.';
   return done(
     {
       revisionId,
       facilityName: req(e, 'facilityName', f.facilityName, 300),
-      reservationReference: optText(e, 'reservationReference', f.reservationReference, 150),
+      reservationReference: confirmed
+        ? req(e, 'reservationReference', f.reservationReference, 150)
+        : optText(e, 'reservationReference', f.reservationReference, 150),
       startsAt: startsAt ?? '',
       endsAt: endsAt ?? '',
       status: f.status as ReservationState,
       supplierId: id(e, 'supplierId', f.supplierId, false),
-      evidenceFileKey: optText(e, 'evidenceFileKey', f.evidenceFileKey, 1024),
-      expiresAt: when(e, 'expiresAt', f.expiresAt, false),
+      evidenceFileKey: confirmed
+        ? req(e, 'evidenceFileKey', f.evidenceFileKey, 1024)
+        : optText(e, 'evidenceFileKey', f.evidenceFileKey, 1024),
+      expiresAt,
       facilityContact: optText(e, 'facilityContact', f.facilityContact, 500),
     },
     e,

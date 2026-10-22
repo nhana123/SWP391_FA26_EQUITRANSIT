@@ -4,6 +4,7 @@ import {
   validateFlight,
   validateLegs,
   validateRoad,
+  validateQuarantine,
   validateStall,
   type LegForm,
 } from './validation';
@@ -41,6 +42,34 @@ const air2 = leg({
 });
 
 describe('plan leg builder rules (#80)', () => {
+  it('requires reference, evidence and future expiry only for confirmed quarantine', () => {
+    const reservation = {
+      facilityName: 'Demo facility',
+      reservationReference: '',
+      startsAt: '2099-02-01T08:00:00Z',
+      endsAt: '2099-02-03T08:00:00Z',
+      status: 'HELD' as const,
+      supplierId: '',
+      evidenceFileKey: '',
+      expiresAt: '',
+      facilityContact: '',
+    };
+    expect(validateQuarantine(reservation, 1).errors).toEqual({});
+    expect(
+      Object.keys(validateQuarantine({ ...reservation, status: 'CONFIRMED' }, 1).errors).sort(),
+    ).toEqual(['evidenceFileKey', 'expiresAt', 'reservationReference']);
+    const confirmed = {
+      ...reservation,
+      status: 'CONFIRMED' as const,
+      reservationReference: 'DEMO-REF',
+      evidenceFileKey: 'demo/evidence.pdf',
+      expiresAt: '2099-02-05T08:00:00Z',
+    };
+    expect(validateQuarantine(confirmed, 1).input).toMatchObject({ status: 'CONFIRMED' });
+    expect(
+      validateQuarantine({ ...confirmed, expiresAt: '2000-01-01T00:00:00Z' }, 1).errors,
+    ).toHaveProperty('expiresAt');
+  });
   it('keeps ROAD → AIR → AIR → ROAD with offsets, km as numbers and consecutive sequence', () => {
     const last = leg({
       startPoint: 'LHR',

@@ -1,6 +1,5 @@
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import { getSession, useSession } from '../../shared/api/session';
@@ -21,6 +20,7 @@ import {
 } from './manager-actions';
 import { managerPaymentsApi, type Bank, type RefundAction } from './manager-api';
 import { LedgerPager, useEvidence, type WorkspaceProps } from './workspace';
+import { RequestPayment } from './RequestPayment';
 
 type Panel =
   | { kind: 'reconcile' | 'refund' | 'allocate' | 'reverse' }
@@ -30,13 +30,14 @@ export function ManagerPayments(props: WorkspaceProps) {
   const { data, orderId, readError, paging, backTo } = props;
   const session = useSession()!;
   const [panel, setPanel] = useState<Panel | null>(null);
+  const [requestEditing, setRequestEditing] = useState(false);
   const [bank, setBank] = useState<Bank | null>(null);
   const [bankId, setBankId] = useState('');
   const [recent, setRecent] = useState<number[]>([]);
   const [notice, setNotice] = useState('');
   const lookup = useAction();
   const evidence = useEvidence(data);
-  const locked = !!readError || paging || panel !== null;
+  const locked = !!readError || paging || panel !== null || requestEditing;
   const knownIds = [...new Set([...recent, ...data.allocations.map((a) => a.transactionId)])];
   async function refresh() {
     const fresh = await props.refresh();
@@ -73,17 +74,21 @@ export function ManagerPayments(props: WorkspaceProps) {
           {notice}
         </p>
       )}
-      <section className="card">
-        <h2>Payment requests from accepted quotation</h2>
-        <p>
-          Creating requests is unavailable until the quotation service provides the installment
-          identifiers. Existing obligations can still be processed below.
-        </p>
-        <button type="button" disabled>
-          Create payment request
-        </button>{' '}
-        <Link to={`/manager/requests/${orderId}/quotes`}>Review quotation installments</Link>
-      </section>
+      <RequestPayment
+        disabled={locked}
+        onEditingChange={setRequestEditing}
+        context={{
+          orderId,
+          overview: data,
+          readError,
+          backTo,
+          refresh,
+          evidence: evidence.options,
+          onUploaded: evidence.add,
+          onDone: completed,
+          onCancel: () => {},
+        }}
+      />
       <div className="actions">
         <button type="button" disabled={locked} onClick={() => setPanel({ kind: 'reconcile' })}>
           Record a verified bank receipt

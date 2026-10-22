@@ -33,6 +33,7 @@ export function JourneyStudioCanvas({
   selection,
   select,
   driverMode = false,
+  resourceDetailsVisible = true,
   canConnect = editable,
   onAutoFix,
 }: {
@@ -42,6 +43,8 @@ export function JourneyStudioCanvas({
   selection: Selection;
   select: (s: Selection) => void;
   driverMode?: boolean;
+  /** Public graph projections redact resource IDs; their absence is not a readiness failure. */
+  resourceDetailsVisible?: boolean;
   canConnect?: boolean;
   /** Present only when the schedule may be edited; pushes later legs to fit. */
   onAutoFix?: () => void;
@@ -60,6 +63,12 @@ export function JourneyStudioCanvas({
   const [snap, setSnap] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const presentationState = (wire: Journey['wires'][number]): WireState =>
+    resourceDetailsVisible
+      ? wireState(journey, wire)
+      : wire.transportMode === 'ROAD'
+        ? 'road'
+        : 'air';
   function world(e: { clientX: number; clientY: number }) {
     const r = ref.current!.getBoundingClientRect();
     return {
@@ -188,7 +197,7 @@ export function JourneyStudioCanvas({
               <path
                 key={w.id}
                 d={wireCurve(a.posX + WIDTH, a.posY + 73, b.posX, b.posY + 73)}
-                className={`js-wire-path ${wireState(journey, w)} ${selection?.id === w.id || active ? 'active' : ''} ${w.legStatus === 'COMPLETED' ? 'completed' : ''}`}
+                className={`js-wire-path ${presentationState(w)} ${selection?.id === w.id || active ? 'active' : ''} ${w.legStatus === 'COMPLETED' ? 'completed' : ''}`}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => select({ kind: 'wire', id: w.id })}
                 onMouseEnter={() => setHover(w.id)}
@@ -220,7 +229,7 @@ export function JourneyStudioCanvas({
           const a = journey.nodes.find((n) => n.nodeKey === w.fromNodeKey),
             b = journey.nodes.find((n) => n.nodeKey === w.toNodeKey);
           if (!a || !b) return null;
-          const state = wireState(journey, w);
+          const state = presentationState(w);
           return (
             <div
               key={w.id}
@@ -232,13 +241,15 @@ export function JourneyStudioCanvas({
               <button
                 type="button"
                 className={`js-capsule ${state} ${selection?.id === w.id ? 'selected' : ''}`}
-                aria-label={`Chặng ${w.sequenceNo} ${w.transportMode} – chỉnh sửa`}
+                aria-label={`Chặng ${w.sequenceNo} ${w.transportMode} – ${canConnect ? 'chỉnh sửa' : 'xem chi tiết'}`}
                 onClick={() => select({ kind: 'wire', id: w.id })}
               >
                 {w.transportMode === 'ROAD' ? '🚛' : '✈'} {w.transportMode} · {w.distanceKm || '?'}{' '}
-                km <em aria-hidden="true">✎</em>
+                km {canConnect && <em aria-hidden="true">✎</em>}
                 <span>
-                  {w.transportMode === 'ROAD'
+                  {!resourceDetailsVisible ? (
+                    <StatusBadge status={w.legStatus} />
+                  ) : w.transportMode === 'ROAD'
                     ? w.vehicleId
                       ? `Xe #${w.vehicleId}`
                       : 'Chưa gán xe'
@@ -268,17 +279,22 @@ export function JourneyStudioCanvas({
                     📏 {w.distanceKm || '?'} km · {w.transportMode}
                   </p>
                   <p>
-                    {w.transportMode === 'ROAD'
+                    {!resourceDetailsVisible
+                      ? w.transportMode === 'ROAD'
+                        ? '🚛 Vận chuyển đường bộ'
+                        : `✈ Chuyến ${w.flightNumber || '—'}`
+                      : w.transportMode === 'ROAD'
                       ? `🚛 Xe ${w.vehicleId ? `#${w.vehicleId}` : '—'} · Tài xế ${w.driverStaffId ? `#${w.driverStaffId}` : '—'}`
                       : `✈ Chuyến ${w.flightNumber || '—'} · Air stall ${w.stallEquipmentId ? `#${w.stallEquipmentId}` : '—'}`}
                   </p>
                   <p>
                     Trạng thái: <StatusBadge status={w.legStatus} />
-                    {state === 'bad'
-                      ? ' · ⚠ Lệch giờ chuyển tiếp'
-                      : state === 'pending'
-                        ? ' · Chưa đủ tài nguyên'
-                        : ' · Sẵn sàng'}
+                    {resourceDetailsVisible &&
+                      (state === 'bad'
+                        ? ' · ⚠ Lệch giờ chuyển tiếp'
+                        : state === 'pending'
+                          ? ' · Chưa đủ tài nguyên'
+                          : ' · Sẵn sàng')}
                   </p>
                 </div>
               )}
