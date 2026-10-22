@@ -142,8 +142,7 @@ for (const role of ['MANAGER'] as const) {
           return route.fulfill({ json: { offerId: 55, recordVersion: '00000000000000c2' } });
         }
         if (path === '/api/manager/transport-orders' || path === '/api/staff/transport-orders') {
-          const items =
-            role === 'COORDINATOR' || url.searchParams.get('state') === 'APPROVED' ? [caseRow] : [];
+          const items = url.searchParams.get('state') === 'APPROVED' ? [caseRow] : [];
           return route.fulfill({
             json: {
               items,
