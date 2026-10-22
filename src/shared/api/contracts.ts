@@ -81,6 +81,15 @@ export const preferencesSchema = z.object({
 });
 export type ServicePreferences = z.infer<typeof preferencesSchema>;
 const nullableText = z.string().nullable();
+/** Customer statement for the Specialist; not veterinary or legal evidence. */
+export const healthDeclarationSchema = z.object({
+  influenzaVaccinated: z.boolean().nullable().optional(),
+  lastInfluenzaVaccinationDate: z.string().nullable().optional(),
+  vaccinationRecordReference: z.string().nullable().optional(),
+  healthNotes: z.string().nullable().optional(),
+  declaredAccurate: z.boolean().nullable().optional(),
+});
+export type HealthDeclaration = z.infer<typeof healthDeclarationSchema>;
 export const draftSchema = z.object({
   horseId: idSchema.nullable(),
   originCountryCode: nullableText,
@@ -104,6 +113,8 @@ export const draftSchema = z.object({
   transitAirports: z.array(z.string()).nullable(),
   specialNeeds: nullableText,
   services: preferencesSchema.nullable(),
+  // Absent on drafts saved before the declaration existed.
+  healthDeclaration: healthDeclarationSchema.nullable().optional(),
 });
 export type OrderDraft = z.infer<typeof draftSchema>;
 export const orderSchema = z.object({

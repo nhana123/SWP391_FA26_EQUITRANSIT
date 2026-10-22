@@ -83,8 +83,24 @@ const caseView: ManagerCase = {
         originCountryCode: 'VN',
         destinationCountryCode: 'US',
         deliveryDeadline: '2026-11-20T08:00:00Z',
+        receiverName: 'Alex Receiver',
+        receiverPhone: '+12025550123',
+        healthDeclaration: {
+          influenzaVaccinated: true,
+          lastInfluenzaVaccinationDate: '2026-08-20',
+          vaccinationRecordReference: 'FEI passport p.12',
+          healthNotes: 'No illness in the last 30 days.',
+          declaredAccurate: true,
+        },
       },
-      horse: { name: 'Thunder Bay', microchipId: '985141000123456', weightKg: 520 },
+      horse: {
+        name: 'Thunder Bay',
+        microchipId: '985141000123456',
+        passportNumber: 'FEI-10459921',
+        sexCode: 'GELDING',
+        dateOfBirth: '2019-04-15',
+        weightKg: 520,
+      },
       services: [],
     },
   },
@@ -131,6 +147,7 @@ const overview = (blockers: string[], patch: Partial<Overview> = {}): Overview =
       documentVersionId: 103,
       decision: null,
       instructions: 'Upload the full certificate.',
+      feedback: null,
     },
   ],
   page: 0,
@@ -277,6 +294,12 @@ describe('open two-page dossier', () => {
     const sheet = await screen.findByRole('complementary', { name: 'Dossier reference sheet' });
     await waitFor(() => expect(sheet).toHaveTextContent('Thunder Bay'));
     expect(sheet).toHaveTextContent('985141000123456');
+    // What the customer declared at submission sits beside the documents.
+    expect(sheet).toHaveTextContent('FEI-10459921');
+    expect(sheet).toHaveTextContent('Gelding');
+    expect(sheet).toHaveTextContent('Alex Receiver · +12025550123');
+    expect(sheet).toHaveTextContent('Vaccinated · last dose 2026-08-20 · FEI passport p.12');
+    expect(sheet).toHaveTextContent('No illness in the last 30 days.');
     expect(
       within(sheet).getByText('Approved for preparation', { selector: 'dd' }),
     ).toBeInTheDocument();

@@ -15,6 +15,7 @@ import { OrderEditor } from './pages';
 import { RevisionsSection } from './revisions';
 import { QuotationLink } from '../quotations/navigation';
 import { ComplianceLink } from '../compliance/link';
+import { CustomerLegalChecklist } from '../compliance/CustomerChecklist';
 import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
@@ -225,6 +226,7 @@ export function RequestDetailPage() {
       <OrderWorkflowBanner status={query.data.orderStatus} role="CUSTOMER" />
       <OrderLifecycle status={query.data.orderStatus} />
       <AssessmentPanel order={query.data} />
+      <CustomerLegalChecklist orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />
         <ComplianceLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />

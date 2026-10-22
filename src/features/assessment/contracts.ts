@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { idSchema, orderStatusSchema, versionSchema } from '../../shared/api/contracts';
+import {
+  healthDeclarationSchema,
+  idSchema,
+  orderStatusSchema,
+  versionSchema,
+} from '../../shared/api/contracts';
 
 // Mirrors BE ReviewState; DRAFT is never part of the Manager review queue.
 export const reviewStates = ['SUBMITTED', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const;
@@ -98,18 +103,21 @@ export const snapshotSchema = z.object({
     dateFlexibilityNotes: text,
     importType: text,
     receiverName: text,
+    receiverPhone: text,
     receiverAuthority: text,
     eventName: text,
     eventStartAt: text,
     eventTimezone: text,
     transitAirports: z.array(z.string()).nullable().optional(),
     specialNeeds: text,
+    healthDeclaration: healthDeclarationSchema.nullable().optional(),
   }),
   horse: z
     .object({
       name: z.string(),
       microchipId: text,
       passportNumber: text,
+      dateOfBirth: text,
       sexCode: text,
       weightKg: amount,
       heightCm: amount,

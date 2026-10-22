@@ -759,3 +759,24 @@ fieldset > .field,
     font-size: 9px;
   }
 }
+
+/* Request: health & vaccination declaration */
+.health-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.health-choice legend {
+  width: 100%;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+.health-choice .horse-choice {
+  flex: 0 1 8rem;
+}
+.health-confirm {
+  grid-column: 1 / -1;
+}

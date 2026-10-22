@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { draftForm, draftInput, validateDraft } from './form';
+import { draftForm, draftInput, horseGaps, validateDraft } from './form';
+import type { Horse } from '../../shared/api/contracts';
 describe('draft and submit contracts', () => {
   it('requires departure/import type and matches current phone/timezone patterns', () => {
     const form = draftForm();
@@ -27,9 +28,13 @@ describe('draft and submit contracts', () => {
     expect(draftInput(form, services).services).toEqual(services);
     expect(draftInput(form, services).horseId).toBeNull();
   });
-  it('requires only the backend submission requirements', () => {
+  it('requires the route, schedule, receiver and health declaration to submit', () => {
     const form = draftForm();
     Object.assign(form, {
+      receiverName: 'Alex Receiver',
+      receiverPhone: '+6590123456',
+      influenzaVaccinated: 'false',
+      declaredAccurate: 'true',
       horseId: '1',
       originCountryCode: 'VN',
       destinationCountryCode: 'GB',
@@ -44,6 +49,60 @@ describe('draft and submit contracts', () => {
     expect(validateDraft(form, true, Date.parse('2029-01-01T00:00:00Z'))).toEqual({});
     form.destinationCountryCode = 'VN';
     expect(validateDraft(form, true)).toHaveProperty('destinationCountryCode');
+  });
+  it('blocks submission without the receiver or a confirmed health declaration', () => {
+    const errors = validateDraft(draftForm(), true);
+    expect(errors).toMatchObject({
+      receiverName: 'Complete this field before submitting.',
+      receiverPhone: 'Complete this field before submitting.',
+      influenzaVaccinated: 'Answer the equine influenza question before submitting.',
+      declaredAccurate: 'Confirm the declaration before submitting.',
+    });
+    // Drafts may stay incomplete.
+    expect(validateDraft(draftForm())).toEqual({});
+  });
+  it('needs a past dose date for a vaccinated horse and keeps it in the request', () => {
+    const form = Object.assign(draftForm(), {
+      influenzaVaccinated: 'true',
+      declaredAccurate: 'true',
+    });
+    expect(validateDraft(form, true)).toHaveProperty(
+      'lastInfluenzaVaccinationDate',
+      'Enter the date of the last dose.',
+    );
+    form.lastInfluenzaVaccinationDate = '2030-01-02';
+    expect(validateDraft(form, false, Date.parse('2030-01-01T00:00:00Z'))).toHaveProperty(
+      'lastInfluenzaVaccinationDate',
+      'The last dose cannot be in the future.',
+    );
+    form.lastInfluenzaVaccinationDate = '2029-12-01';
+    form.vaccinationRecordReference = ' Passport p.12 ';
+    expect(draftInput(form, null).healthDeclaration).toEqual({
+      influenzaVaccinated: true,
+      lastInfluenzaVaccinationDate: '2029-12-01',
+      vaccinationRecordReference: 'Passport p.12',
+      healthNotes: null,
+      declaredAccurate: true,
+    });
+    // A "No" answer never sends a dose date.
+    form.influenzaVaccinated = 'false';
+    expect(draftInput(form, null).healthDeclaration?.lastInfluenzaVaccinationDate).toBeNull();
+    expect(draftInput(draftForm(), null).healthDeclaration).toBeNull();
+    expect(draftForm(draftInput(form, null))).toMatchObject({
+      influenzaVaccinated: 'false',
+      declaredAccurate: 'true',
+    });
+  });
+  it('lists the identity and size facts a horse still lacks', () => {
+    const horse = {
+      microchipId: null,
+      passportNumber: 'FEI-1',
+      dateOfBirth: null,
+      sexCode: 'MARE',
+      weightKg: 0,
+      heightCm: 160,
+    } as unknown as Horse;
+    expect(horseGaps(horse)).toEqual(['microchip number', 'date of birth', 'weight']);
   });
   it('checks dates without using machine timezone and preserves UTC offsets', () => {
     const form = draftForm();

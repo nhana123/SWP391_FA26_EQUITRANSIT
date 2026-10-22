@@ -3,6 +3,7 @@ import { Icon } from '../../components/ui/Icons';
 import { CodeChip } from '../../components/ui/Primitives';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { ApiError } from '../../shared/api/client';
+import type { HealthDeclaration } from '../../shared/api/contracts';
 import { useSession } from '../../shared/api/session';
 import { displayDate } from '../../shared/lib/validation';
 import { useAssignedCase } from '../assigned-cases/hooks';
@@ -19,6 +20,27 @@ const decisionText: Record<string, string> = {
 };
 const measure = (value: number | null | undefined, unit: string) =>
   value === null || value === undefined ? null : `${value} ${unit}`;
+const sexText: Record<string, string> = { STALLION: 'Stallion', MARE: 'Mare', GELDING: 'Gelding' };
+/** Whole years on the captured date of birth, as of today. */
+function age(dateOfBirth: string | null | undefined, now = new Date()) {
+  const born = dateOfBirth ? new Date(`${dateOfBirth}T00:00:00Z`) : null;
+  if (!born || Number.isNaN(born.getTime())) return null;
+  let years = now.getUTCFullYear() - born.getUTCFullYear();
+  if (
+    now.getUTCMonth() < born.getUTCMonth() ||
+    (now.getUTCMonth() === born.getUTCMonth() && now.getUTCDate() < born.getUTCDate())
+  )
+    years -= 1;
+  return `${years} yr${years === 1 ? '' : 's'}`;
+}
+/** The customer's own statement at submission, never treated as evidence. */
+function vaccination(declaration: HealthDeclaration | null | undefined) {
+  if (!declaration || declaration.influenzaVaccinated == null) return 'Not declared';
+  if (!declaration.influenzaVaccinated) return 'Declared not vaccinated';
+  return declaration.lastInfluenzaVaccinationDate
+    ? `Vaccinated · last dose ${declaration.lastInfluenzaVaccinationDate}`
+    : 'Declared vaccinated';
+}
 
 /** One legal stamp: the phase readiness the BE reports, never inferred. */
 function PhaseStamp({
@@ -138,6 +160,13 @@ export function ReferenceSheet({
               <dd>{request.transitAirports.join(', ')}</dd>
             </div>
           )}
+          <div>
+            <dt>Receiver</dt>
+            <dd>
+              {[request?.receiverName, request?.receiverPhone].filter(Boolean).join(' · ') ||
+                'Not recorded'}
+            </dd>
+          </div>
         </dl>
       </section>
       <section>
@@ -151,10 +180,42 @@ export function ReferenceSheet({
             <dt>Microchip</dt>
             <dd>{horse?.microchipId ?? 'Not recorded'}</dd>
           </div>
+          <div>
+            <dt>Passport</dt>
+            <dd>{horse?.passportNumber ?? 'Not recorded'}</dd>
+          </div>
+          {(horse?.sexCode || horse?.dateOfBirth) && (
+            <div>
+              <dt>Sex · age</dt>
+              <dd>
+                {[
+                  horse.sexCode && (sexText[horse.sexCode] ?? horse.sexCode),
+                  age(horse.dateOfBirth),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </dd>
+            </div>
+          )}
           {sizes.length > 0 && (
             <div>
               <dt>Measurements</dt>
               <dd>{sizes.join(' · ')}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Equine influenza</dt>
+            <dd>
+              {vaccination(request?.healthDeclaration)}
+              {request?.healthDeclaration?.vaccinationRecordReference && (
+                <small> · {request.healthDeclaration.vaccinationRecordReference}</small>
+              )}
+            </dd>
+          </div>
+          {request?.healthDeclaration?.healthNotes && (
+            <div>
+              <dt>Customer's health notes</dt>
+              <dd>{request.healthDeclaration.healthNotes}</dd>
             </div>
           )}
           <div>
