@@ -196,12 +196,13 @@ export function validateRoad(
   checked: Checked,
 ): Result<RoadInput> {
   const e: FieldErrors = {};
-  const vehicleId = id(e, 'vehicleId', f.vehicleId);
+  // Nothing chosen yet reads as "choose one", not as an invalid number.
+  const vehicleId = f.vehicleId.trim() ? id(e, 'vehicleId', f.vehicleId) : null;
   if (
     !e.vehicleId &&
     (!checked || checked.id !== vehicleId || !version.test(checked.recordVersion))
   )
-    e.vehicleId = 'Check this vehicle’s availability first; its checked version is sent.';
+    e.vehicleId = 'Choose an available vehicle for this leg; its checked version is sent.';
   return done(
     {
       vehicleId: vehicleId ?? 0,
@@ -227,9 +228,9 @@ export function validateStall(
   checked: Checked,
 ): Result<StallInput> {
   const e: FieldErrors = {};
-  const stallId = id(e, 'stallId', f.stallId);
+  const stallId = f.stallId.trim() ? id(e, 'stallId', f.stallId) : null;
   if (!e.stallId && (!checked || checked.id !== stallId || !version.test(checked.recordVersion)))
-    e.stallId = 'Check this stall’s availability first; its checked version is sent.';
+    e.stallId = 'Choose an available stall for this leg; its checked version is sent.';
   if (!f.carrierAcceptanceStatus) e.carrierAcceptanceStatus = 'Choose the carrier’s answer.';
   if (!f.status) e.status = 'Choose the assignment state.';
   const key = optText(e, 'carrierApprovalFileKey', f.carrierApprovalFileKey, 1024);

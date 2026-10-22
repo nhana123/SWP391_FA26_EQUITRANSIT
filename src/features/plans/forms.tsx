@@ -6,10 +6,13 @@ import { type FieldErrors } from '../../shared/lib/validation';
 import { ErrorNotice } from '../../shared/ui/common';
 import { useQuotations } from '../quotations/hooks';
 import { resourcesApi } from '../resources/api';
+import { ResourcePicker } from '../resources/ResourcePicker';
 import {
   blockerLabels as resourceBlockers,
   probeMode,
   type Availability,
+  type AvailabilityRequest,
+  type ResourceCandidate,
 } from '../resources/contracts';
 import { plansApi } from './api';
 import {
@@ -32,6 +35,24 @@ import {
   validateStall,
   type Checked,
 } from './validation';
+
+/** The leg's own case window: the picker and the check never ask for IDs. */
+function legWindow(
+  plan: PlanDetail,
+  leg: Leg,
+  kind: 'VEHICLE' | 'STALL',
+  carrierSupplierId: number | null,
+): AvailabilityRequest {
+  return {
+    orderId: plan.orderId,
+    revisionId: plan.revisionId,
+    mode: probeMode[kind],
+    start: leg.plannedDeparture,
+    end: leg.plannedArrival,
+    carrierSupplierId: kind === 'STALL' ? carrierSupplierId : null,
+    legId: leg.legId,
+  };
+}
 
 /**
  * Checks a vehicle/stall for this leg's window (F09 probe, read-only). Only an
@@ -61,15 +82,7 @@ function AvailabilityCheck({
     setResult(null);
     onChecked(null);
     void action.run(async () => {
-      const a = await resourcesApi.probe(kind, id, {
-        orderId: plan.orderId,
-        revisionId: plan.revisionId,
-        mode: probeMode[kind],
-        start: leg.plannedDeparture,
-        end: leg.plannedArrival,
-        carrierSupplierId: kind === 'STALL' ? carrierSupplierId : null,
-        legId: leg.legId,
-      });
+      const a = await resourcesApi.probe(kind, id, legWindow(plan, leg, kind, carrierSupplierId));
       setResult(a);
       onChecked(a.status === 'AVAILABLE' ? { id, recordVersion: a.recordVersion } : null);
     });
@@ -110,7 +123,13 @@ export function RoadForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; pi
   });
   const set = (patch: Partial<typeof f>) => setF((v) => ({ ...v, ...patch }));
   const [checked, setChecked] = useState<Checked>(null);
+  const [picked, setPicked] = useState<ResourceCandidate | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const pick = (c: ResourceCandidate | null) => {
+    setPicked(c);
+    set({ vehicleId: c ? String(c.id) : '' });
+    setChecked(c ? { id: c.id, recordVersion: c.recordVersion } : null);
+  };
   return (
     <CommandForm
       label={`Assign road resources to leg ${leg.sequenceNo}`}
@@ -131,24 +150,35 @@ export function RoadForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; pi
             Only for road legs EquiTransit operates. Do not assign internal resources to a road leg
             the customer arranges themselves.
           </p>
-          <TextInput
-            label="Vehicle ID"
-            inputMode="numeric"
-            max={15}
-            value={f.vehicleId}
-            onChange={(vehicleId) => {
-              setChecked(null);
-              set({ vehicleId });
-            }}
-            error={fields.vehicleId}
-          />
-          <AvailabilityCheck
+          <ResourcePicker
             kind="VEHICLE"
-            resourceId={f.vehicleId}
-            plan={plan}
-            leg={leg}
-            carrierSupplierId={null}
-            onChecked={setChecked}
+            request={legWindow(plan, leg, 'VEHICLE', null)}
+            selected={picked}
+            onSelect={pick}
+            error={fields.vehicleId}
+            fallback={
+              <>
+                <TextInput
+                  label="Vehicle ID"
+                  inputMode="numeric"
+                  max={15}
+                  value={f.vehicleId}
+                  onChange={(vehicleId) => {
+                    setChecked(null);
+                    set({ vehicleId });
+                  }}
+                  error={fields.vehicleId}
+                />
+                <AvailabilityCheck
+                  kind="VEHICLE"
+                  resourceId={f.vehicleId}
+                  plan={plan}
+                  leg={leg}
+                  carrierSupplierId={null}
+                  onChecked={setChecked}
+                />
+              </>
+            }
           />
           <TextInput
             label="Driver staff ID"
@@ -192,7 +222,13 @@ export function StallForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; p
   });
   const set = (patch: Partial<typeof f>) => setF((v) => ({ ...v, ...patch }));
   const [checked, setChecked] = useState<Checked>(null);
+  const [picked, setPicked] = useState<ResourceCandidate | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const pick = (c: ResourceCandidate | null) => {
+    setPicked(c);
+    set({ stallId: c ? String(c.id) : '' });
+    setChecked(c ? { id: c.id, recordVersion: c.recordVersion } : null);
+  };
   return (
     <CommandForm
       label={`Assign stall to leg ${leg.sequenceNo}`}
@@ -212,24 +248,35 @@ export function StallForm({ plan, leg, pinned }: { plan: PlanDetail; leg: Leg; p
           <p className="muted">
             Slots and sharing come from the customer's service request; they are not set here.
           </p>
-          <TextInput
-            label="Stall ID"
-            inputMode="numeric"
-            max={15}
-            value={f.stallId}
-            onChange={(stallId) => {
-              setChecked(null);
-              set({ stallId });
-            }}
-            error={fields.stallId}
-          />
-          <AvailabilityCheck
+          <ResourcePicker
             kind="STALL"
-            resourceId={f.stallId}
-            plan={plan}
-            leg={leg}
-            carrierSupplierId={leg.supplierId}
-            onChecked={setChecked}
+            request={legWindow(plan, leg, 'STALL', leg.supplierId)}
+            selected={picked}
+            onSelect={pick}
+            error={fields.stallId}
+            fallback={
+              <>
+                <TextInput
+                  label="Stall ID"
+                  inputMode="numeric"
+                  max={15}
+                  value={f.stallId}
+                  onChange={(stallId) => {
+                    setChecked(null);
+                    set({ stallId });
+                  }}
+                  error={fields.stallId}
+                />
+                <AvailabilityCheck
+                  kind="STALL"
+                  resourceId={f.stallId}
+                  plan={plan}
+                  leg={leg}
+                  carrierSupplierId={leg.supplierId}
+                  onChecked={setChecked}
+                />
+              </>
+            }
           />
           <Choice
             label="Carrier answer"

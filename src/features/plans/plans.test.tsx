@@ -49,7 +49,22 @@ vi.mock('./api', () => ({
     confirm: vi.fn(),
   },
 }));
-vi.mock('../resources/api', () => ({ resourcesApi: { probe: vi.fn() } }));
+vi.mock('../resources/api', () => ({ resourcesApi: { probe: vi.fn(), candidates: vi.fn() } }));
+const candidatePage = (
+  items: {
+    id: number;
+    code: string;
+    status: string;
+    recordVersion?: string;
+    blockers?: string[];
+  }[],
+) =>
+  ({
+    items: items.map((i) => ({ recordVersion: '00000000000000A1', blockers: [], ...i })),
+    page: 0,
+    size: 10,
+    totalElements: items.length,
+  }) as never;
 vi.mock('../quotations/api', async (original) => ({
   ...(await original<typeof import('../quotations/api')>()),
   quotationsApi: { list: vi.fn(), get: vi.fn() },
@@ -94,6 +109,7 @@ beforeEach(() => {
   vi.mocked(assignedCasesApi.get).mockResolvedValue(caseView() as never);
   vi.mocked(assessmentApi.getCase).mockResolvedValue(caseView());
   vi.mocked(plansApi.get).mockResolvedValue(detail());
+  vi.mocked(resourcesApi.candidates).mockResolvedValue(candidatePage([]));
   vi.mocked(plansApi.list).mockResolvedValue({
     items: [summaryOf(detail())],
     page: 0,
@@ -250,7 +266,66 @@ describe('plan detail (#80)', () => {
     ).toBeNull();
   });
 
-  it('assigns a vehicle with the version from an AVAILABLE check for that leg window', async () => {
+  it('picks an AVAILABLE vehicle for the leg window and assigns it with that same version', async () => {
+    vi.mocked(resourcesApi.candidates).mockResolvedValue(
+      candidatePage([
+        { id: 12, code: 'VEH-12', status: 'UNAVAILABLE', blockers: ['OVERLAP'] },
+        { id: 11, code: 'VEH-11', status: 'AVAILABLE', recordVersion: '00000000000000B1' },
+      ]),
+    );
+    vi.mocked(plansApi.road).mockResolvedValue(detail({ recordVersion: '000000000001A2B4' }));
+    const user = mount('/staff/cases/101/plans/311');
+    await user.click(
+      await screen.findByText('Resource assignments, reservation evidence and plan confirmation'),
+    );
+    const form = within(
+      await screen.findByRole('form', { name: 'Assign road resources to leg 1' }),
+    );
+    // The search uses the leg's own window; nobody types an ID.
+    await waitFor(() =>
+      expect(resourcesApi.candidates).toHaveBeenCalledWith(
+        'VEHICLE',
+        {
+          orderId: 101,
+          revisionId: 201,
+          mode: 'ROAD',
+          start: '2027-02-01T06:00:00Z',
+          end: '2027-02-01T08:00:00Z',
+          carrierSupplierId: null,
+          legId: 401,
+        },
+        { search: '', page: 0 },
+        expect.any(AbortSignal),
+      ),
+    );
+    const list = within(await form.findByRole('list', { name: 'Matching vehicles' }));
+    // AVAILABLE first; an unavailable one shows why and cannot be chosen.
+    expect(list.getAllByRole('button')[0]).toHaveTextContent('VEH-11');
+    expect(list.getByRole('button', { name: /VEH-12/ })).toBeDisabled();
+    expect(list.getByText(/overlapping window/)).toBeInTheDocument();
+    await fill(user, form.getByLabelText('Driver staff ID'), '41');
+    await fill(user, form.getByLabelText('Driver buffer (minutes)'), '60');
+    await user.click(form.getByRole('button', { name: 'Assign vehicle and driver' }));
+    expect(form.getByText(/Choose an available vehicle/)).toBeInTheDocument();
+    expect(plansApi.road).not.toHaveBeenCalled();
+    await user.click(list.getByRole('button', { name: /VEH-11/ }));
+    expect(form.getByText(/Selected:/)).toHaveTextContent('VEH-11');
+    await user.click(form.getByRole('button', { name: 'Assign vehicle and driver' }));
+    await waitFor(() => expect(plansApi.road).toHaveBeenCalledTimes(1));
+    expect(plansApi.road).toHaveBeenCalledWith(101, 311, 401, {
+      recordVersion: '000000000001A2B3',
+      operationId: expect.any(String),
+      vehicleId: 11,
+      vehicleRecordVersion: '00000000000000B1',
+      driverStaffId: 41,
+      driverBufferMinutes: 60,
+      conflictNotes: null,
+    });
+    expect(resourcesApi.probe).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a typed ID and a single check when the server has no resource search', async () => {
+    vi.mocked(resourcesApi.candidates).mockRejectedValue(new ApiError(404, 'Not found'));
     vi.mocked(resourcesApi.probe).mockResolvedValue({
       kind: 'VEHICLE',
       resourceId: 11,
@@ -269,11 +344,12 @@ describe('plan detail (#80)', () => {
     const form = within(
       await screen.findByRole('form', { name: 'Assign road resources to leg 1' }),
     );
+    expect(await form.findByText(/not available on this server yet/)).toBeInTheDocument();
     await fill(user, form.getByLabelText('Vehicle ID'), '11');
     await fill(user, form.getByLabelText('Driver staff ID'), '41');
     await fill(user, form.getByLabelText('Driver buffer (minutes)'), '60');
     await user.click(form.getByRole('button', { name: 'Assign vehicle and driver' }));
-    expect(form.getByText(/Check this vehicle/)).toBeInTheDocument();
+    expect(form.getByText(/Choose an available vehicle/)).toBeInTheDocument();
     expect(plansApi.road).not.toHaveBeenCalled();
     await user.click(form.getByRole('button', { name: 'Check vehicle availability' }));
     expect(await form.findByRole('status', { name: 'Availability check' })).toHaveTextContent(
@@ -302,16 +378,9 @@ describe('plan detail (#80)', () => {
   });
 
   it('cannot assign an unavailable stall and retries an uncertain flight record identically', async () => {
-    vi.mocked(resourcesApi.probe).mockResolvedValue({
-      kind: 'STALL',
-      resourceId: 12,
-      recordVersion: '00000000000000C1',
-      status: 'UNAVAILABLE',
-      asOf: '2027-01-30T00:00:00Z',
-      policyId: null,
-      carrierConfirmed: false,
-      blockers: ['OVERLAP'],
-    });
+    vi.mocked(resourcesApi.candidates).mockResolvedValue(
+      candidatePage([{ id: 12, code: 'STALL-12', status: 'UNAVAILABLE', blockers: ['OVERLAP'] }]),
+    );
     vi.mocked(plansApi.flight)
       .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
       .mockResolvedValueOnce(detail());
@@ -320,14 +389,14 @@ describe('plan detail (#80)', () => {
       await screen.findByText('Resource assignments, reservation evidence and plan confirmation'),
     );
     const stall = within(await screen.findByRole('form', { name: 'Assign stall to leg 2' }));
-    await fill(user, stall.getByLabelText('Stall ID'), '12');
-    await user.click(stall.getByRole('button', { name: 'Check stall availability' }));
-    expect(await stall.findByText(/cannot be assigned now/)).toBeInTheDocument();
-    expect(vi.mocked(resourcesApi.probe).mock.calls[0][2]).toMatchObject({
-      mode: 'AIR',
-      carrierSupplierId: 21,
-      legId: 402,
-    });
+    expect(await stall.findByRole('button', { name: /STALL-12/ })).toBeDisabled();
+    expect(stall.getByText(/overlapping window/)).toBeInTheDocument();
+    expect(resourcesApi.candidates).toHaveBeenCalledWith(
+      'STALL',
+      expect.objectContaining({ mode: 'AIR', carrierSupplierId: 21, legId: 402 }),
+      { search: '', page: 0 },
+      expect.any(AbortSignal),
+    );
 
     const flight = within(screen.getByRole('form', { name: 'Record flight for leg 2' }));
     expect(flight.getByLabelText('Flight number')).toHaveValue('VN0051');

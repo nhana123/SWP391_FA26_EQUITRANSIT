@@ -18,8 +18,34 @@ import { startSession } from '../../shared/api/session';
 
 vi.mock('./api', () => ({
   RESOURCE_PAGE_SIZE: 20,
-  resourcesApi: { list: vi.fn(), get: vi.fn(), create: vi.fn(), replace: vi.fn(), probe: vi.fn() },
+  resourcesApi: {
+    list: vi.fn(),
+    get: vi.fn(),
+    create: vi.fn(),
+    replace: vi.fn(),
+    probe: vi.fn(),
+    candidates: vi.fn(),
+  },
 }));
+/** One candidates page per kind, as the BE returns for a case window. */
+function mockCandidates(status = 'PENDING') {
+  vi.mocked(resourcesApi.candidates).mockImplementation((kind) =>
+    Promise.resolve({
+      items: [
+        {
+          id: 12,
+          code: kind === 'STALL' ? 'STALL-12' : 'VEH-12',
+          status,
+          recordVersion: '00000000000000b1',
+          blockers: [],
+        },
+      ],
+      page: 0,
+      size: 10,
+      totalElements: 1,
+    } as never),
+  );
+}
 vi.mock('../assessment/api', () => ({ assessmentApi: { getCase: vi.fn() } }));
 vi.mock('../assigned-cases/api', () => ({ assignedCasesApi: { get: vi.fn() } }));
 
@@ -289,15 +315,17 @@ function mountProbe(role: Role = 'MANAGER') {
 }
 async function fillProbe(user: ReturnType<typeof userEvent.setup>) {
   const form = within(await screen.findByRole('form', { name: 'Check resource availability' }));
-  await user.type(form.getByLabelText('Resource ID'), '12');
   setDateTime(form.getByLabelText('Window start'), '2027-02-01T08:00:00Z');
   setDateTime(form.getByLabelText('Window end'), '2027-02-01T18:00:00Z');
+  // The resource is chosen from the search for that window, not typed.
+  await user.click(await form.findByRole('button', { name: /-12/ }));
   return form;
 }
 
 describe('case availability probe (#79)', () => {
   it('probes a stall for AIR in the case revision and shows blockers without claiming a reservation', async () => {
     vi.mocked(assessmentApi.getCase).mockResolvedValue(approvedCase());
+    mockCandidates('PENDING');
     vi.mocked(resourcesApi.probe).mockResolvedValue({
       kind: 'STALL',
       resourceId: 12,
@@ -309,8 +337,15 @@ describe('case availability probe (#79)', () => {
       blockers: ['FIT_POLICY_PENDING', 'BUFFER_PENDING'],
     });
     const user = mountProbe();
-    const form = await fillProbe(user);
+    const form = within(await screen.findByRole('form', { name: 'Check resource availability' }));
     await user.type(form.getByLabelText('Carrier supplier ID (optional)'), '21');
+    await fillProbe(user);
+    expect(resourcesApi.candidates).toHaveBeenLastCalledWith(
+      'STALL',
+      expect.objectContaining({ orderId: 9, revisionId: 7, mode: 'AIR', carrierSupplierId: 21 }),
+      { search: '', page: 0 },
+      expect.any(AbortSignal),
+    );
     await user.click(form.getByRole('button', { name: 'Check availability' }));
     await waitFor(() => expect(resourcesApi.probe).toHaveBeenCalledTimes(1));
     expect(resourcesApi.probe).toHaveBeenCalledWith('STALL', 12, {
@@ -334,6 +369,7 @@ describe('case availability probe (#79)', () => {
 
   it('a vehicle uses ROAD, never sends a carrier, and the assigned Coordinator can probe', async () => {
     vi.mocked(assignedCasesApi.get).mockResolvedValue(approvedCase() as never);
+    mockCandidates('UNAVAILABLE');
     vi.mocked(resourcesApi.probe).mockResolvedValue({
       kind: 'VEHICLE',
       resourceId: 12,
@@ -362,6 +398,7 @@ describe('case availability probe (#79)', () => {
 
   it('validates the window and offers a case reload on a revision conflict', async () => {
     vi.mocked(assessmentApi.getCase).mockResolvedValue(approvedCase());
+    mockCandidates('AVAILABLE');
     vi.mocked(resourcesApi.probe).mockRejectedValue(
       new ApiError(409, 'Changed', 'RESOURCE_REVISION_CONFLICT'),
     );
@@ -370,16 +407,30 @@ describe('case availability probe (#79)', () => {
     setDateTime(form.getByLabelText('Window start'), '2027-02-01T18:00:00Z');
     setDateTime(form.getByLabelText('Window end'), '2027-02-01T08:00:00Z');
     await user.click(form.getByRole('button', { name: 'Check availability' }));
-    expect(form.getByText('Enter the resource ID.')).toBeInTheDocument();
+    expect(form.getByText('Choose a resource (or enter its ID).')).toBeInTheDocument();
     expect(form.getByText('The end must follow the start.')).toBeInTheDocument();
+    // No search runs for an invalid window.
+    expect(form.getByText(/Choose a valid window/)).toBeInTheDocument();
+    expect(resourcesApi.candidates).not.toHaveBeenCalled();
     expect(resourcesApi.probe).not.toHaveBeenCalled();
-    await user.clear(form.getByLabelText('Window end'));
     setDateTime(form.getByLabelText('Window end'), '2027-02-02T08:00:00Z');
-    await user.type(form.getByLabelText('Resource ID'), '12');
+    await user.click(await form.findByRole('button', { name: /STALL-12/ }));
     await user.click(form.getByRole('button', { name: 'Check availability' }));
     expect(await form.findByText(/revision changed or is not eligible/)).toBeInTheDocument();
     await user.click(form.getByRole('button', { name: 'Reload case' }));
     await waitFor(() => expect(assessmentApi.getCase).toHaveBeenCalledTimes(2));
+  });
+  it('changing the window drops the chosen resource', async () => {
+    vi.mocked(assessmentApi.getCase).mockResolvedValue(approvedCase());
+    mockCandidates('AVAILABLE');
+    const user = mountProbe();
+    const form = await fillProbe(user);
+    expect(form.getByText(/Selected:/)).toHaveTextContent('STALL-12');
+    setDateTime(form.getByLabelText('Window end'), '2027-02-03T18:00:00Z');
+    expect(form.queryByText(/Selected:/)).toBeNull();
+    await user.click(form.getByRole('button', { name: 'Check availability' }));
+    expect(form.getByText('Choose a resource (or enter its ID).')).toBeInTheDocument();
+    expect(resourcesApi.probe).not.toHaveBeenCalled();
   });
 
   it('is not offered before approval', async () => {
