@@ -1222,7 +1222,9 @@ function RequirementStack({
                     </button>
                   )}
                   {reviewable && r.decision === 'REJECTED' && (
-                    <span className="muted">Sent back: waiting for a new version.</span>
+                    <span className="muted">
+                      Sent back{r.feedback ? `: “${r.feedback}”` : ''} — waiting for a new version.
+                    </span>
                   )}
                   {rule?.authorityRequired && (
                     <button

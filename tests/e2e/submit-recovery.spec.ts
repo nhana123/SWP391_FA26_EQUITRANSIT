@@ -9,13 +9,13 @@ test('customer saves a draft, submits once and retries only the failed status re
   const horse: Horse = {
     horseId: 1,
     name: 'Browser Test Horse',
-    microchipId: null,
-    passportNumber: null,
+    microchipId: '985141000123456',
+    passportNumber: 'FEI-10459921',
     breed: null,
-    dateOfBirth: null,
-    sexCode: null,
-    weightKg: null,
-    heightCm: null,
+    dateOfBirth: '2019-04-15',
+    sexCode: 'GELDING',
+    weightKg: 520,
+    heightCm: 165,
     bodyWidthCm: null,
     measuredAt: null,
     specialCareNotes: null,
@@ -51,6 +51,8 @@ test('customer saves a draft, submits once and retries only the failed status re
       },
     }),
   );
+  // The review step re-reads the selected horse before submitting.
+  await page.route('**/api/horses/1', (route) => route.fulfill({ json: horse }));
   await page.route('**/api/transport-orders**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -104,6 +106,11 @@ test('customer saves a draft, submits once and retries only the failed status re
   await fillDateTime(page.getByLabel('Preferred departure'), '2030-02-01T08:00:00+07:00');
   await fillDateTime(page.getByLabel('Latest lawful handover deadline'), '2030-02-03T18:00:00Z');
   await page.getByLabel('Import type').selectOption('NEEDS_ADVICE');
+  await page.getByLabel('Receiver name').fill('Alex Receiver');
+  await page.getByLabel('Receiver phone').fill('901234567');
+  await page.getByRole('radio', { name: 'Yes' }).check();
+  await page.getByLabel('Date of the last influenza dose').fill('2026-08-20');
+  await page.getByRole('checkbox', { name: /I confirm this health/ }).check();
   await page.getByRole('button', { name: '2. Horse' }).click();
   await page.getByRole('radio', { name: /Browser Test Horse/ }).check();
   await page.getByRole('button', { name: 'Save Draft' }).click();
@@ -112,8 +119,16 @@ test('customer saves a draft, submits once and retries only the failed status re
   expect(order?.draft).toMatchObject({
     horseId: 1,
     services: null,
-    receiverName: null,
+    receiverName: 'Alex Receiver',
+    receiverPhone: '+84901234567',
     importType: 'NEEDS_ADVICE',
+    healthDeclaration: {
+      influenzaVaccinated: true,
+      lastInfluenzaVaccinationDate: '2026-08-20',
+      vaccinationRecordReference: null,
+      healthNotes: null,
+      declaredAccurate: true,
+    },
   });
   await page.getByRole('button', { name: '4. Review & Submit' }).click();
   await page.getByRole('button', { name: 'Submit for Review' }).click();

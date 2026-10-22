@@ -45,6 +45,8 @@ export const requirementSchema = z.object({
     .nullish()
     .transform((v) => v ?? null),
   instructions: text,
+  // The Specialist's note on the latest review; older servers omit it.
+  feedback: text,
 });
 export const overviewSchema = z.object({
   revisionId: idSchema,

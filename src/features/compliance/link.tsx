@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../../shared/api/session';
 
 /** Statuses where BE F08 accepts legal work on the current revision. */
-const legalStatuses = ['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'];
+export const legalStatuses = ['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'];
 
 /** Entry for the owning Customer and the assigned Specialist only. */
 export function ComplianceLink({ orderId, orderStatus }: { orderId: number; orderStatus: string }) {

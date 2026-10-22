@@ -11,12 +11,19 @@ import { getSession, useSession } from '../../shared/api/session';
 import { ApiError } from '../../shared/api/client';
 import type { Order, ServicePreferences } from '../../shared/api/contracts';
 import { ordersApi, type SubmitCommand } from './api';
-import { draftForm, draftInput, journeyFields, validateDraft, type DraftForm } from './form';
-import { useHorseSearch } from '../horses/hooks';
+import {
+  draftForm,
+  draftInput,
+  horseGaps,
+  journeyFields,
+  validateDraft,
+  type DraftForm,
+} from './form';
+import { useHorse, useHorseSearch } from '../horses/hooks';
 import { useAction } from '../../shared/lib/useAction';
 import type { FieldErrors } from '../../shared/lib/validation';
 import { PhoneInput } from '../../shared/ui/PhoneInput';
-import { DateTimeInput } from '../../shared/ui/DateTimeInput';
+import { DateInput, DateTimeInput } from '../../shared/ui/DateTimeInput';
 
 import {
   ErrorNotice,
@@ -149,6 +156,14 @@ function HorsePicker({
                   <small>
                     {h.measurementsComplete ? 'Measurements recorded' : 'Measurements incomplete'}
                   </small>
+                  {horseGaps(h).length > 0 ? (
+                    <small className="field-error">
+                      Missing before submitting: {horseGaps(h).join(', ')} ·{' '}
+                      <Link to={`/customer/horses/${h.horseId}`}>Complete the profile</Link>
+                    </small>
+                  ) : (
+                    <small>Identity and measurements ready</small>
+                  )}
                 </span>
               </label>
             ))
@@ -175,6 +190,122 @@ function HorsePicker({
     </section>
   );
 }
+/** The customer's initial statement; certificates still go through Legal documents. */
+function HealthDeclarationSection({
+  form,
+  change,
+  fieldError,
+}: {
+  form: DraftForm;
+  change: (key: keyof DraftForm, value: string) => void;
+  fieldError: (key: keyof DraftForm) => string | undefined;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <FormSection
+      title="Health & vaccination declaration"
+      description="Your initial statement for the legal Specialist. Certificates are uploaded later, when the Specialist lists the documents this route needs."
+      icon="shield"
+      index={String(journeyFormGroups.length + 1).padStart(2, '0')}
+    >
+      <div className="form-grid">
+        <fieldset
+          className="health-choice"
+          aria-describedby={fieldError('influenzaVaccinated') ? 'influenza-error' : undefined}
+        >
+          <legend>Vaccinated against equine influenza?</legend>
+          {(
+            [
+              ['true', 'Yes'],
+              ['false', 'No'],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className="horse-choice">
+              <input
+                type="radio"
+                name="influenzaVaccinated"
+                checked={form.influenzaVaccinated === value}
+                onChange={() => change('influenzaVaccinated', value)}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+          {fieldError('influenzaVaccinated') && (
+            <p id="influenza-error" className="field-error">
+              {fieldError('influenzaVaccinated')}
+            </p>
+          )}
+        </fieldset>
+        {form.influenzaVaccinated === 'true' && (
+          <Field
+            label="Date of the last influenza dose"
+            error={fieldError('lastInfluenzaVaccinationDate')}
+          >
+            {(id) => (
+              <DateInput
+                id={id}
+                max={today}
+                value={form.lastInfluenzaVaccinationDate}
+                onChange={(v) => change('lastInfluenzaVaccinationDate', v)}
+                invalid={!!fieldError('lastInfluenzaVaccinationDate')}
+                describedBy={fieldError('lastInfluenzaVaccinationDate') ? `${id}-error` : undefined}
+              />
+            )}
+          </Field>
+        )}
+        <Field
+          label="Vaccination record reference (optional)"
+          hint="For example the passport page or the vet's record number."
+          error={fieldError('vaccinationRecordReference')}
+        >
+          {(id) => (
+            <input
+              id={id}
+              maxLength={100}
+              value={form.vaccinationRecordReference}
+              onChange={(e) => change('vaccinationRecordReference', e.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="Current health notes (optional)" error={fieldError('healthNotes')}>
+          {(id) => (
+            <textarea
+              id={id}
+              maxLength={1000}
+              value={form.healthNotes}
+              onChange={(e) => change('healthNotes', e.target.value)}
+            />
+          )}
+        </Field>
+        <div className="health-confirm">
+          <label className="horse-choice">
+            <input
+              type="checkbox"
+              checked={form.declaredAccurate === 'true'}
+              onChange={(e) => change('declaredAccurate', e.target.checked ? 'true' : '')}
+              aria-invalid={!!fieldError('declaredAccurate')}
+              aria-describedby={fieldError('declaredAccurate') ? 'declaration-error' : undefined}
+            />
+            <span>
+              I confirm this health and vaccination statement is accurate to my knowledge.
+            </span>
+          </label>
+          {fieldError('declaredAccurate') && (
+            <p id="declaration-error" className="field-error">
+              {fieldError('declaredAccurate')}
+            </p>
+          )}
+        </div>
+      </div>
+    </FormSection>
+  );
+}
+const vaccinationText = (form: DraftForm) =>
+  form.influenzaVaccinated === 'true'
+    ? `Vaccinated${form.lastInfluenzaVaccinationDate ? ` · last dose ${form.lastInfluenzaVaccinationDate}` : ''}`
+    : form.influenzaVaccinated === 'false'
+      ? 'Not vaccinated'
+      : 'Not declared';
 export type ServicesSlotProps = {
   order: Order;
   preferences: ServicePreferences | null;
@@ -244,6 +375,9 @@ export function OrderEditor({
   const action = useAction();
   const session = useSession()!;
   const navigate = useNavigate();
+  // Read only where it is checked: the review step, before submitting.
+  const selectedHorse = useHorse(step === 3 ? Number(form.horseId) || 0 : 0);
+  const gaps = selectedHorse.data ? horseGaps(selectedHorse.data) : [];
   const dirty = JSON.stringify(form) !== JSON.stringify(baseline);
   const isDraft = !current || current.orderStatus === 'DRAFT';
   const conflict = action.error instanceof ApiError && action.error.status === 409;
@@ -317,6 +451,8 @@ export function OrderEditor({
     }
     if (!current || dirty || !isDraft) return;
     const validation = validateDraft(form, true);
+    if (form.horseId && gaps.length)
+      validation.horseId = `Complete the horse profile before submitting: ${gaps.join(', ')}.`;
     setErrors(validation);
     if (Object.keys(validation).length) return;
     submitCommand.current ??= {
@@ -585,6 +721,7 @@ export function OrderEditor({
                 </div>
               </FormSection>
             ))}
+            <HealthDeclarationSection form={form} change={change} fieldError={fieldError} />
           </section>
         )}
         {step === 1 && (
@@ -697,6 +834,45 @@ export function OrderEditor({
               <dt>Selected horse ID</dt>
               <dd>{form.horseId || 'Not selected'}</dd>
             </div>
+            {selectedHorse.data && (
+              <div>
+                <dt>Horse identity & measurements</dt>
+                <dd>
+                  {gaps.length ? (
+                    <span className="field-error">
+                      Missing: {gaps.join(', ')} ·{' '}
+                      <Link to={`/customer/horses/${selectedHorse.data.horseId}`}>
+                        Complete the profile
+                      </Link>
+                    </span>
+                  ) : (
+                    'Complete'
+                  )}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt>Equine influenza vaccination</dt>
+              <dd>
+                {vaccinationText(form)}
+                {(fieldError('influenzaVaccinated') ||
+                  fieldError('lastInfluenzaVaccinationDate')) && (
+                  <span className="field-error">
+                    {fieldError('influenzaVaccinated') ||
+                      fieldError('lastInfluenzaVaccinationDate')}
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Health declaration</dt>
+              <dd>
+                {form.declaredAccurate === 'true' ? 'Confirmed' : 'Not confirmed'}
+                {fieldError('declaredAccurate') && (
+                  <span className="field-error">{fieldError('declaredAccurate')}</span>
+                )}
+              </dd>
+            </div>
             {journeyFields.map((f) => (
               <div key={f.key}>
                 <dt>{f.label}</dt>
@@ -745,6 +921,7 @@ export function OrderEditor({
               dirty ||
               !current ||
               !isDraft ||
+              (!!form.horseId && selectedHorse.isPending) ||
               (conflict && !frozenSubmit) ||
               (uncertain && !frozenSubmit)
             }

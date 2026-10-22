@@ -35,6 +35,10 @@ const draft = draftInput(
     preferredDepartureAt: '2099-02-01T08:00:00+07:00',
     deliveryDeadline: '2099-02-03T18:00:00+08:00',
     importType: 'TEMPORARY',
+    receiverName: 'Alex Receiver',
+    receiverPhone: '+6590123456',
+    influenzaVaccinated: 'false',
+    declaredAccurate: 'true',
   }),
   services,
 );

@@ -1,4 +1,9 @@
-import type { OrderDraft, ServicePreferences } from '../../shared/api/contracts';
+import type {
+  HealthDeclaration,
+  Horse,
+  OrderDraft,
+  ServicePreferences,
+} from '../../shared/api/contracts';
 import { apiPatterns } from '../../shared/api/patterns';
 import {
   optional,
@@ -35,8 +40,13 @@ export const journeyFields = [
     date: true,
   },
   { key: 'dateFlexibilityNotes', label: 'Date flexibility', max: 500 },
-  { key: 'receiverName', label: 'Receiver name', max: 150 },
-  { key: 'receiverPhone', label: 'Receiver phone', max: 30 },
+  {
+    key: 'receiverName',
+    label: 'Receiver name',
+    max: 150,
+    hint: 'Required to submit; checked at final delivery.',
+  },
+  { key: 'receiverPhone', label: 'Receiver phone', max: 30, hint: 'Required to submit.' },
   { key: 'receiverEmail', label: 'Receiver email', max: 255 },
   { key: 'receiverAuthority', label: 'Receiver authority', max: 500 },
   { key: 'eventName', label: 'Race event name (optional)', max: 200 },
@@ -46,14 +56,42 @@ export const journeyFields = [
   { key: 'specialNeeds', label: 'Special needs', max: 1000 },
 ] as const;
 export type JourneyKey = (typeof journeyFields)[number]['key'];
-export type DraftForm = Record<JourneyKey | 'horseId' | 'importType' | 'transitAirports', string>;
+/** The initial health & vaccination declaration, kept as form strings. */
+export type HealthKey =
+  | 'influenzaVaccinated'
+  | 'lastInfluenzaVaccinationDate'
+  | 'vaccinationRecordReference'
+  | 'healthNotes'
+  | 'declaredAccurate';
+export type DraftForm = Record<
+  JourneyKey | HealthKey | 'horseId' | 'importType' | 'transitAirports',
+  string
+>;
 export function draftForm(draft?: OrderDraft): DraftForm {
+  const h = draft?.healthDeclaration;
   return Object.fromEntries([
     ...journeyFields.map((f) => [f.key, draft?.[f.key] || '']),
     ['horseId', draft?.horseId ? String(draft.horseId) : ''],
     ['importType', draft?.importType || ''],
     ['transitAirports', draft?.transitAirports?.join(', ') || ''],
+    ['influenzaVaccinated', h?.influenzaVaccinated == null ? '' : String(h.influenzaVaccinated)],
+    ['lastInfluenzaVaccinationDate', h?.lastInfluenzaVaccinationDate || ''],
+    ['vaccinationRecordReference', h?.vaccinationRecordReference || ''],
+    ['healthNotes', h?.healthNotes || ''],
+    ['declaredAccurate', h?.declaredAccurate ? 'true' : ''],
   ]) as DraftForm;
+}
+function healthInput(form: DraftForm): HealthDeclaration | null {
+  const vaccinated = form.influenzaVaccinated ? form.influenzaVaccinated === 'true' : null;
+  const value = {
+    influenzaVaccinated: vaccinated,
+    // A dose date only means something for a vaccinated horse.
+    lastInfluenzaVaccinationDate: vaccinated ? optional(form.lastInfluenzaVaccinationDate) : null,
+    vaccinationRecordReference: optional(form.vaccinationRecordReference),
+    healthNotes: optional(form.healthNotes),
+    declaredAccurate: form.declaredAccurate === 'true' ? true : null,
+  };
+  return Object.values(value).every((v) => v === null) ? null : value;
 }
 // Services belong to the shared full replacement request. Never rebuild them from visible controls.
 export function draftInput(form: DraftForm, services: ServicePreferences | null): OrderDraft {
@@ -70,7 +108,22 @@ export function draftInput(form: DraftForm, services: ServicePreferences | null)
       ? form.transitAirports.split(',').map((v) => v.trim().toUpperCase())
       : [],
     services,
+    healthDeclaration: healthInput(form),
   };
+}
+/**
+ * Identity and size facts the Specialist and the stall fit need. A request
+ * cannot be submitted for a horse that lacks any of them.
+ */
+export function horseGaps(horse: Horse) {
+  const gaps: string[] = [];
+  if (!horse.microchipId) gaps.push('microchip number');
+  if (!horse.passportNumber) gaps.push('passport number');
+  if (!horse.dateOfBirth) gaps.push('date of birth');
+  if (!horse.sexCode) gaps.push('sex');
+  if (!horse.weightKg || horse.weightKg <= 0) gaps.push('weight');
+  if (!horse.heightCm || horse.heightCm <= 0) gaps.push('height');
+  return gaps;
 }
 export function validateDraft(form: DraftForm, complete = false, now = Date.now()): FieldErrors {
   const errors: FieldErrors = {};
@@ -111,7 +164,26 @@ export function validateDraft(form: DraftForm, complete = false, now = Date.now(
     errors.preferredDepartureAt = 'Departure must precede the delivery deadline.';
   if (Number.isFinite(deadline) && Number.isFinite(event) && deadline > event)
     errors.deliveryDeadline = 'Delivery deadline must not follow the event start.';
+  const dose = form.lastInfluenzaVaccinationDate;
+  if (form.influenzaVaccinated === 'true' && dose) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dose) || !Number.isFinite(Date.parse(dose)))
+      errors.lastInfluenzaVaccinationDate = 'Choose a date.';
+    else if (dose > new Date(now).toISOString().slice(0, 10))
+      errors.lastInfluenzaVaccinationDate = 'The last dose cannot be in the future.';
+  }
+  if (form.vaccinationRecordReference.trim().length > 100)
+    errors.vaccinationRecordReference = 'Use at most 100 characters.';
+  if (form.healthNotes.trim().length > 1000) errors.healthNotes = 'Use at most 1000 characters.';
   if (complete) {
+    // The receiver is checked at final delivery; the Specialist needs the declaration.
+    for (const key of ['receiverName', 'receiverPhone'] as const)
+      if (!form[key].trim()) errors[key] = 'Complete this field before submitting.';
+    if (!form.influenzaVaccinated)
+      errors.influenzaVaccinated = 'Answer the equine influenza question before submitting.';
+    else if (form.influenzaVaccinated === 'true' && !dose)
+      errors.lastInfluenzaVaccinationDate = 'Enter the date of the last dose.';
+    if (form.declaredAccurate !== 'true')
+      errors.declaredAccurate = 'Confirm the declaration before submitting.';
     for (const key of [
       'horseId',
       'originCountryCode',

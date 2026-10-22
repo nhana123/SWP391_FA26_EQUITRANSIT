@@ -9,7 +9,8 @@ import { draftInput, draftForm } from './form';
 import { ApiError } from '../../shared/api/client';
 import { queryClient, queryKeys } from '../../shared/api/query';
 import { getSession, startSession } from '../../shared/api/session';
-import type { Order } from '../../shared/api/contracts';
+import type { Horse, Order } from '../../shared/api/contracts';
+import { horsesApi } from '../horses/api';
 vi.mock('./api', () => ({
   ordersApi: { get: vi.fn(), update: vi.fn(), submit: vi.fn(), create: vi.fn() },
 }));
@@ -18,8 +19,30 @@ vi.mock('../horses/api', () => ({
     list: vi
       .fn()
       .mockResolvedValue({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    get: vi.fn(),
   },
 }));
+const horse: Horse = {
+  horseId: 1,
+  name: 'Thunder Bay',
+  microchipId: '985141000123456',
+  passportNumber: 'FEI-10459921',
+  breed: null,
+  dateOfBirth: '2019-04-15',
+  sexCode: 'GELDING',
+  weightKg: 520,
+  heightCm: 165,
+  bodyWidthCm: null,
+  measuredAt: null,
+  specialCareNotes: null,
+  handlingNotes: null,
+  feedWaterRequirements: null,
+  stallPreferences: null,
+  veterinaryInstructions: null,
+  veterinaryInstructionSource: null,
+  recordVersion: '0000000000000001',
+  measurementsComplete: true,
+};
 const form = draftForm();
 Object.assign(form, {
   horseId: '1',
@@ -32,6 +55,11 @@ Object.assign(form, {
   preferredDepartureAt: '2030-02-01T08:00:00Z',
   deliveryDeadline: '2030-02-01T10:00:00Z',
   importType: 'NEEDS_ADVICE',
+  receiverName: 'Alex Receiver',
+  receiverPhone: '+6590123456',
+  influenzaVaccinated: 'true',
+  lastInfluenzaVaccinationDate: '2026-08-20',
+  declaredAccurate: 'true',
 });
 const order: Order = {
   orderId: 1,
@@ -49,6 +77,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   queryClient.clear();
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role: 'CUSTOMER' });
+  vi.mocked(horsesApi.get).mockResolvedValue(horse);
 });
 function mount() {
   return render(
@@ -105,6 +134,28 @@ describe('draft conflict and submit retry', () => {
         recordVersion: order.recordVersion,
         services: order.draft.services,
       }),
+    );
+  });
+  it('blocks submission for a horse without identity or measurements', async () => {
+    vi.mocked(horsesApi.get).mockResolvedValue({
+      ...horse,
+      microchipId: null,
+      weightKg: null,
+    });
+    mount();
+    const user = userEvent.setup({ delay: null });
+    await user.click(screen.getByRole('button', { name: '4. Review & Submit' }));
+    expect(await screen.findByText(/Missing: microchip number, weight/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Submit for Review' }));
+    expect(
+      await screen.findByText(
+        'Complete the horse profile before submitting: microchip number, weight.',
+      ),
+    ).toBeInTheDocument();
+    expect(ordersApi.submit).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Complete the profile' })).toHaveAttribute(
+      'href',
+      '/customer/horses/1',
     );
   });
   it('reuses UUID/version on uncertain retry and refetches current order', async () => {

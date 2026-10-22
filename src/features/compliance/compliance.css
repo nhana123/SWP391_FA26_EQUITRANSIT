@@ -11,3 +11,66 @@
   max-height: 24rem;
   display: block;
 }
+
+/* Customer request page: legal documents checklist */
+.legal-checklist-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.legal-checklist-header h2 {
+  margin: 0.15rem 0 0;
+}
+.legal-phase h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+.legal-checklist {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.legal-item {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+.legal-item.action {
+  border-left-color: var(--gold);
+}
+.legal-item.review {
+  border-left-color: var(--brand-soft);
+}
+.legal-item.passed {
+  border-left-color: var(--brand);
+}
+.legal-item.resubmit {
+  border-left-color: #df9a90;
+}
+.legal-item p {
+  margin: 0;
+}
+.legal-item > button {
+  justify-self: start;
+}
+.legal-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.legal-feedback {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #fff4f1;
+  color: #a8443b;
+}
