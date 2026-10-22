@@ -1,5 +1,12 @@
 # Studio continuation — 21 October 2026
 
+## 22 October completion
+
+- The Studio → payment → confirmation/gates/authorization → Driver ROAD/welfare → Coordinator AIR → Customer tracking chain now passes in the dedicated Demo scenario. All five roles also passed login/refresh/logout checks.
+- The missing F07 installment-identity contract and confirmed-quarantine form mismatch are fixed. Final results, source changes, local evidence and limitations are in [the completion review](STUDIO_COMPLETION_REVIEW.md).
+
+The sections below describe the earlier 21 October snapshot, including its then-unfinished browser chain and unchanged-backend status.
+
 Branch: `feature/studio-supplier-pickers`, based on `origin/dev` at `0acd7f2`. The earlier Heritage interface, tick-only service options and form redesign are already merged through PR #110 (`4b0e987`). This continuation does not merge into `dev`.
 
 ## Changes
@@ -32,7 +39,7 @@ Refresh is initialized before mounting routes; access tokens remain in memory, w
 
 F14 financial settlement/close has **no implemented backend endpoint**. The frontend explicitly reports that limitation. Existing handover and actual-cost APIs should not be mistaken for a financial close workflow.
 
-## Remaining Studio browser evidence
+## Historical browser limitations before the new fixture
 
 - Demo **order 1 / plan 10** has an editable two-node graph and a planned ROAD leg. Live blockers include `ACCEPTED_QUOTE_MISSING`, `RULE_ASSESSMENT_PENDING`, `PLAN_NOT_CONFIRMED` and `QUARANTINE_NOT_CONFIRMED`. Actual departure has not been recorded.
 - Demo **order 5 / plan 5** has three live gates passing and is ready for authorization, but still needs Manager authorization and physical horse receipt. It is a legacy plan with **zero graph nodes**. Executing it would not prove Studio graph tracking end to end.

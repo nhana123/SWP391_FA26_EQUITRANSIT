@@ -130,10 +130,7 @@ it('blocks request creation rather than substituting sequenceNo for an unavailab
   const button = await screen.findByRole('button', { name: 'Create payment request' });
   expect(button).toBeDisabled();
   expect(managerPaymentsApi.request).not.toHaveBeenCalled();
-  expect(screen.getByRole('link', { name: 'Review quotation installments' })).toHaveAttribute(
-    'href',
-    '/manager/requests/11/quotes',
-  );
+  expect(screen.getByRole('button', { name: 'Load quotation installments' })).toBeEnabled();
 });
 it('looks up a real bank receipt and allocates only after an explicit Manager action', async () => {
   vi.mocked(managerPaymentsApi.allocate).mockResolvedValue({

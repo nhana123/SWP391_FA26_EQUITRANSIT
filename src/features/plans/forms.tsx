@@ -445,14 +445,18 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
             error={fields.status}
           />
           <TextInput
-            label="Reference (optional)"
+            label={f.status === 'CONFIRMED' ? 'Reference (required)' : 'Reference (optional)'}
             max={150}
             value={f.reservationReference}
             onChange={(reservationReference) => set({ reservationReference })}
             error={fields.reservationReference}
           />
           <TextInput
-            label="Evidence file key (optional)"
+            label={
+              f.status === 'CONFIRMED'
+                ? 'Evidence file key (required)'
+                : 'Evidence file key (optional)'
+            }
             max={1024}
             value={f.evidenceFileKey}
             onChange={(evidenceFileKey) => set({ evidenceFileKey })}
@@ -467,7 +471,11 @@ export function QuarantineForm({ plan, pinned }: { plan: PlanDetail; pinned: Pin
             error={fields.supplierId}
           />
           <TextInput
-            label="Reservation expires at (optional)"
+            label={
+              f.status === 'CONFIRMED'
+                ? 'Reservation expires at (required)'
+                : 'Reservation expires at (optional)'
+            }
             date
             max={35}
             value={f.expiresAt}

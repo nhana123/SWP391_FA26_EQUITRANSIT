@@ -84,4 +84,46 @@ describe('Journey Studio wire capsule states', () => {
     );
     expect(screen.queryByRole('button', { name: /Tự động đẩy khớp giờ/ })).toBeNull();
   });
+
+  it.each([false, true])(
+    'shows recorded leg status without missing-resource claims for redacted public views (driver=%s)',
+    async (driverMode) => {
+      const j = chain('2027-02-01T09:00:00+07:00');
+      j.wires[0] = { ...j.wires[0], legStatus: 'COMPLETED' };
+      render(
+        <JourneyStudioCanvas
+          journey={j}
+          onChange={() => undefined}
+          editable={false}
+          selection={null}
+          select={() => undefined}
+          driverMode={driverMode}
+          resourceDetailsVisible={false}
+        />,
+      );
+      const capsule = screen.getByRole('button', { name: 'Chặng 1 ROAD – xem chi tiết' });
+      expect(capsule).toHaveTextContent('COMPLETED');
+      expect(screen.queryByText('Chưa gán xe')).not.toBeInTheDocument();
+      await userEvent.setup({ delay: null }).hover(capsule);
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip).toHaveTextContent('COMPLETED');
+      expect(tooltip).not.toHaveTextContent(/Chưa đủ tài nguyên|Sẵn sàng|Tài xế|Air stall/);
+    },
+  );
+
+  it('retains missing-resource context for an internal plan even when its layout is read-only', async () => {
+    render(
+      <JourneyStudioCanvas
+        journey={chain('2027-02-01T09:00:00+07:00')}
+        onChange={() => undefined}
+        editable={false}
+        selection={null}
+        select={() => undefined}
+      />,
+    );
+    const capsule = screen.getByRole('button', { name: 'Chặng 1 ROAD – xem chi tiết' });
+    expect(capsule).toHaveTextContent('Chưa gán xe');
+    await userEvent.setup({ delay: null }).hover(capsule);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Chưa đủ tài nguyên');
+  });
 });

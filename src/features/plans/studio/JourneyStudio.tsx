@@ -712,6 +712,7 @@ export function JourneyStudio({
             selection={selection}
             select={select}
             driverMode={mode === 'driver'}
+            resourceDetailsVisible={mode === 'edit'}
             onAutoFix={editable ? () => semantic(cascade(journey)) : undefined}
           />
           <div className="js-statusbar">
