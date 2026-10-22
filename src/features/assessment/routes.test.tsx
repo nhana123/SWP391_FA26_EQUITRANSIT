@@ -140,12 +140,24 @@ describe('FE2 routes are wired into the app router', () => {
     expect(getSession()).toBeNull();
     expect(within(nav).getByRole('link', { name: 'Login' })).toBeInTheDocument();
   });
-  it.each(['SPECIALIST', 'COORDINATOR'] as const)(
-    '/staff/cases renders the FE-19 list for %s',
-    async (role) => {
-      open('/staff/cases', role);
-      expect(await screen.findByRole('heading', { name: 'My Cases' })).toBeInTheDocument();
-      expect(screen.getByRole('navigation', { name: 'Staff navigation' })).toBeInTheDocument();
+  it('/staff/cases renders the FE-19 list for COORDINATOR', async () => {
+    open('/staff/cases', 'COORDINATOR');
+    expect(await screen.findByRole('heading', { name: 'My Cases' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Staff navigation' })).toBeInTheDocument();
+  });
+
+  it.each(['/staff/cases', '/staff/tasks'])(
+    '%s opens the dossier desk for a Specialist, whose menu is Overview and My Tasks',
+    async (path) => {
+      open(path, 'SPECIALIST');
+      expect(await screen.findByRole('heading', { name: 'My Tasks' })).toBeInTheDocument();
+      const nav = screen.getByRole('navigation', { name: 'Staff navigation' });
+      expect(
+        within(nav)
+          .getAllByRole('link')
+          .map((l) => l.textContent),
+      ).toEqual(['Overview', 'My Tasks']);
+      expect(within(nav).getByRole('link', { name: 'My Tasks' })).toHaveClass('active');
     },
   );
 
@@ -208,18 +220,15 @@ describe('FE2 routes are wired into the app router', () => {
     expect(screen.queryByRole('heading', { name: 'Departure' })).not.toBeInTheDocument();
   });
 
-  it.each(['SPECIALIST', 'COORDINATOR'] as const)(
-    '/staff/tasks shows the task queue for %s',
-    async (role) => {
-      open('/staff/tasks', role);
-      expect(await screen.findByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
-      const nav = screen.getByRole('navigation', { name: 'Staff navigation' });
-      expect(within(nav).getByRole('link', { name: 'My Tasks' })).toHaveAttribute(
-        'href',
-        '/staff/tasks',
-      );
-    },
-  );
+  it.each(['COORDINATOR'] as const)('/staff/tasks shows the task queue for %s', async (role) => {
+    open('/staff/tasks', role);
+    expect(await screen.findByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Staff navigation' });
+    expect(within(nav).getByRole('link', { name: 'My Tasks' })).toHaveAttribute(
+      'href',
+      '/staff/tasks',
+    );
+  });
 
   it.each(['CUSTOMER', 'MANAGER', 'DRIVER'] as const)(
     '/staff/tasks is blocked for %s',

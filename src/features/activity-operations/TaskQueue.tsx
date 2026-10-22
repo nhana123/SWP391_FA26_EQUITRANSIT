@@ -8,6 +8,7 @@ import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { OPERATIONS_PAGE_SIZE, operationsApi } from './api';
 import { taskRoleLabels, type Task } from './contracts';
+import { DossierDesk } from '../specialist-desk/DossierDesk';
 
 export const operationsKeys = {
   tasks: (generation: string, page: number) =>
@@ -104,8 +105,10 @@ export function TaskQueue() {
   );
 }
 
-/** Route component for /staff/tasks (Specialist/Coordinator). */
+/** Route component for /staff/tasks: a Specialist's dossier desk, a Coordinator's queue. */
 export function StaffTaskPage() {
+  const session = useSession();
+  if (session?.role === 'SPECIALIST') return <DossierDesk />;
   return (
     <>
       <header className="page-heading">

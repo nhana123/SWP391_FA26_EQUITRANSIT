@@ -17,6 +17,7 @@ import {
 } from '../activity-customer/shared';
 import { operationsApi } from './api';
 import { staffRoles, type StaffDashboard } from './contracts';
+import { PriorityDossiers } from '../specialist-desk/DossierDesk';
 
 const scopes: Record<string, string> = {
   MANAGER: 'Every transport request.',
@@ -66,7 +67,7 @@ export function StaffDashboardPage() {
         {tasks && (
           <Link className="button" to={tasks}>
             <Icon name="check" size={17} />
-            My Tasks
+            {session.role === 'SPECIALIST' ? 'Go to My Tasks' : 'My Tasks'}
             <Icon name="arrow" size={16} />
           </Link>
         )}
@@ -90,18 +91,22 @@ export function StaffDashboardPage() {
               <PortfolioMetrics counts={data.counts} />
             )}
           </section>
-          <section className="card">
-            <h2>Requests</h2>
-            <RequestTable
-              items={data.items}
-              label="Dashboard orders"
-              emptyMessage="No requests on this page."
-              path={(order) =>
-                dashboardOrderPath(session.role, order as StaffDashboard['items'][number])
-              }
-            />
-            <ActivityPager {...data} page={paging.page} onPage={paging.setPage} />
-          </section>
+          {session.role === 'SPECIALIST' ? (
+            <PriorityDossiers />
+          ) : (
+            <section className="card">
+              <h2>Requests</h2>
+              <RequestTable
+                items={data.items}
+                label="Dashboard orders"
+                emptyMessage="No requests on this page."
+                path={(order) =>
+                  dashboardOrderPath(session.role, order as StaffDashboard['items'][number])
+                }
+              />
+              <ActivityPager {...data} page={paging.page} onPage={paging.setPage} />
+            </section>
+          )}
         </>
       )}
     </>
