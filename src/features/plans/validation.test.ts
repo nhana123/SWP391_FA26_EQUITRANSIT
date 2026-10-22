@@ -94,7 +94,7 @@ describe('plan leg builder rules (#80)', () => {
       driverBufferMinutes: '60',
       conflictNotes: '',
     };
-    expect(validateRoad(f, null).errors.vehicleId).toMatch(/Check this vehicle/);
+    expect(validateRoad(f, null).errors.vehicleId).toMatch(/available vehicle/);
     expect(
       validateRoad(f, { id: 12, recordVersion: '000000000001A2B3' }).errors.vehicleId,
     ).toBeDefined();

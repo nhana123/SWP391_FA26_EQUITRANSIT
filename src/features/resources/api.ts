@@ -3,6 +3,8 @@ import { ApiError, request } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import {
   availabilitySchema,
+  CANDIDATE_PAGE_SIZE,
+  candidatePageSchema,
   catalogs,
   pageSchemas,
   type AvailabilityRequest,
@@ -56,6 +58,31 @@ export const resourcesApi = {
       method: 'PUT',
       body: body(command),
     }),
+  /**
+   * Read-only search of resources for a case window (Manager or the assigned
+   * Coordinator). No command/UUID; `search` is a code prefix and is omitted
+   * when blank. Results are advice only: assignment rechecks under a lock.
+   */
+  candidates: (
+    kind: ProbeKind,
+    input: AvailabilityRequest,
+    { search, page }: { search: string; page: number },
+    signal?: AbortSignal,
+  ) => {
+    if (!Number.isSafeInteger(page) || page < 0)
+      return Promise.reject(new ApiError(400, 'Invalid page.'));
+    const term = search.trim().slice(0, 50);
+    const query = new URLSearchParams({
+      ...(term ? { search: term } : {}),
+      page: String(page),
+      size: String(CANDIDATE_PAGE_SIZE),
+    });
+    return request(`/api/resources/${kind}/candidates?${query}`, candidatePageSchema, {
+      method: 'POST',
+      body: input,
+      signal,
+    });
+  },
   /** Read-only probe for a case; it never reserves and takes no command/UUID. */
   probe: (kind: ProbeKind, id: number, input: AvailabilityRequest) =>
     request(`/api/resources/${kind}/${idPath(id)}/availability`, availabilitySchema, {

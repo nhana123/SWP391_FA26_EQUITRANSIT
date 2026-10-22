@@ -11,7 +11,15 @@ import { ErrorNotice, Field, Loading, Notice } from '../../shared/ui/common';
 import { quotationParent } from '../quotations/navigation';
 import { usePreparationCase } from '../quotations/source';
 import { resourcesApi } from './api';
-import { blockerLabels, probeMode, type Availability, type ProbeKind } from './contracts';
+import {
+  blockerLabels,
+  probeMode,
+  type Availability,
+  type AvailabilityRequest,
+  type ProbeKind,
+  type ResourceCandidate,
+} from './contracts';
+import { ResourcePicker } from './ResourcePicker';
 import { DeploymentNotice, schemaPending } from './ManagerResourcesPage';
 import './resources.css';
 
@@ -64,7 +72,7 @@ const validId = (v: string) =>
 
 export function validateProbe(p: Probe): FieldErrors {
   const errors: FieldErrors = {};
-  if (!validId(p.resourceId)) errors.resourceId = 'Enter the resource ID.';
+  if (!validId(p.resourceId)) errors.resourceId = 'Choose a resource (or enter its ID).';
   if (!validOffsetDate(p.start.trim())) errors.start = 'Choose a date and time.';
   if (!validOffsetDate(p.end.trim())) errors.end = 'Choose a date and time.';
   else if (!errors.start && Date.parse(p.end) <= Date.parse(p.start))
@@ -90,11 +98,30 @@ function ProbeForm({
   const [result, setResult] = useState<{ probe: Probe; availability: Availability } | null>(null);
   const action = useAction();
   const code = action.error instanceof ApiError ? action.error.code : undefined;
+  // A chosen resource belongs to the window it was found in.
+  const [picked, setPicked] = useState<ResourceCandidate | null>(null);
   const update = (patch: Partial<Probe>) => {
     setResult(null);
     action.setError(null);
+    const contextChanged = Object.keys(patch).some((k) => k !== 'resourceId');
+    if (contextChanged && picked) {
+      setPicked(null);
+      patch = { ...patch, resourceId: '' };
+    }
     setInput((p) => ({ ...p, ...patch }));
   };
+  const windowErrors = validateProbe({ ...input, resourceId: '1' });
+  const search: AvailabilityRequest | null = Object.keys(windowErrors).length
+    ? null
+    : {
+        orderId,
+        revisionId,
+        mode: probeMode[input.kind],
+        start: input.start.trim(),
+        end: input.end.trim(),
+        carrierSupplierId: input.kind === 'STALL' ? optionalId(input.carrierSupplierId) : null,
+        legId: optionalId(input.legId),
+      };
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -134,17 +161,6 @@ function ProbeForm({
               <option value="STALL">Air stall (AIR)</option>
               <option value="VEHICLE">Road vehicle (ROAD)</option>
             </select>
-          )}
-        </Field>
-        <Field label="Resource ID" error={errors.resourceId}>
-          {(id) => (
-            <input
-              id={id}
-              inputMode="numeric"
-              maxLength={19}
-              value={input.resourceId}
-              onChange={(e) => update({ resourceId: e.target.value })}
-            />
           )}
         </Field>
         <Field label="Window start" error={errors.start}>
@@ -187,6 +203,33 @@ function ProbeForm({
             />
           )}
         </Field>
+        <ResourcePicker
+          key={input.kind}
+          kind={input.kind}
+          request={search}
+          selected={picked}
+          onSelect={(c) => {
+            setResult(null);
+            setPicked(c);
+            setInput((p) => ({ ...p, resourceId: c ? String(c.id) : '' }));
+          }}
+          error={errors.resourceId}
+          waitingHint="Choose a valid window start and end to search resources."
+          anyStatus
+          fallback={
+            <Field label="Resource ID" error={errors.resourceId}>
+              {(id) => (
+                <input
+                  id={id}
+                  inputMode="numeric"
+                  maxLength={19}
+                  value={input.resourceId}
+                  onChange={(e) => update({ resourceId: e.target.value })}
+                />
+              )}
+            </Field>
+          }
+        />
       </fieldset>
       <div className="actions">
         <button className="primary" type="submit" disabled={action.pending}>

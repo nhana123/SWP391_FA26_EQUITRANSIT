@@ -183,6 +183,28 @@ export const availabilitySchema = z.object({
   blockers: z.array(z.enum(resourceBlockers)),
 });
 export type Availability = z.infer<typeof availabilitySchema>;
+
+/**
+ * BE POST /api/resources/{kind}/candidates (commit 8847e5a): one page of
+ * resources of a kind evaluated for a case window. Paged by resource code;
+ * totalElements counts matching codes, not available ones. Never a booking.
+ */
+export const CANDIDATE_PAGE_SIZE = 10;
+export const candidateSchema = z.object({
+  id: idSchema,
+  code: z.string().min(1).max(50),
+  status: z.enum(['AVAILABLE', 'PENDING', 'UNAVAILABLE']),
+  recordVersion: versionSchema,
+  blockers: z.array(z.enum(resourceBlockers)),
+});
+export type ResourceCandidate = z.infer<typeof candidateSchema>;
+export const candidatePageSchema = z.object({
+  items: z.array(candidateSchema),
+  page: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+  totalElements: z.number().int().nonnegative(),
+});
+export type CandidatePage = z.infer<typeof candidatePageSchema>;
 export type AvailabilityRequest = {
   orderId: number;
   revisionId: number;
