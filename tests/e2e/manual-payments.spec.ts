@@ -169,6 +169,8 @@ test('Manager navigates from a case to payments and explicitly allocates verifie
       }
       if (/^\/api\/activity\/orders\/\d+\/timeline$/.test(path))
         return route.fulfill({ json: { orderId: 11, items: [], page: 0, size: 20 } });
+      if (path === '/api/transport-orders/11/departure')
+        return route.fulfill({ status: 409, json: { message: 'No journey plan yet' } });
       unexpected.push(path);
 
       return route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });

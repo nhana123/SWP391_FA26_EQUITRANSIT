@@ -58,7 +58,7 @@ test('Manager creates staff through navigation and retries 503 without changing 
   await page.getByRole('button', { name: 'Log In' }).click();
   await expect(page).toHaveURL(/\/manager\/requests$/);
   await page.getByRole('button', { name: 'Toggle navigation' }).click();
-  await page.getByRole('link', { name: 'Staff Administration', exact: true }).click();
+  await page.getByRole('link', { name: 'Staff Management', exact: true }).click();
   await page.getByRole('link', { name: 'Create staff account' }).click();
   await page.getByLabel('Full name').fill('New Test Staff');
   await page.getByLabel('Staff email').fill('new@example.invalid');
@@ -164,7 +164,7 @@ test('Manager publishes a successor using SHIPMENT and the reviewed tariff versi
   await page.getByLabel('Password').fill('TestPassword123!');
   await page.getByRole('button', { name: 'Log In' }).click();
   await expect(page).toHaveURL(/\/manager\/requests$/);
-  await page.getByRole('link', { name: 'Service Prices', exact: true }).click();
+  await page.getByRole('link', { name: 'Tariffs & Pricing', exact: true }).click();
   await page
     .getByRole('table', { name: 'Service products' })
     .getByRole('button', { name: 'Replace price' })

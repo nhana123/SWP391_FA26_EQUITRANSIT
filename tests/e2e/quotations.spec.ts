@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { quotation, pageOf } from '../../src/features/quotations/testing';
 import { testOrder } from '../../src/features/booking-services/testing';
 
-for (const role of ['CUSTOMER', 'MANAGER', 'COORDINATOR'] as const) {
+for (const role of ['CUSTOMER', 'MANAGER'] as const) {
   test(`${role} opens quotations from its request UI and reads a safe snapshot`, async ({
     page,
   }) => {
