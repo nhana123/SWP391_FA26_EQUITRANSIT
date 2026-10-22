@@ -119,8 +119,16 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
     );
   const plan = query.data!;
   const editable = editablePlan(plan.planStatus);
+  // The Coordinator designs and resources the plan; the Manager reviews it.
+  const designer = role === 'COORDINATOR';
   return (
     <>
+      {!designer && (
+        <Notice>
+          Read-only review: the assigned Coordinator designs this journey, assigns its resources and
+          confirms the plan. You authorize departure once all three gates pass.
+        </Notice>
+      )}
       <StaleBanner pinned={pinned} latest={plan.recordVersion} />
       <section className="card" aria-label="Plan summary">
         <h2>
@@ -152,7 +160,7 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
         ) : (
           <p>No confirmation blockers.</p>
         )}
-        {!editable && (
+        {!editable && designer && (
           <Notice>
             This version is {plan.planStatus.toLowerCase()} and cannot change.{' '}
             <Link to={`${plansPath(role, orderId)}?from=${plan.planId}`}>
@@ -178,9 +186,19 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
         }}
       />
       <details className="card" id="plan-resources" open={hash.startsWith('#plan-')}>
-        <summary>Resource assignments, reservation evidence and plan confirmation</summary>
+        <summary>
+          {designer
+            ? 'Resource assignments, reservation evidence and plan confirmation'
+            : 'Resource assignments and reservations (read-only)'}
+        </summary>
         {plan.legs.map((leg) => (
-          <LegCard key={leg.legId} plan={plan} leg={leg} pinned={pinned} editable={editable} />
+          <LegCard
+            key={leg.legId}
+            plan={plan}
+            leg={leg}
+            pinned={pinned}
+            editable={editable && designer}
+          />
         ))}
         <section className="card" id="plan-reservations" aria-label="Quarantine and insurance">
           <h2>Quarantine and insurance</h2>
@@ -202,14 +220,16 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
               <li>Nothing recorded yet.</li>
             )}
           </ul>
-          {editable && (
+          {editable && designer && (
             <>
               <QuarantineForm plan={plan} pinned={pinned} />
               <InsuranceForm plan={plan} pinned={pinned} />
             </>
           )}
         </section>
-        <div id="plan-confirmation">{editable && <ConfirmForm plan={plan} pinned={pinned} />}</div>
+        <div id="plan-confirmation">
+          {editable && designer && <ConfirmForm plan={plan} pinned={pinned} />}
+        </div>
       </details>
     </>
   );

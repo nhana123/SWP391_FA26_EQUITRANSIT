@@ -36,7 +36,7 @@ it('exposes Manager links for both new administration and the existing case dire
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 600, role: 'MANAGER' });
   mount('/manager/staff-administration');
   await screen.findByRole('heading', { name: 'Staff admin test screen' });
-  expect(screen.getByRole('link', { name: 'Staff Administration' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Staff Management' })).toHaveAttribute(
     'href',
     '/manager/staff-administration',
   );
@@ -44,7 +44,7 @@ it('exposes Manager links for both new administration and the existing case dire
     'href',
     '/manager/staff',
   );
-  expect(screen.getByRole('link', { name: 'Service Prices' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Tariffs & Pricing' })).toHaveAttribute(
     'href',
     '/manager/service-prices',
   );

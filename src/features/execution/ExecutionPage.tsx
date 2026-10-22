@@ -51,7 +51,8 @@ export const executionKeys = {
   page: (generation: string, orderId: number, page: number) =>
     [...executionKeys.all(generation, orderId), { page }] as const,
 };
-const writers: Role[] = ['MANAGER', 'COORDINATOR', 'DRIVER'];
+// The Manager follows progress and approves adjustments; field work is the crew's.
+const writers: Role[] = ['COORDINATOR', 'DRIVER'];
 export function executionPath(role: Role, orderId: number) {
   if (role === 'CUSTOMER') return `/customer/requests/${orderId}/execution`;
   if (role === 'MANAGER') return `/manager/requests/${orderId}/execution`;
@@ -605,9 +606,7 @@ function Workspace({ orderId }: { orderId: number }) {
   // F14: a driver hands over their own road leg; Coordinator/Manager any leg.
   const canHandover = (leg: ExecutionLeg) =>
     leg.legStatus === 'IN_TRANSIT' &&
-    (session.role === 'DRIVER'
-      ? writable(leg)
-      : session.role === 'COORDINATOR' || session.role === 'MANAGER');
+    (session.role === 'DRIVER' ? writable(leg) : session.role === 'COORDINATOR');
   // Legs are paged; the last leg is numbered legCount.
   const lastLeg = Math.max(o.legCount, ...o.legs.map((l) => l.sequenceNo));
   const pages = Math.ceil(

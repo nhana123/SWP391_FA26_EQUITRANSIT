@@ -68,7 +68,6 @@ describe('reachable quotation routes', () => {
   it.each<[Role, string]>([
     ['CUSTOMER', '/customer/requests/9'],
     ['MANAGER', '/manager/requests/9'],
-    ['COORDINATOR', '/staff/cases/9'],
   ])('%s can open list and detail from its existing request screen', async (role, path) => {
     open(path, role);
     await userEvent.click(await screen.findByRole('link', { name: 'Quotations' }));
@@ -89,6 +88,12 @@ describe('reachable quotation routes', () => {
       expect(quotationsApi.get).not.toHaveBeenCalled();
     },
   );
+  it('keeps quotation work off the Coordinator case page (the Manager issues quotations)', async () => {
+    open('/staff/cases/9', 'COORDINATOR');
+    await screen.findByRole('heading', { name: 'Case TEST-9' });
+    expect(screen.queryByRole('link', { name: 'Quotations' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Prepare/ })).toBeNull();
+  });
   it('keeps the quotation link off a Specialist case page', async () => {
     open('/staff/cases/9', 'SPECIALIST');
     await screen.findByRole('heading', { name: 'Case TEST-9' });

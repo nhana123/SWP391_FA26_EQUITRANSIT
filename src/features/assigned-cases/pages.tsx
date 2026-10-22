@@ -14,8 +14,6 @@ import { Details, show, SnapshotView } from '../assessment/case';
 import type { ManagerCase } from '../assessment/contracts';
 import { caseRoleLabels } from '../assessment/staff';
 import { useAssignedCase, useAssignedCases } from './hooks';
-import { QuotationLink } from '../quotations/navigation';
-import { PrepareQuotationLink } from '../quotations/prepare-link';
 import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
@@ -26,6 +24,9 @@ import { ComplianceLink } from '../compliance/link';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import { SpecialistWorkspace } from '../compliance/SpecialistCompliancePage';
 import { DossierDesk } from '../specialist-desk/DossierDesk';
+import { OrderWorkflowBanner } from '../workflow/OrderWorkflowBanner';
+import { GatesSummary } from '../workflow/GatesSummary';
+
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -201,6 +202,7 @@ function SpecialistCaseDossier({ current }: { current: ManagerCase }) {
       >
         <Link to="/staff/tasks">Back to My Tasks</Link>
       </StaffHeading>
+      <OrderWorkflowBanner status={current.orderStatus} role="SPECIALIST" />
       <SpecialistWorkspace
         orderId={current.orderId}
         caseFile={
@@ -261,10 +263,9 @@ export function AssignedCasePage() {
       >
         <Link to="/staff/cases">Back to my cases</Link>
       </StaffHeading>
+      <OrderWorkflowBanner status={current.orderStatus} role="COORDINATOR" />
       <div className="actions">
-        <QuotationLink orderId={current.orderId} />
         <SettlementPreviewLink orderId={current.orderId} />
-        {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
         <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
@@ -272,6 +273,9 @@ export function AssignedCasePage() {
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
       <OrderLifecycle status={current.orderStatus} />
+      {['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'].includes(
+        current.orderStatus,
+      ) && <GatesSummary orderId={current.orderId} />}
       <OrderTimeline orderId={current.orderId} />
       <Notice>
         The case details below are read-only. Use the links above for your role's work on this case;

@@ -438,7 +438,7 @@ function Workspace({ orderId }: { orderId: number }) {
           </ul>
         )}
       </section>
-      {(role === 'MANAGER' || role === 'COORDINATOR') && !departed && (
+      {role === 'COORDINATOR' && !departed && (
         <CommandForm
           label="Evaluate gates"
           pinned={pinned}

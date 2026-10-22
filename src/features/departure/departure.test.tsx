@@ -115,6 +115,12 @@ describe('departure gates (#81 F11)', () => {
     expect(screen.queryByRole('form', { name: 'Depart first leg' })).toBeNull();
   });
 
+  it('leaves gate evaluation to the Coordinator: the Manager only authorizes', async () => {
+    mount('MANAGER');
+    expect(await screen.findByRole('form', { name: 'Authorize departure' })).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Evaluate gates' })).toBeNull();
+  });
+
   it('evaluates gates with the reviewed order version and nothing else', async () => {
     vi.mocked(departureApi.evaluate).mockResolvedValue(
       readiness({ recordVersion: '000000000001A2B4' }),

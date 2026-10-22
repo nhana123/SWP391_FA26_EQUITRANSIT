@@ -5,12 +5,12 @@ import './assessment.css';
 // Same shell classes as FE1's customer workspace; kept in FE2's module so the
 // shared app shell stays untouched.
 const links = [
-  { to: '/manager/dashboard', label: 'Overview' },
-  { to: '/manager/requests', label: 'Requests' },
+  { to: '/manager/dashboard', label: 'Overview & Approvals' },
+  { to: '/manager/requests', label: 'Requests Management' },
+  { to: '/manager/resources', label: 'Fleet & Resources' },
+  { to: '/manager/service-prices', label: 'Tariffs & Pricing' },
+  { to: '/manager/staff-administration', label: 'Staff Management' },
   { to: '/manager/staff', label: 'Case Staff' },
-  { to: '/manager/staff-administration', label: 'Staff Administration' },
-  { to: '/manager/service-prices', label: 'Service Prices' },
-  { to: '/manager/resources', label: 'Transport Resources' },
   { to: '/manager/reports/financial', label: 'Financial Report' },
   { to: '/manager/audit-events', label: 'Audit Events' },
 ];

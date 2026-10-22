@@ -191,7 +191,7 @@ describe('plan versions and draft builder (#80)', () => {
   }, 20_000);
 
   it('prefills a new draft from an existing version instead of editing it', async () => {
-    mount('/manager/requests/101/plans?from=311', 'MANAGER');
+    mount('/staff/cases/101/plans?from=311', 'COORDINATOR');
     const form = within(await screen.findByRole('form', { name: 'New plan version' }));
     expect(form.getByRole('heading')).toHaveTextContent('based on plan 311');
     expect(form.getByLabelText('Leg 2 planned flight number (optional)')).toHaveValue('VN0051');
@@ -440,13 +440,34 @@ describe('plan detail (#80)', () => {
     vi.mocked(plansApi.get).mockResolvedValue(
       detail({ planStatus: 'CONFIRMED', confirmationBlockers: [] }),
     );
-    mount('/manager/requests/101/plans/311', 'MANAGER');
+    mount('/staff/cases/101/plans/311', 'COORDINATOR');
     expect(await screen.findByText(/cannot change/)).toBeInTheDocument();
     expect(screen.queryByRole('form')).toBeNull();
     expect(screen.getByRole('link', { name: 'Create a new draft from it' })).toHaveAttribute(
       'href',
-      '/manager/requests/101/plans?from=311',
+      '/staff/cases/101/plans?from=311',
     );
+  });
+
+  it('shows the Manager a read-only plan: no resource forms, no confirmation, no drafting', async () => {
+    mount('/manager/requests/101/plans/311', 'MANAGER');
+    expect(
+      await screen.findByText(/Read-only review: the assigned Coordinator/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Create a new draft from it' })).toBeNull();
+    expect(
+      screen.getByText('Resource assignments and reservations (read-only)'),
+    ).toBeInTheDocument();
+  });
+
+  it('gives the Manager no drafting tools on the plan list', async () => {
+    mount('/manager/requests/101/plans', 'MANAGER');
+    expect(
+      await screen.findByText(/Plans are designed by the assigned Coordinator/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'New plan version' })).toBeNull();
+    expect(screen.queryByText('Classic draft form and shared-stall shortlist')).toBeNull();
   });
 
   it('is not available to customers or specialists', () => {

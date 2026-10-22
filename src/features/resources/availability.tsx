@@ -352,7 +352,7 @@ export function AvailabilityLink({
   orderStatus: OrderStatus;
 }) {
   const session = useSession();
-  if (!session || (session.role !== 'MANAGER' && session.role !== 'COORDINATOR')) return null;
+  if (!session || session.role !== 'COORDINATOR') return null;
   if (!probeStatuses.includes(orderStatus)) return null;
   return (
     <Link className="button" to={`${quotationParent(session.role, orderId)}/availability`}>
