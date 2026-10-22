@@ -57,7 +57,7 @@ function PlanCosts({ orderId, manager }: { orderId: number; manager: boolean }) 
   const legs = plan.data.legs.map((l) => ({ legId: l.legId, sequenceNo: l.sequenceNo }));
   return (
     <>
-      <ActualCosts planId={plan.data.planId} legs={legs} canWrite />
+      <ActualCosts planId={plan.data.planId} legs={legs} canWrite={!manager} />
       {manager && <Profitability planId={plan.data.planId} />}
     </>
   );

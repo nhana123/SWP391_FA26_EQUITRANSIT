@@ -195,7 +195,7 @@ describe('trip progress (#81 F12)', () => {
 
   it('URGENT welfare reports the opened incident without claiming a diagnosis', async () => {
     vi.mocked(executionApi.welfare).mockResolvedValue(receipt(401));
-    const user = mount('MANAGER');
+    const user = mount('COORDINATOR');
     const table = await screen.findByRole('table', { name: 'Execution legs' });
     await user.click(
       within(within(table).getAllByRole('row')[1]).getByRole('button', {
@@ -278,11 +278,21 @@ describe('trip progress (#81 F12)', () => {
   });
 });
 
+describe('role separation on the execution page', () => {
+  it('lets the Manager follow progress and approve adjustments, but not record field work', async () => {
+    mount('MANAGER');
+    const table = await screen.findByRole('table', { name: 'Execution legs' });
+    for (const row of within(table).getAllByRole('row').slice(1))
+      expect(within(row).queryByRole('button')).toBeNull();
+    await waitFor(() => expect(incidentsApi.adjustments).toHaveBeenCalled());
+  });
+});
+
 describe('F13 capability on the execution page', () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it('is on by default: staff get the incident action and adjustments', async () => {
-    mount('MANAGER');
+    mount('COORDINATOR');
     const table = await screen.findByRole('table', { name: 'Execution legs' });
     expect(
       within(within(table).getAllByRole('row')[1]).getByRole('button', { name: 'Incidents' }),
@@ -299,7 +309,7 @@ describe('F13 capability on the execution page', () => {
 
   it('can be switched off for an older BE: no incident action and no F13 calls', async () => {
     vi.stubEnv('VITE_F13_INCIDENTS', 'false');
-    const user = mount('MANAGER');
+    const user = mount('COORDINATOR');
     const table = await screen.findByRole('table', { name: 'Execution legs' });
     const row = within(table).getAllByRole('row')[1];
     expect(within(row).queryByRole('button', { name: 'Incidents' })).toBeNull();

@@ -401,7 +401,8 @@ export function JourneyStudio({
     | { kind: 'layout'; journey: Journey; version: string; operationId: string }
     | null
   >(null);
-  const editRole = mode === 'edit' && ['MANAGER', 'COORDINATOR'].includes(session?.role ?? '');
+  // Only the assigned Coordinator designs the journey; a Manager reviews it read-only.
+  const editRole = mode === 'edit' && session?.role === 'COORDINATOR';
   const query = useQuery({
     queryKey: [...planKeys.all(session?.generation ?? '', orderId), 'graph', planId, recordVersion],
     queryFn: ({ signal }) => graphApi.get(orderId, planId!, signal),

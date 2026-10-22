@@ -18,12 +18,13 @@ import { caseRoleLabels } from './staff';
 import { QuotationLink } from '../quotations/navigation';
 import { PaymentLink } from '../payments/pages';
 import { PrepareQuotationLink } from '../quotations/prepare-link';
-import { AvailabilityLink } from '../resources/availability';
 import { PlansLink } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
 import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
+import { OrderWorkflowBanner } from '../workflow/OrderWorkflowBanner';
+import { GatesSummary } from '../workflow/GatesSummary';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -261,17 +262,20 @@ export function ManagerCasePage() {
       >
         <Link to="/manager/requests">Back to requests</Link>
       </ManagerHeading>
+      <OrderWorkflowBanner status={current.orderStatus} role="MANAGER" />
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
         <SettlementPreviewLink orderId={current.orderId} />
         <PaymentLink orderId={current.orderId} />
         {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
-        <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
       </div>
       <OrderLifecycle status={current.orderStatus} />
+      {['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'].includes(
+        current.orderStatus,
+      ) && <GatesSummary orderId={current.orderId} />}
       <OrderTimeline orderId={current.orderId} />
       {receipt && (
         <Notice>

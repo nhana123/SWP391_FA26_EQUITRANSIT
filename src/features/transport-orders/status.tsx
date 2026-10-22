@@ -18,6 +18,8 @@ import { ComplianceLink } from '../compliance/link';
 import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
+import { OrderWorkflowBanner } from '../workflow/OrderWorkflowBanner';
+
 import { PaymentLink } from '../payments/pages';
 import { orderStatusApi } from './status-api';
 import { orderStatusLabels, type CustomerAssessment } from './status-contracts';
@@ -220,6 +222,7 @@ export function RequestDetailPage() {
   if (query.error) return <ErrorNotice error={query.error} />;
   return (
     <>
+      <OrderWorkflowBanner status={query.data.orderStatus} role="CUSTOMER" />
       <OrderLifecycle status={query.data.orderStatus} />
       <AssessmentPanel order={query.data} />
       <div className="actions">

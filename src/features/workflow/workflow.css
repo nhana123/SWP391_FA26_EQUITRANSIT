@@ -1,0 +1,142 @@
+/* Order workflow banner: who the request is waiting on, at the top of a case. */
+.workflow-banner {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  margin-bottom: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--muted);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+.workflow-banner.mine {
+  border-left-color: var(--brand);
+  background: linear-gradient(90deg, var(--brand-soft) 0%, var(--surface) 55%);
+}
+.workflow-banner.stopped {
+  border-left-color: #b91c1c;
+}
+.workflow-now {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+.workflow-now strong {
+  display: block;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.workflow-now p {
+  margin: 0.25rem 0 0;
+}
+.workflow-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  background: var(--canvas);
+  color: var(--muted);
+}
+.workflow-banner.mine .workflow-icon {
+  background: var(--brand);
+  color: #fff;
+}
+.workflow-part {
+  font-weight: 600;
+  color: var(--brand);
+}
+.workflow-part.muted {
+  font-weight: 400;
+  color: var(--muted);
+}
+.workflow-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.workflow-steps li {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.workflow-steps li small {
+  font-size: 0.7rem;
+}
+.workflow-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--surface);
+  font-size: 0.75rem;
+}
+.workflow-steps li.done .workflow-dot {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+.workflow-steps li.current {
+  color: var(--ink);
+  font-weight: 600;
+}
+.workflow-steps li.current .workflow-dot {
+  border-color: var(--brand);
+  color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.workflow-note {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* Read-only gates */
+.gates-grid {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+.gate-tile {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  border-top: 3px solid var(--line);
+}
+.gate-tile > span {
+  font-weight: 600;
+  color: var(--ink);
+}
+.gate-tile.gate-pass {
+  border-top-color: var(--brand);
+}
+.gate-tile.gate-blocked {
+  border-top-color: #b91c1c;
+}
+
+@media (max-width: 760px) {
+  .workflow-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 0.85rem;
+  }
+}
+@media (max-width: 420px) {
+  .workflow-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

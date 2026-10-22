@@ -366,7 +366,7 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
   return (
     <>
       <StaleBanner pinned={pinned} latest={caseQuery.data.recordVersion} />
-      {revisionId !== null && (
+      {revisionId !== null && role === 'COORDINATOR' && (
         <JourneyStudio
           orderId={orderId}
           mode="edit"
@@ -437,28 +437,35 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
           />
         )}
       </section>
-      <details className="card" open={fromValid}>
-        <summary>Classic draft form and shared-stall shortlist</summary>
-        {revisionId === null ? (
-          <Notice>Plans can be drafted once the request has a current approved revision.</Notice>
-        ) : fromValid && source.isPending ? (
-          <Loading />
-        ) : (
-          <DraftForm
-            key={`${revisionId}-${fromValid ? from : 'new'}-${source.data ? 'loaded' : ''}`}
-            orderId={orderId}
-            revisionId={revisionId}
-            pinned={pinned}
-            basedOn={source.data ? source.data.planId : null}
-            initial={
-              source.data?.legs.length
-                ? source.data.legs.map(legToForm)
-                : [emptyLeg('ROAD'), emptyLeg('AIR'), emptyLeg('ROAD')]
-            }
-          />
-        )}
-        <CandidatesSection orderId={orderId} />
-      </details>
+      {role !== 'COORDINATOR' ? (
+        <Notice>
+          Plans are designed by the assigned Coordinator. Open a version to review its journey
+          read-only.
+        </Notice>
+      ) : (
+        <details className="card" open={fromValid}>
+          <summary>Classic draft form and shared-stall shortlist</summary>
+          {revisionId === null ? (
+            <Notice>Plans can be drafted once the request has a current approved revision.</Notice>
+          ) : fromValid && source.isPending ? (
+            <Loading />
+          ) : (
+            <DraftForm
+              key={`${revisionId}-${fromValid ? from : 'new'}-${source.data ? 'loaded' : ''}`}
+              orderId={orderId}
+              revisionId={revisionId}
+              pinned={pinned}
+              basedOn={source.data ? source.data.planId : null}
+              initial={
+                source.data?.legs.length
+                  ? source.data.legs.map(legToForm)
+                  : [emptyLeg('ROAD'), emptyLeg('AIR'), emptyLeg('ROAD')]
+              }
+            />
+          )}
+          <CandidatesSection orderId={orderId} />
+        </details>
+      )}
     </>
   );
 }

@@ -108,7 +108,8 @@ test('Customer reviews WIDE and Request Share on mobile without confirming a rev
   expect(unexpected).toEqual([]);
 });
 
-for (const role of ['MANAGER', 'COORDINATOR'] as const) {
+// Quotation work belongs to the Manager; the Coordinator case page has no quotation links.
+for (const role of ['MANAGER'] as const) {
   test(`${role} records explicit bundle coverage and clears private purchase input`, async ({
     page,
   }, testInfo) => {
@@ -141,8 +142,7 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
           return route.fulfill({ json: { offerId: 55, recordVersion: '00000000000000c2' } });
         }
         if (path === '/api/manager/transport-orders' || path === '/api/staff/transport-orders') {
-          const items =
-            role === 'COORDINATOR' || url.searchParams.get('state') === 'APPROVED' ? [caseRow] : [];
+          const items = url.searchParams.get('state') === 'APPROVED' ? [caseRow] : [];
           return route.fulfill({
             json: {
               items,
@@ -169,6 +169,8 @@ for (const role of ['MANAGER', 'COORDINATOR'] as const) {
           });
         if (/^\/api\/activity\/orders\/\d+\/timeline$/.test(path))
           return route.fulfill({ json: { orderId: 9, items: [], page: 0, size: 20 } });
+        if (path === '/api/transport-orders/9/departure')
+          return route.fulfill({ status: 409, json: { message: 'No journey plan yet' } });
         unexpected.push(path);
         return route.fulfill({ status: 501, json: { message: 'Unexpected test request' } });
       },
