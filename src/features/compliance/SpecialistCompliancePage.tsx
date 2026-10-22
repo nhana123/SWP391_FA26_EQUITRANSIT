@@ -1,7 +1,6 @@
 import { DateTimeInput } from '../../shared/ui/DateTimeInput';
 import { useState, type ReactNode } from 'react';
 import { Icon } from '../../components/ui/Icons';
-import { EmptyState } from '../../components/ui/Primitives';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -14,12 +13,12 @@ import { ReferenceSheet } from '../specialist-desk/ReferenceSheet';
 import { COMPLIANCE_PAGE_SIZE, complianceApi } from './api';
 import {
   authorityDecisions,
+  blockerText,
   decisionLabels,
-  legalDecisions,
   phaseLabels,
+  phases,
   type ComplianceDocument,
   type FileInput,
-  type LegalDecision,
   type Overview,
   type Phase,
   type Requirement,
@@ -35,7 +34,7 @@ import {
   usePinnedVersion,
   type Pinned,
 } from './hooks';
-import { DocumentsSection, OverviewState, PhaseTabs, ReadinessCard, StaleBanner } from './shared';
+import { DocumentsSection, FileViewer, OverviewState, ReadinessCard, StaleBanner } from './shared';
 import {
   validateAssessment,
   validateAuthority,
@@ -125,7 +124,33 @@ function Choice<T extends string>({
   );
 }
 
-function ReviewForm({
+/** One click: the exact submission passes, with no feedback to write. */
+function ApproveButton({
+  orderId,
+  pinned,
+  requirement,
+}: {
+  orderId: number;
+  pinned: Pinned;
+  requirement: Requirement;
+}) {
+  return (
+    <CommandForm
+      compact
+      label={`Approve ${requirement.documentType}`}
+      title={`Approve submission ${requirement.submissionId}`}
+      pinned={pinned}
+      submitLabel="Approve (Pass)"
+      send={(body) => complianceApi.review(orderId, requirement.submissionId!, body)}
+      build={() => validateReview({ decision: 'APPROVED', feedback: '' }).input}
+    >
+      {() => null}
+    </CommandForm>
+  );
+}
+
+/** Sends the exact submission back; the reason is shown to the customer. */
+function RejectForm({
   orderId,
   pinned,
   requirement,
@@ -136,18 +161,18 @@ function ReviewForm({
   requirement: Requirement;
   onClose: () => void;
 }) {
-  const [f, set] = useForm({ decision: '' as LegalDecision | '', feedback: '' });
+  const [feedback, setFeedback] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   return (
     <CommandForm
-      label={`Review ${requirement.documentType}`}
-      title={`Review submission ${requirement.submissionId} — ${requirement.documentType}, version ID ${requirement.documentVersionId}`}
+      label={`Request changes to ${requirement.documentType}`}
+      title={`Send ${readableType(requirement.documentType)} back — submission ${requirement.submissionId}, version ID ${requirement.documentVersionId}`}
       pinned={pinned}
-      submitLabel="Record review"
+      submitLabel="Send back to the customer"
       send={(body) => complianceApi.review(orderId, requirement.submissionId!, body)}
       fieldErrors={errors}
       build={() => {
-        const r = validateReview(f);
+        const r = validateReview({ decision: 'REJECTED', feedback });
         setErrors(r.errors);
         return r.input;
       }}
@@ -155,20 +180,13 @@ function ReviewForm({
     >
       {(locked, fields) => (
         <fieldset className="form-grid" disabled={locked}>
-          <Choice
-            label="Decision"
-            value={f.decision}
-            options={legalDecisions}
-            labels={decisionLabels}
-            onChange={(decision) => set({ decision })}
-            error={fields.decision}
-          />
           <TextInput
-            label="Feedback to the customer (optional)"
+            label="Reason for the customer"
+            hint="Say what to fix, e.g. an unreadable scan or a date that expires too soon."
             area
             max={2000}
-            value={f.feedback}
-            onChange={(feedback) => set({ feedback })}
+            value={feedback}
+            onChange={setFeedback}
             error={fields.feedback}
           />
           <button type="button" onClick={onClose} disabled={locked}>
@@ -180,16 +198,42 @@ function ReviewForm({
   );
 }
 
+/** The clearance may not outlast the earliest evidence; minutes floor in UTC+07:00. */
+function inOperationalZone(iso: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (Number.isNaN(t)) return '';
+  return `${new Date(t + 7 * 3_600_000).toISOString().slice(0, 16)}:00+07:00`;
+}
+
+/** What still stands between the Specialist and the clearance, in plain words. */
+function pendingWork(blockers: string[]) {
+  if (blockers.includes('RULE_ASSESSMENT_PENDING'))
+    return 'Record the route checklist in step 1 first.';
+  if (blockers.includes('ROUTE_RULE_PENDING'))
+    return 'A legal rule for this route is missing: publish it under the legal rules in step 1.';
+  if (blockers.includes('DOCUMENT_EVIDENCE_PENDING'))
+    return 'Approve every required document in step 2 first.';
+  if (blockers.includes('AUTHORITY_EVIDENCE_PENDING'))
+    return 'Record the authority decision with its evidence in step 2 first.';
+  const other = blockers.find((b) => b !== 'PHASE_CLEARANCE_PENDING');
+  return other ? blockerText(other) : null;
+}
+
 function ClearanceForm({
   orderId,
   pinned,
   phase,
+  suggestedExpiry,
 }: {
   orderId: number;
   pinned: Pinned;
   phase: Phase;
+  /** The latest expiry the server accepts, from the earliest current evidence. */
+  suggestedExpiry: string;
 }) {
-  const [expiresAt, setExpiresAt] = useState('');
+  // Follows the server's suggestion until the Specialist edits it.
+  const [edited, setEdited] = useState<string | null>(null);
+  const expiresAt = edited ?? suggestedExpiry;
   const [errors, setErrors] = useState<FieldErrors>({});
   return (
     <CommandForm
@@ -208,8 +252,11 @@ function ClearanceForm({
       {(locked, fields) => (
         <>
           <p className="muted">
-            The server clears only when every current rule, exact document review and required
-            authority result passes. The expiry cannot outlast the earliest evidence.
+            {suggestedExpiry
+              ? 'The expiry is filled in from the earliest current evidence; you can shorten it.'
+              : 'The expiry cannot outlast the earliest evidence.'}{' '}
+            The server clears only when every current rule, document review and required authority
+            result passes.
           </p>
           <fieldset className="form-grid" disabled={locked}>
             <TextInput
@@ -217,7 +264,7 @@ function ClearanceForm({
               date
               max={35}
               value={expiresAt}
-              onChange={setExpiresAt}
+              onChange={setEdited}
               error={fields.expiresAt}
             />
           </fieldset>
@@ -415,13 +462,12 @@ function ChecklistForm({
 }) {
   const [f, set] = useForm({
     transitCountryCodes: '',
-    sourceReference: route
-      ? `Sourced rules for ${route}, ${phaseLabels[phase].toLowerCase()} phase, checked by the assigned specialist.`
-      : '',
+    sourceReference: `Sourced rules for ${route ?? 'this route'}, ${phaseLabels[phase].toLowerCase()} phase, checked by the assigned specialist.`,
     validUntil: suggestedValidUntil(),
   });
+  const [advanced, setAdvanced] = useState(false);
   const codes = f.transitCountryCodes
-    .split(/[s,]+/)
+    .split(/[\s,]+/)
     .map((c) => c.trim().toUpperCase())
     .filter(Boolean);
   const toggleTransit = (code: string) =>
@@ -435,7 +481,8 @@ function ChecklistForm({
   return (
     <CommandForm
       label="Assess route checklist"
-      title={`Route checklist — ${phaseLabels[phase]}`}
+      title={`Set up the ${phaseLabels[phase].toLowerCase()} checklist`}
+      className="dossier-checklist"
       pinned={pinned}
       submitLabel="Record checklist"
       send={(body) => complianceApi.checklist(orderId, body)}
@@ -446,28 +493,23 @@ function ChecklistForm({
         return r.input;
       }}
     >
-      {(locked, fields) => (
-        <>
-          <p className="muted">
-            List every transit country of the actual route as you assessed it. Matching current
-            rules become this case's requirements; missing rules keep the phase pending.
-          </p>
-          <fieldset className="form-grid" disabled={locked}>
-            <TextInput
-              label="Transit countries"
-              hint="2-letter codes separated by commas; empty for a direct route."
-              max={60}
-              value={f.transitCountryCodes}
-              onChange={(transitCountryCodes) => set({ transitCountryCodes })}
-              error={fields.transitCountryCodes}
-            />
+      {(locked, fields) => {
+        // A server or local error on a folded field opens the advanced options.
+        const open =
+          advanced || !!(fields.transitCountryCodes || fields.sourceReference || fields.validUntil);
+        return (
+          <fieldset disabled={locked}>
+            <p className="muted">
+              Pick the transit stops of the actual route, then record. Matching sourced rules become
+              the required documents below.
+            </p>
             <div className="dossier-quick-picks" role="group" aria-label="Quick transit picks">
               <button
                 type="button"
                 aria-pressed={!codes.length}
                 onClick={() => set({ transitCountryCodes: '' })}
               >
-                Direct (empty)
+                {!codes.length && <Icon name="check" size={14} />} Direct
               </button>
               {transitPicks.map((code) => (
                 <button
@@ -480,25 +522,50 @@ function ChecklistForm({
                 </button>
               ))}
             </div>
-            <TextInput
-              label="Source reference"
-              area
-              max={1000}
-              value={f.sourceReference}
-              onChange={(sourceReference) => set({ sourceReference })}
-              error={fields.sourceReference}
-            />
-            <TextInput
-              label="Valid until"
-              date
-              max={35}
-              value={f.validUntil}
-              onChange={(validUntil) => set({ validUntil })}
-              error={fields.validUntil}
-            />
+            <p className="dossier-route-line">
+              {route ?? 'Route'}
+              {codes.length ? ` · via ${codes.join(', ')}` : ' · direct'} · valid until{' '}
+              {displayDate(f.validUntil)}
+            </p>
+            <button
+              type="button"
+              className="dossier-link-button"
+              aria-expanded={open}
+              onClick={() => setAdvanced(!open)}
+            >
+              Advanced options
+            </button>
+            {open && (
+              <div className="form-grid">
+                <TextInput
+                  label="Transit countries"
+                  hint="2-letter codes separated by commas; empty for a direct route."
+                  max={60}
+                  value={f.transitCountryCodes}
+                  onChange={(transitCountryCodes) => set({ transitCountryCodes })}
+                  error={fields.transitCountryCodes}
+                />
+                <TextInput
+                  label="Source reference"
+                  area
+                  max={1000}
+                  value={f.sourceReference}
+                  onChange={(sourceReference) => set({ sourceReference })}
+                  error={fields.sourceReference}
+                />
+                <TextInput
+                  label="Valid until"
+                  date
+                  max={35}
+                  value={f.validUntil}
+                  onChange={(validUntil) => set({ validUntil })}
+                  error={fields.validUntil}
+                />
+              </div>
+            )}
           </fieldset>
-        </>
-      )}
+        );
+      }}
     </CommandForm>
   );
 }
@@ -533,7 +600,8 @@ function AuthoritySection({
     applicationReference: '',
     sourceReference: '',
     evidenceFileKey: '',
-    decidedAt: '',
+    // Opened from a document card: the decision is usually being recorded now.
+    decidedAt: presetRuleId ? inOperationalZone(new Date().toISOString()) : '',
     expiresAt: '',
     holdReason: '',
   });
@@ -891,14 +959,17 @@ function RevokeForm({
 function DossierStep({
   step,
   title,
+  state = '',
   children,
 }: {
   step: number;
   title: string;
+  /** 'waiting' dims a step whose prerequisites are open; 'ready' highlights it. */
+  state?: '' | 'waiting' | 'ready';
   children: ReactNode;
 }) {
   return (
-    <section className="dossier-step" aria-label={`Step ${step}: ${title}`}>
+    <section className={`dossier-step ${state}`.trim()} aria-label={`Step ${step}: ${title}`}>
       <h2 className="dossier-step-title">
         <span className="dossier-step-number" aria-hidden="true">
           {step}
@@ -931,14 +1002,23 @@ function RouteChecklistStep({
 }) {
   const needed = overview.readiness.blockers.includes('RULE_ASSESSMENT_PENDING');
   const [editing, setEditing] = useState(false);
+  // Transit stops show only where a matched requirement's rule names one.
+  const matched = new Set(overview.requirements.map((r) => r.ruleId));
+  const transit = [
+    ...new Set(
+      (rules.data ?? [])
+        .filter((r) => matched.has(r.ruleId) && r.transitCountryCode)
+        .map((r) => r.transitCountryCode!),
+    ),
+  ];
   return (
     <>
       {needed || editing ? (
         <>
           {needed && (
             <p className="dossier-callout">
-              This phase has no route checklist yet. Set it up first: its rules become the required
-              documents below.
+              This phase has no route checklist yet. One click sets it up: its rules become the
+              required documents below.
             </p>
           )}
           <ChecklistForm
@@ -950,19 +1030,20 @@ function RouteChecklistStep({
           />
           {!needed && (
             <button type="button" onClick={() => setEditing(false)}>
-              Close the route checklist
+              Keep the current checklist
             </button>
           )}
         </>
       ) : (
         <div className="dossier-summary-bar">
           <span>
-            <Icon name="check" size={16} /> Route checklist recorded for {phaseLabels[phase]} ·{' '}
-            {overview.totalElements} required document
-            {overview.totalElements === 1 ? '' : 's'}
+            <Icon name="check" size={16} /> Route checklist recorded
+            {route && ` · ${route}`}
+            {transit.length ? ` via ${transit.join(', ')}` : ''} · {overview.totalElements} required
+            document{overview.totalElements === 1 ? '' : 's'}
           </span>
           <button type="button" onClick={() => setEditing(true)}>
-            Edit Route Checklist
+            Change route
           </button>
         </div>
       )}
@@ -993,8 +1074,9 @@ const sheetStatus = (r: Requirement) =>
         : 'Not submitted';
 
 /**
- * Step 2. Each required document is a sheet; its review or authority form
- * opens on that sheet only when the Specialist acts on it.
+ * Step 2. Each required document is a card with the customer's submitted file
+ * and one-click Pass / Request changes; the authority decision a rule needs
+ * is recorded on the same card.
  */
 function RequirementStack({
   orderId,
@@ -1004,6 +1086,7 @@ function RequirementStack({
   page,
   onPage,
   rules,
+  documents,
 }: {
   orderId: number;
   pinned: Pinned;
@@ -1012,6 +1095,8 @@ function RequirementStack({
   page: number;
   onPage: (page: number) => void;
   rules: Rule[];
+  /** The loaded page of uploaded versions; a submitted one may sit on another page. */
+  documents: ComplianceDocument[];
 }) {
   const { generation } = useSession()!;
   const procedures = useQuery({
@@ -1019,17 +1104,30 @@ function RequirementStack({
     queryFn: ({ signal }) => complianceApi.procedures(orderId, phase, signal),
     retry: false,
   });
-  const [open, setOpen] = useState<{ id: number; kind: 'review' | 'authority' } | null>(null);
+  const [open, setOpen] = useState<{ id: number; kind: 'reject' | 'authority' } | null>(null);
   const pages = Math.ceil(overview.totalElements / COMPLIANCE_PAGE_SIZE);
-  const toggle = (id: number, kind: 'review' | 'authority') =>
+  const toggle = (id: number, kind: 'reject' | 'authority') =>
     setOpen((o) => (o?.id === id && o.kind === kind ? null : { id, kind }));
+  const blockers = overview.readiness.blockers;
   return (
     <>
-      {!overview.requirements.length ? (
-        <EmptyState
-          title="No required documents yet"
-          description="They appear once the route checklist matches sourced rules for this phase."
-        />
+      {blockers.includes('RULE_ASSESSMENT_PENDING') ? (
+        <p className="muted">
+          Record the route checklist in step 1 first: its rules decide which documents this phase
+          needs.
+        </p>
+      ) : !overview.requirements.length ? (
+        blockers.includes('ROUTE_RULE_PENDING') ? (
+          <p className="dossier-callout">
+            A legal rule for this route or a transit country is missing, so no documents could be
+            matched. Publish it under the legal rules in step 1.
+          </p>
+        ) : (
+          <p className="dossier-callout positive" role="status">
+            <Icon name="check" size={16} /> No extra documents are required for this phase. Go
+            straight to step 3 to clear it.
+          </p>
+        )
       ) : (
         <ol className="dossier-sheet-stack" aria-label="Required documents">
           {overview.requirements.map((r) => {
@@ -1038,8 +1136,9 @@ function RequirementStack({
               ?.filter((p) => p.ruleId === r.ruleId)
               .sort((a, b) => b.procedureId - a.procedureId)[0];
             const reviewable = !!r.submissionId && r.status !== 'SUPERSEDED';
-            const reviewing = open?.id === r.requirementId && open.kind === 'review';
+            const rejecting = open?.id === r.requirementId && open.kind === 'reject';
             const recording = open?.id === r.requirementId && open.kind === 'authority';
+            const submitted = documents.find((d) => d.documentVersionId === r.documentVersionId);
             return (
               <li key={r.requirementId} className="dossier-sheet">
                 <div className="dossier-sheet-head">
@@ -1064,9 +1163,27 @@ function RequirementStack({
                 </div>
                 <dl className="dossier-sheet-facts">
                   <div>
-                    <dt>Submitted version</dt>
-                    <dd>{r.documentVersionId ?? 'Not submitted yet'}</dd>
+                    <dt>Customer's submitted version</dt>
+                    <dd>
+                      {!r.documentVersionId
+                        ? 'Not submitted yet'
+                        : submitted
+                          ? `v${submitted.versionNo} · expires ${submitted.expiryDate ?? 'not recorded'}${submitted.revokedAt ? ' · revoked' : ''}`
+                          : `Version ID ${r.documentVersionId}`}
+                    </dd>
                   </div>
+                  {submitted?.fileKey && (
+                    <div>
+                      <dt>File</dt>
+                      <dd>
+                        <FileViewer
+                          orderId={orderId}
+                          fileKey={submitted.fileKey}
+                          label="View the customer's file"
+                        />
+                      </dd>
+                    </div>
+                  )}
                   {rule?.authorityRequired && (
                     <div>
                       <dt>Authority decision</dt>
@@ -1085,17 +1202,27 @@ function RequirementStack({
                   )}
                 </dl>
                 <div className="dossier-sheet-actions">
-                  {reviewable && (
+                  {reviewable && r.decision !== 'APPROVED' && (
+                    <ApproveButton
+                      key={`approve-${r.submissionId}`}
+                      orderId={orderId}
+                      pinned={pinned}
+                      requirement={r}
+                    />
+                  )}
+                  {reviewable && r.decision !== 'REJECTED' && (
                     <button
                       type="button"
-                      className="primary"
                       disabled={pinned.changed}
-                      aria-expanded={reviewing}
-                      onClick={() => toggle(r.requirementId, 'review')}
-                      aria-label={`Review ${r.documentType}`}
+                      aria-expanded={rejecting}
+                      onClick={() => toggle(r.requirementId, 'reject')}
+                      aria-label={`Request changes to ${r.documentType}`}
                     >
-                      {r.decision ? 'Review again' : 'Approve or reject'}
+                      Request changes / Reject
                     </button>
+                  )}
+                  {reviewable && r.decision === 'REJECTED' && (
+                    <span className="muted">Sent back: waiting for a new version.</span>
                   )}
                   {rule?.authorityRequired && (
                     <button
@@ -1104,15 +1231,15 @@ function RequirementStack({
                       aria-expanded={recording}
                       onClick={() => toggle(r.requirementId, 'authority')}
                     >
-                      Authority decision
+                      {result ? 'Update authority decision' : 'Record authority decision'}
                     </button>
                   )}
-                  {!reviewable && !rule?.authorityRequired && (
+                  {!reviewable && (
                     <span className="muted">Waiting for the customer to submit this document.</span>
                   )}
                 </div>
-                {reviewing && (
-                  <ReviewForm
+                {rejecting && (
+                  <RejectForm
                     key={r.submissionId}
                     orderId={orderId}
                     pinned={pinned}
@@ -1136,18 +1263,6 @@ function RequirementStack({
         </ol>
       )}
       {(pages > 1 || page > 0) && <Pagination page={page} pages={pages} onChange={onPage} />}
-      {open?.kind !== 'authority' && (
-        <details className="dossier-disclosure">
-          <summary>Authority decisions for this phase</summary>
-          <AuthoritySection
-            key={`authority-${phase}`}
-            orderId={orderId}
-            pinned={pinned}
-            phase={phase}
-            rules={rules}
-          />
-        </details>
-      )}
     </>
   );
 }
@@ -1199,84 +1314,105 @@ export function SpecialistWorkspace({
         onAssessment={openAssessment}
       />
       <div className="dossier-sheets">
-        <PhaseTabs phase={phase} onChange={setPhase} />
+        {/* The legal stamps on the reference sheet switch the phase. */}
+        <p className="dossier-phase-now">
+          <small className="eyebrow">
+            PHASE {phases.indexOf(phase) + 1} OF {phases.length}
+          </small>
+          <strong>{phaseLabels[phase]}</strong>
+          <span className="muted">Switch phase with the legal stamps.</span>
+        </p>
         <StaleBanner pinned={pinned} latest={overview.data?.recordVersion} />
+        {assessmentOpen && (
+          <section id="dossier-assessment" className="dossier-assessment">
+            <AssessmentSection orderId={orderId} pinned={pinned} />
+            <button type="button" onClick={() => setAssessmentOpen(false)}>
+              Close the assessment
+            </button>
+          </section>
+        )}
         <OverviewState query={overview}>
-          {(o) => (
-            <>
-              <DossierStep step={1} title="Route checklist">
-                <RouteChecklistStep
-                  key={`route-${phase}`}
-                  orderId={orderId}
-                  pinned={pinned}
-                  phase={phase}
-                  overview={o}
-                  rules={rules}
-                  route={route}
-                />
-              </DossierStep>
-              <DossierStep step={2} title="Required documents">
-                <RequirementStack
-                  key={`stack-${phase}`}
-                  orderId={orderId}
-                  pinned={pinned}
-                  phase={phase}
-                  overview={o}
-                  page={page}
-                  onPage={setPage}
-                  rules={rules.data ?? []}
-                />
-                <details className="dossier-disclosure">
-                  <summary>Uploaded document versions</summary>
-                  <DocumentsSection
+          {(o) => {
+            const waiting = pendingWork(o.readiness.blockers);
+            return (
+              <>
+                <DossierStep step={1} title="Route checklist">
+                  <RouteChecklistStep
+                    key={`route-${phase}`}
                     orderId={orderId}
-                    documents={documents}
-                    page={docPage}
-                    onPage={setDocPage}
-                    action={(d) =>
-                      d.revokedAt ? null : (
-                        <button
-                          type="button"
-                          disabled={pinned.changed}
-                          onClick={() => setRevoking(d)}
-                        >
-                          Revoke
-                        </button>
-                      )
-                    }
+                    pinned={pinned}
+                    phase={phase}
+                    overview={o}
+                    rules={rules}
+                    route={route}
                   />
-                  {revoking && (
-                    <RevokeForm
-                      key={revoking.documentVersionId}
-                      orderId={orderId}
-                      pinned={pinned}
-                      document={revoking}
-                      onClose={() => setRevoking(null)}
-                    />
+                </DossierStep>
+                <DossierStep step={2} title="Required documents">
+                  <RequirementStack
+                    key={`stack-${phase}`}
+                    orderId={orderId}
+                    pinned={pinned}
+                    phase={phase}
+                    overview={o}
+                    page={page}
+                    onPage={setPage}
+                    rules={rules.data ?? []}
+                    documents={documents.data ?? []}
+                  />
+                  {o.requirements.length > 0 && (
+                    <div className="dossier-uploads">
+                      <DocumentsSection
+                        orderId={orderId}
+                        documents={documents}
+                        page={docPage}
+                        onPage={setDocPage}
+                        action={(d) =>
+                          d.revokedAt ? null : (
+                            <button
+                              type="button"
+                              disabled={pinned.changed}
+                              onClick={() => setRevoking(d)}
+                            >
+                              Revoke
+                            </button>
+                          )
+                        }
+                      />
+                      {revoking && (
+                        <RevokeForm
+                          key={revoking.documentVersionId}
+                          orderId={orderId}
+                          pinned={pinned}
+                          document={revoking}
+                          onClose={() => setRevoking(null)}
+                        />
+                      )}
+                    </div>
                   )}
-                </details>
-              </DossierStep>
-              <DossierStep step={3} title={`Clear the ${phaseLabels[phase].toLowerCase()} phase`}>
-                <ReadinessCard overview={o} />
-                <ClearanceForm
-                  key={`clear-${phase}`}
-                  orderId={orderId}
-                  pinned={pinned}
-                  phase={phase}
-                />
-              </DossierStep>
-            </>
-          )}
+                </DossierStep>
+                <DossierStep
+                  step={3}
+                  title={`Clear the ${phaseLabels[phase].toLowerCase()} phase`}
+                  state={o.readiness.status === 'READY' ? '' : waiting ? 'waiting' : 'ready'}
+                >
+                  {waiting && o.readiness.status !== 'READY' && (
+                    <p className="dossier-next">
+                      <Icon name="arrow" size={16} /> {waiting}
+                    </p>
+                  )}
+                  <ReadinessCard overview={o} />
+                  <ClearanceForm
+                    key={`clear-${phase}`}
+                    orderId={orderId}
+                    pinned={pinned}
+                    phase={phase}
+                    suggestedExpiry={inOperationalZone(o.readiness.expiresAt)}
+                  />
+                </DossierStep>
+              </>
+            );
+          }}
         </OverviewState>
-        <details
-          id="dossier-assessment"
-          className="dossier-disclosure"
-          open={assessmentOpen}
-          onToggle={(e) => setAssessmentOpen(e.currentTarget.open)}
-        >
-          <summary>Veterinary & quarantine assessment</summary>
-          <AssessmentSection orderId={orderId} pinned={pinned} />
-        </details>
         {caseFile && (
           <details className="dossier-disclosure">
             <summary>Full case file (read-only)</summary>

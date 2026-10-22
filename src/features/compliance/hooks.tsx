@@ -106,6 +106,8 @@ export function CommandForm<T>({
   children,
   fieldErrors,
   busy = false,
+  compact = false,
+  className = '',
 }: {
   label: string;
   title: string;
@@ -119,6 +121,9 @@ export function CommandForm<T>({
   fieldErrors?: FieldErrors;
   /** Local work still running (e.g. reading a selected file): submit waits. */
   busy?: boolean;
+  /** A one-button action inside a card: no frame and no visible title. */
+  compact?: boolean;
+  className?: string;
 }) {
   const command = useCaseCommand(send);
   const code = command.error instanceof ApiError ? command.error.code : undefined;
@@ -140,8 +145,13 @@ export function CommandForm<T>({
     );
   }
   return (
-    <form className="card" onSubmit={submit} noValidate aria-label={label}>
-      <h3>{title}</h3>
+    <form
+      className={`${compact ? 'inline-command' : 'card'} ${className}`.trim()}
+      onSubmit={submit}
+      noValidate
+      aria-label={label}
+    >
+      {!compact && <h3>{title}</h3>}
       <ErrorNotice error={command.error}>
         {code && errorHelp[code] && <p>{errorHelp[code]}</p>}
         {command.frozen && !command.pending && (

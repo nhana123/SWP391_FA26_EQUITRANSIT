@@ -155,7 +155,15 @@ export function RequirementsTable({
 }
 
 /** Loads private content on demand; PDFs are downloads, never inline HTML. */
-export function FileViewer({ orderId, fileKey }: { orderId: number; fileKey: string }) {
+export function FileViewer({
+  orderId,
+  fileKey,
+  label = 'View file',
+}: {
+  orderId: number;
+  fileKey: string;
+  label?: string;
+}) {
   const { generation } = useSession()!;
   const [open, setOpen] = useState(false);
   const file = useQuery({
@@ -174,7 +182,7 @@ export function FileViewer({ orderId, fileKey }: { orderId: number; fileKey: str
   if (!open)
     return (
       <button type="button" onClick={() => setOpen(true)}>
-        View file
+        {label}
       </button>
     );
   if (file.isPending) return <Loading />;
