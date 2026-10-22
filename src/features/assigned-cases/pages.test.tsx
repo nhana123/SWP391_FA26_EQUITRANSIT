@@ -59,11 +59,13 @@ const listOf = (items: CasePage['items']): CasePage => ({
 beforeEach(() => {
   vi.clearAllMocks();
   queryClient.clear();
+  // The case list and read-only case view are the Coordinator's; a Specialist
+  // gets the dossier desk (see specialist-desk tests).
   startSession({
     accessToken: 'test-only',
     tokenType: 'Bearer',
     expiresIn: 60,
-    role: 'SPECIALIST',
+    role: 'COORDINATOR',
   });
 });
 function mount(entry: string) {

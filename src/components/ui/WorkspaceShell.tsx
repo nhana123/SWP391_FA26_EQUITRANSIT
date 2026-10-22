@@ -25,19 +25,25 @@ export function WorkspaceShell({
   home,
   links,
   navigationLabel,
+  aliases,
 }: {
   home: string;
   links: { to: string; label: string }[];
   navigationLabel: string;
+  /** Path prefixes that belong to a link without being listed, e.g. a hidden route. */
+  aliases?: Record<string, string>;
 }) {
   const [menu, setMenu] = useState(false);
   const location = useLocation();
   const focusRef = useRef<HTMLElement>(null);
   const session = useSession();
   const role = session?.role ?? 'CUSTOMER';
-  const active = [...links]
-    .sort((a, b) => b.to.length - a.to.length)
-    .find((link) => location.pathname === link.to || location.pathname.startsWith(`${link.to}/`));
+  const under = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const aliasTarget = Object.entries(aliases ?? {}).find(([path]) => under(path))?.[1];
+  const active =
+    [...links].sort((a, b) => b.to.length - a.to.length).find((link) => under(link.to)) ??
+    links.find((link) => link.to === aliasTarget);
   useEffect(() => {
     focusRef.current?.focus({ preventScroll: true });
   }, [location.pathname]);
@@ -63,6 +69,9 @@ export function WorkspaceShell({
               end={links.some(
                 (other) => other.to !== link.to && other.to.startsWith(`${link.to}/`),
               )}
+              className={({ isActive }) =>
+                isActive || link.to === aliasTarget ? 'active' : undefined
+              }
               onClick={() => setMenu(false)}
             >
               <Icon name={navigationIcon(link.to)} />

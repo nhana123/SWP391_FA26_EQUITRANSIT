@@ -24,6 +24,8 @@ import { staffDashboardLink, staffTaskLink } from '../activity-operations/routes
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { ComplianceLink } from '../compliance/link';
 import { SettlementPreviewLink } from '../settlement/navigation';
+import { SpecialistWorkspace } from '../compliance/SpecialistCompliancePage';
+import { DossierDesk } from '../specialist-desk/DossierDesk';
 import './assigned-cases.css';
 
 function parsePage(value: string | null) {
@@ -57,8 +59,22 @@ function StaffHeading({
   );
 }
 
-/** Same shell classes as FE1's customer workspace, kept in this module. */
+/**
+ * Same shell classes as FE1's customer workspace, kept in this module. A
+ * Specialist works from two places only — Overview and My Tasks (the dossier
+ * desk); case routes stay reachable and count as My Tasks.
+ */
 export function AssignedCasesLayout() {
+  const session = useSession();
+  if (session?.role === 'SPECIALIST')
+    return (
+      <WorkspaceShell
+        home="/staff/tasks"
+        navigationLabel="Staff navigation"
+        links={[staffDashboardLink, staffTaskLink]}
+        aliases={{ '/staff/cases': staffTaskLink.to }}
+      />
+    );
   return (
     <WorkspaceShell
       home="/staff/cases"
@@ -68,7 +84,13 @@ export function AssignedCasesLayout() {
   );
 }
 
+/** /staff/cases: the dossier desk for a Specialist, the case list for a Coordinator. */
 export function AssignedCasesPage() {
+  const session = useSession();
+  return session?.role === 'SPECIALIST' ? <DossierDesk /> : <CaseListPage />;
+}
+
+function CaseListPage() {
   const [params, setParams] = useSearchParams();
   const page = parsePage(params.get('page'));
   const query = useAssignedCases(page);
@@ -164,8 +186,43 @@ function MyAssignment({ current }: { current: ManagerCase }) {
   );
 }
 
+/** A Specialist opens the case as a two-page legal dossier; the case file is folded in. */
+function SpecialistCaseDossier({ current }: { current: ManagerCase }) {
+  const revision = current.revision;
+  return (
+    <>
+      <StaffHeading
+        title={`Case ${current.orderNumber}`}
+        description={
+          revision
+            ? `Open dossier · revision ${revision.revisionNo} submitted ${displayDate(revision.submittedAt)}`
+            : 'Open dossier · no submitted revision'
+        }
+      >
+        <Link to="/staff/tasks">Back to My Tasks</Link>
+      </StaffHeading>
+      <SpecialistWorkspace
+        orderId={current.orderId}
+        caseFile={
+          <>
+            <OrderLifecycle status={current.orderStatus} />
+            <MyAssignment current={current} />
+            <OrderTimeline orderId={current.orderId} />
+            {revision ? (
+              <SnapshotView snapshot={revision.snapshot} />
+            ) : (
+              <Notice>No submitted revision is available for this case.</Notice>
+            )}
+          </>
+        }
+      />
+    </>
+  );
+}
+
 export function AssignedCasePage() {
   const id = Number(useParams().id);
+  const session = useSession();
   const query = useAssignedCase(id);
   if (!Number.isSafeInteger(id) || id <= 0) return <Notice>This case is unavailable.</Notice>;
   // Check the error before data: a revoked assignment must hide the cached case.
@@ -191,6 +248,7 @@ export function AssignedCasePage() {
   if (query.isPending) return <Loading />;
   const current = query.data;
   const revision = current.revision;
+  if (session?.role === 'SPECIALIST') return <SpecialistCaseDossier current={current} />;
   return (
     <>
       <StaffHeading
