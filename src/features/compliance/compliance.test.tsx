@@ -271,18 +271,19 @@ describe('specialist legal compliance (#78)', () => {
       .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
       .mockResolvedValueOnce(receipt());
     const user = mount('SPECIALIST');
-    await user.click(await screen.findByRole('button', { name: 'Review HEALTH_CERTIFICATE' }));
-    const form = within(screen.getByRole('form', { name: 'Review HEALTH_CERTIFICATE' }));
-    expect(form.getByRole('heading')).toHaveTextContent('submission 102');
-    await user.click(form.getByRole('button', { name: 'Record review' }));
-    expect(form.getByText('Choose a decision.')).toBeInTheDocument();
-    await user.selectOptions(form.getByLabelText('Decision'), 'REJECTED');
-    await type(
-      user,
-      form.getByLabelText('Feedback to the customer (optional)'),
-      'Unreadable scan.',
+    await user.click(
+      await screen.findByRole('button', { name: 'Request changes to HEALTH_CERTIFICATE' }),
     );
-    await user.click(form.getByRole('button', { name: 'Record review' }));
+    const form = within(
+      screen.getByRole('form', { name: 'Request changes to HEALTH_CERTIFICATE' }),
+    );
+    expect(form.getByRole('heading')).toHaveTextContent('submission 102');
+    // A document sent back must say what to fix.
+    await user.click(form.getByRole('button', { name: 'Send back to the customer' }));
+    expect(form.getByText('This field is required.')).toBeInTheDocument();
+    expect(complianceApi.review).not.toHaveBeenCalled();
+    await type(user, form.getByLabelText('Reason for the customer'), 'Unreadable scan.');
+    await user.click(form.getByRole('button', { name: 'Send back to the customer' }));
     await user.click(await form.findByRole('button', { name: 'Retry the same action' }));
     await waitFor(() => expect(complianceApi.review).toHaveBeenCalledTimes(2));
     const [first, second] = vi.mocked(complianceApi.review).mock.calls;
@@ -297,6 +298,42 @@ describe('specialist legal compliance (#78)', () => {
         feedback: 'Unreadable scan.',
       },
     ]);
+  });
+
+  it('passes a submitted document in one click and shows the file the customer sent', async () => {
+    vi.mocked(complianceApi.overview).mockResolvedValue(
+      overview({ requirements: [requirement({ submissionId: 102, documentVersionId: 103 })] }),
+    );
+    vi.mocked(complianceApi.review).mockResolvedValue(receipt());
+    const user = mount('SPECIALIST');
+    const docs = await screen.findByRole('list', { name: 'Required documents' });
+    expect(await within(docs).findByText('v2 · expires 2027-03-01')).toBeInTheDocument();
+    expect(
+      within(docs).getByRole('button', { name: "View the customer's file" }),
+    ).toBeInTheDocument();
+    const approve = within(within(docs).getByRole('form', { name: 'Approve HEALTH_CERTIFICATE' }));
+    await user.click(approve.getByRole('button', { name: 'Approve (Pass)' }));
+    await waitFor(() => expect(complianceApi.review).toHaveBeenCalledTimes(1));
+    expect(complianceApi.review).toHaveBeenCalledWith(9, 102, {
+      recordVersion: '00000000000000a1',
+      operationId: expect.any(String),
+      decision: 'APPROVED',
+      feedback: null,
+    });
+  });
+
+  it('says plainly when a recorded phase needs no documents', async () => {
+    vi.mocked(complianceApi.overview).mockResolvedValue(
+      overview({
+        requirements: [],
+        totalElements: 0,
+        readiness: { ...overview().readiness, blockers: ['PHASE_CLEARANCE_PENDING'] },
+      }),
+    );
+    mount('SPECIALIST');
+    expect(await screen.findByText(/No extra documents are required/)).toBeInTheDocument();
+    expect(screen.queryByText(/No required documents yet/)).toBeNull();
+    expect(screen.getByRole('region', { name: /^Step 3/ })).toHaveClass('ready');
   });
 
   it('records an approval only with uploaded evidence, then prefills its key', async () => {
@@ -320,8 +357,10 @@ describe('specialist legal compliance (#78)', () => {
     );
     vi.mocked(complianceApi.procedure).mockResolvedValue(receipt('00000000000000a3'));
     const user = mount('SPECIALIST');
+    // The authority decision opens on the document card that needs it.
+    await user.click(await screen.findByRole('button', { name: 'Record authority decision' }));
     const decision = within(await screen.findByRole('form', { name: 'Record authority decision' }));
-    await user.selectOptions(decision.getByLabelText('Rule'), '101');
+    expect(decision.getByLabelText('Rule')).toHaveValue('101');
     await user.selectOptions(decision.getByLabelText('Recorded decision'), 'APPROVED');
     await type(user, decision.getByLabelText('Authority name'), 'Competent authority');
     await type(user, decision.getByLabelText('Application reference'), 'AUTH-1');
@@ -366,6 +405,11 @@ describe('specialist legal compliance (#78)', () => {
   it('records NOT_REQUIRED quarantine with null days and explicit counts', async () => {
     vi.mocked(complianceApi.assess).mockResolvedValue(receipt());
     const user = mount('SPECIALIST');
+    // Opened from the reference sheet only; no duplicate bar at the bottom.
+    expect(screen.queryByRole('form', { name: 'Record assessment' })).toBeNull();
+    await user.click(
+      await screen.findByRole('button', { name: 'Veterinary & quarantine assessment' }),
+    );
     const form = within(await screen.findByRole('form', { name: 'Record assessment' }));
     expect(await screen.findByText(/visits Pending, tests Pending/)).toBeInTheDocument();
     await user.selectOptions(form.getByLabelText('Quarantine'), 'NOT_REQUIRED');
@@ -398,6 +442,27 @@ describe('specialist legal compliance (#78)', () => {
       'Pending',
     );
     expect(vi.mocked(complianceApi.clear).mock.calls[0][1]).toMatchObject({ phase: 'PRE_EXPORT' });
+  });
+
+  it('fills the clearance expiry from the earliest current evidence', async () => {
+    vi.mocked(complianceApi.overview).mockResolvedValue(
+      overview({
+        readiness: {
+          ...overview().readiness,
+          blockers: ['PHASE_CLEARANCE_PENDING'],
+          expiresAt: '2027-03-02T00:00:00Z',
+        },
+      }),
+    );
+    vi.mocked(complianceApi.clear).mockResolvedValue(receipt());
+    const user = mount('SPECIALIST');
+    const form = within(await screen.findByRole('form', { name: 'Clear Pre-export' }));
+    await user.click(form.getByRole('button', { name: 'Clear pre-export' }));
+    await waitFor(() => expect(complianceApi.clear).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(complianceApi.clear).mock.calls[0][1]).toMatchObject({
+      phase: 'PRE_EXPORT',
+      expiresAt: '2027-03-02T07:00:00+07:00',
+    });
   });
 
   it('is limited to the specialist', () => {

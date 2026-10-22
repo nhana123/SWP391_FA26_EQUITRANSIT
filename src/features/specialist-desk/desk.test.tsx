@@ -295,21 +295,34 @@ describe('open two-page dossier', () => {
       'Step 2: Required documents',
       'Step 3: Clear the pre-export phase',
     ]);
-    // Checklist exists → folded into a summary with an edit button.
+    // Checklist exists → folded into a summary with a change button.
     expect(within(steps[0]).queryByRole('form', { name: 'Assess route checklist' })).toBeNull();
-    await user.click(within(steps[0]).getByRole('button', { name: 'Edit Route Checklist' }));
+    expect(steps[0]).toHaveTextContent('Route checklist recorded · VN → US');
+    await user.click(within(steps[0]).getByRole('button', { name: 'Change route' }));
     expect(
       within(steps[0]).getByRole('form', { name: 'Assess route checklist' }),
     ).toBeInTheDocument();
 
-    // A review form appears on its sheet only after acting on it.
+    // Pass is one click on the card; the reason form opens only when sending back.
     const docs = within(steps[1]).getByRole('list', { name: 'Required documents' });
-    expect(within(docs).queryByRole('form')).toBeNull();
-    await user.click(within(docs).getByRole('button', { name: 'Review HEALTH_CERTIFICATE' }));
     expect(
-      within(docs).getByRole('form', { name: 'Review HEALTH_CERTIFICATE' }),
+      within(docs).getByRole('form', { name: 'Approve HEALTH_CERTIFICATE' }),
     ).toBeInTheDocument();
+    expect(
+      within(docs).queryByRole('form', { name: 'Request changes to HEALTH_CERTIFICATE' }),
+    ).toBeNull();
+    await user.click(
+      within(docs).getByRole('button', { name: 'Request changes to HEALTH_CERTIFICATE' }),
+    );
+    expect(
+      within(docs).getByRole('form', { name: 'Request changes to HEALTH_CERTIFICATE' }),
+    ).toBeInTheDocument();
+    // Step 3 waits for the documents and says so in one line.
+    expect(steps[2]).toHaveClass('waiting');
+    expect(steps[2]).toHaveTextContent('Approve every required document in step 2 first.');
     expect(within(steps[2]).getByRole('form', { name: 'Clear Pre-export' })).toBeInTheDocument();
+    // The phase is switched from the stamps only: no second tab bar.
+    expect(screen.queryByRole('navigation', { name: 'Compliance phases' })).toBeNull();
     // The case file stays available, read-only.
     expect(screen.getByText('Check export rules')).toBeInTheDocument();
   });
@@ -321,6 +334,16 @@ describe('open two-page dossier', () => {
     );
     const user = mount('/staff/cases/7');
     const form = within(await screen.findByRole('form', { name: 'Assess route checklist' }));
+    // Direct is the default; the technical fields stay folded until asked for.
+    expect(form.getByRole('button', { name: 'Direct' })).toHaveAttribute('aria-pressed', 'true');
+    expect(form.queryByLabelText('Source reference')).toBeNull();
+    expect(
+      within(screen.getByRole('region', { name: /^Step 2/ })).getByText(
+        /Record the route checklist in step 1 first/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No extra documents are required/)).toBeNull();
+    await user.click(form.getByRole('button', { name: 'Advanced options' }));
     await waitFor(() =>
       expect(form.getByLabelText('Source reference')).toHaveValue(
         'Sourced rules for VN → US, pre-export phase, checked by the assigned specialist.',
@@ -333,7 +356,7 @@ describe('open two-page dossier', () => {
     expect(form.getByLabelText('Transit countries')).toHaveValue('SG, QA');
     await user.click(form.getByRole('button', { name: 'SG' }));
     expect(form.getByLabelText('Transit countries')).toHaveValue('QA');
-    await user.click(form.getByRole('button', { name: 'Direct (empty)' }));
+    await user.click(form.getByRole('button', { name: 'Direct' }));
     expect(form.getByLabelText('Transit countries')).toHaveValue('');
     expect(screen.getByText(/has no route checklist yet/)).toBeInTheDocument();
   });

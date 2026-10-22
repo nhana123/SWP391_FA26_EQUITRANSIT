@@ -160,7 +160,8 @@ export function validateReview(f: {
 }): Result<ReviewInput> {
   const e: FieldErrors = {};
   if (!f.decision) e.decision = 'Choose a decision.';
-  const feedback = text(e, 'feedback', f.feedback, 2000, false);
+  // A document sent back must tell the customer what to fix.
+  const feedback = text(e, 'feedback', f.feedback, 2000, f.decision === 'REJECTED');
   return done({ decision: f.decision as LegalDecision, feedback: feedback || null }, e);
 }
 
