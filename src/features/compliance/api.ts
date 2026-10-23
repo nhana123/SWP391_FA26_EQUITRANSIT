@@ -21,6 +21,7 @@ import {
   type RuleInput,
   type SubmissionInput,
   type UploadInput,
+  type UploadSubmitInput,
 } from './contracts';
 
 export const COMPLIANCE_PAGE_SIZE = 20;
@@ -75,6 +76,12 @@ export const complianceApi = {
   upload: (orderId: number, body: Command<UploadInput>) => post(`${base(orderId)}/documents`, body),
   submit: (orderId: number, requirementId: number, body: Command<SubmissionInput>) =>
     post(`${base(orderId)}/requirements/${id(requirementId)}/submissions`, body),
+  /** One transaction: stores the file, creates the version and submits it. */
+  uploadAndSubmit: (orderId: number, requirementId: number, body: Command<UploadSubmitInput>) =>
+    request(`${base(orderId)}/requirements/${id(requirementId)}/upload-and-submit`, receiptSchema, {
+      method: 'POST',
+      body,
+    }),
   // Assigned Specialist
   rule: (orderId: number, body: Command<RuleInput>) => post(`${base(orderId)}/rules`, body),
   checklist: (orderId: number, body: Command<ChecklistInput>) =>

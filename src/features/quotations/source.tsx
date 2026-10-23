@@ -178,7 +178,7 @@ export function SupplierOfferForm({
         Internal only. The purchase price is never shown to customers and is not kept after
         recording. An offer is a priced source, not a reservation.
       </p>
-      <CommercialError error={command.error} backTo="/staff">
+      <CommercialError error={command.error} backTo="/staff" overrides={offerHelp}>
         {code && offerHelp[code] && <p>{offerHelp[code]}</p>}
         {(command.conflict || command.frozen) && (
           <button

@@ -12,15 +12,17 @@ export function CommercialError({
   backTo,
   reload,
   children,
+  overrides,
 }: {
   error: unknown;
   backTo: string;
   reload?: () => void;
   children?: ReactNode;
+  overrides?: Record<string, string>;
 }) {
   const status = error instanceof ApiError ? error.status : undefined;
   return (
-    <ErrorNotice error={error}>
+    <ErrorNotice error={error} overrides={overrides}>
       {children}
       {status === 403 && (
         <p>

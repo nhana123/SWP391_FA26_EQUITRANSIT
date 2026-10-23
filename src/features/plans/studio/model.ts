@@ -68,6 +68,8 @@ export type Wire = {
   vehicleId?: number | null;
   driverStaffId?: number | null;
   flightNumber?: string | null;
+  /** AIR only: surveyed fare in USD as typed; sent with the graph draft. */
+  estimatedAirfare?: string | null;
   stallEquipmentId?: number | null;
   assignedToCurrentDriver?: boolean;
   actualDeparture?: string | null;

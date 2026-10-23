@@ -31,6 +31,15 @@ export const readinessSchema = z.object({
   status: z.enum(['PENDING', 'READY']),
   blockers: z.array(z.string()),
 });
+export const attachmentSchema = z.object({
+  fileKey: text,
+  fileName: z.string(),
+  contentType: z.string(),
+  fileSizeBytes: z.number().int().nonnegative(),
+  referenceNumber: text,
+  expiresAt: text,
+});
+export type Attachment = z.infer<typeof attachmentSchema>;
 export const requirementSchema = z.object({
   requirementId: idSchema,
   ruleId: idSchema,
@@ -47,6 +56,8 @@ export const requirementSchema = z.object({
   instructions: text,
   // The Specialist's note on the latest review; older servers omit it.
   feedback: text,
+  // The latest submitted file, when the server reports it.
+  attachment: attachmentSchema.nullish().transform((v) => v ?? null),
 });
 export const overviewSchema = z.object({
   revisionId: idSchema,
@@ -155,6 +166,11 @@ export type UploadInput = FileInput & {
   documentNumber: string | null;
 };
 export type SubmissionInput = { documentVersionId: number };
+/** Flat one-step upload + submit: the BE takes no nested `command`. */
+export type UploadSubmitInput = FileInput & {
+  expiresAt: string;
+  referenceNumber: string | null;
+};
 export type ReviewInput = { decision: LegalDecision; feedback: string | null };
 export type AuthorityInput = {
   ruleId: number;

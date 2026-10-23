@@ -150,6 +150,8 @@ export function compileBody(
         connectionBufferMinutes: nodes[i].dwellMinutes,
         restDurationMinutes: nodes[i].nodeType === 'REST_STOP' ? nodes[i].dwellMinutes : null,
         careInstructions: null,
+        estimatedAirfare:
+          w.transportMode === 'AIR' && w.estimatedAirfare ? Number(w.estimatedAirfare) : null,
       })),
     },
     checkpointNodes: nodes,

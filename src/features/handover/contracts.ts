@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema } from '../../shared/api/contracts';
+import { idSchema, versionSchema } from '../../shared/api/contracts';
 
 // Mirrors BE F14 DTOs (dto/handover, commit 3d6dd6d). Writes carry no
 // operationId or recordVersion; the server cannot de-duplicate a retry.
@@ -124,6 +124,36 @@ export const completionSchema = z.object({
   quarantineReleaseVerified: z.boolean(),
 });
 export type Completion = z.infer<typeof completionSchema>;
+
+export const filePurposes = [
+  'HANDOVER_SIGNATURE',
+  'HANDOVER_PHOTO',
+  'ACTUAL_COST_EVIDENCE',
+] as const;
+export type FilePurpose = (typeof filePurposes)[number];
+/** Private handover evidence; customers never receive ACTUAL_COST_EVIDENCE. */
+export const handoverFileSchema = z.object({
+  fileKey: z.string(),
+  purpose: z.enum(filePurposes),
+  contentType: z.string(),
+  fileName: z.string(),
+  contentBase64: z.string(),
+});
+export type HandoverFile = z.infer<typeof handoverFileSchema>;
+export interface HandoverFileInput {
+  fileName: string;
+  contentType: string;
+  purpose: FilePurpose;
+  contentBase64: string;
+}
+export const closureSchema = z.object({
+  orderId: idSchema,
+  orderStatus: z.string(),
+  recordVersion: versionSchema,
+  operationId: z.string(),
+  updatedAt: time,
+});
+export type Closure = z.infer<typeof closureSchema>;
 
 export const costSchema = z.object({
   costId: idSchema,

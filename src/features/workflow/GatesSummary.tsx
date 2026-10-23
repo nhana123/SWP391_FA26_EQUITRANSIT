@@ -9,6 +9,10 @@ import { departureApi } from '../departure/api';
 import { departurePath } from '../departure/DeparturePage';
 import './workflow.css';
 
+/** Shared by every read-only view of departure readiness. */
+export const gatesKey = (generation: string, orderId: number) =>
+  [...queryKeys.session(generation), 'gates-summary', orderId] as const;
+
 const gates = [
   { key: 'financialGate', label: 'Financial gate', owner: 'Manager reconciles payments' },
   { key: 'legalGate', label: 'Legal gate', owner: 'Specialist clears the legal phases' },
@@ -22,7 +26,7 @@ const gates = [
 export function GatesSummary({ orderId }: { orderId: number }) {
   const session = useSession()!;
   const query = useQuery({
-    queryKey: [...queryKeys.session(session.generation), 'gates-summary', orderId],
+    queryKey: gatesKey(session.generation, orderId),
     queryFn: ({ signal }) => departureApi.get(orderId, signal),
     retry: false,
     staleTime: 0,

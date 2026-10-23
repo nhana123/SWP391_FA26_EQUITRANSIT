@@ -239,7 +239,7 @@ function ProbeForm({
       {schemaPending(action.error) ? (
         <DeploymentNotice />
       ) : (
-        <ErrorNotice error={action.error}>
+        <ErrorNotice error={action.error} overrides={probeHelp}>
           {code && probeHelp[code] && <p>{probeHelp[code]}</p>}
           {code === 'RESOURCE_REVISION_CONFLICT' && (
             <button type="button" onClick={onReload}>

@@ -8,6 +8,7 @@ import type {
   ReviewInput,
   RuleInput,
   UploadInput,
+  UploadSubmitInput,
   Applicability,
   AuthorityDecision,
   LegalDecision,
@@ -79,6 +80,35 @@ export function validateUpload(f: UploadForm): Result<UploadInput> {
       issuedDate: f.issuedDate,
       expiryDate: f.expiryDate,
       documentNumber: documentNumber || null,
+    },
+    e,
+  );
+}
+
+/**
+ * One-step upload and submit. The expiry is a calendar date, sent as the end of
+ * that day in UTC+07:00 so it stays on the chosen date for the server.
+ */
+export function validateUploadSubmit(
+  f: {
+    file: FileInput | null;
+    fileProblem: string | null;
+    expiryDate: string;
+    referenceNumber: string;
+  },
+  today = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10),
+): Result<UploadSubmitInput> {
+  const e: FieldErrors = {};
+  if (f.fileProblem) e.file = f.fileProblem;
+  else if (!f.file) e.file = 'Choose a PDF, PNG or JPEG file.';
+  if (!localDate(f.expiryDate)) e.expiryDate = 'Use a date like 2027-03-01.';
+  else if (f.expiryDate <= today) e.expiryDate = 'The document must still be valid after today.';
+  const referenceNumber = text(e, 'referenceNumber', f.referenceNumber, 50, false);
+  return done(
+    {
+      ...(f.file ?? { fileName: '', contentType: '', contentBase64: '' }),
+      expiresAt: `${f.expiryDate}T23:59:00+07:00`,
+      referenceNumber: referenceNumber || null,
     },
     e,
   );

@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { type FieldErrors } from '../../shared/lib/validation';
+import { displayDate, type FieldErrors } from '../../shared/lib/validation';
 import { DateInput } from '../../shared/ui/DateTimeInput';
 import { Field, Loading } from '../../shared/ui/common';
 import { complianceApi } from './api';
@@ -10,7 +10,7 @@ import { acceptedTypes, fileProblem, readFile } from './files';
 import { CommandForm, useOverview, usePinnedVersion, type Pinned } from './hooks';
 import { legalStatuses } from './link';
 import { schemaPending, StaleBanner } from './shared';
-import { validateUpload } from './validation';
+import { validateUploadSubmit } from './validation';
 import './compliance.css';
 
 type Step = 'ACTION' | 'REVIEW' | 'PASSED' | 'RESUBMIT';
@@ -22,6 +22,8 @@ const steps: Record<Step, { label: string; badge: string }> = {
 };
 /** Where one required document stands from the customer's side. */
 export function customerStep(r: Requirement): Step {
+  // An expired or revoked document needs a new version whatever its review said.
+  if (r.status === 'EXPIRED' || r.status === 'REVOKED') return 'RESUBMIT';
   if (!r.submissionId) return 'ACTION';
   if (!r.decision) return 'REVIEW';
   return r.decision === 'APPROVED' ? 'PASSED' : 'RESUBMIT';
@@ -30,10 +32,9 @@ const readable = (code: string) =>
   code.charAt(0) + code.slice(1).toLowerCase().replaceAll('_', ' ');
 
 /**
- * Uploads the file as a new version of the required type and submits exactly
- * that version to the requirement, as one customer action. A retry after an
- * uncertain failure repeats both writes with the same operation IDs, so the
- * server replays instead of recording twice.
+ * Stores the file, creates its version and submits it to the requirement in
+ * one server transaction. A retry after an uncertain failure resends the same
+ * operation ID, so the server replays instead of recording twice.
  */
 function SendDocumentForm({
   orderId,
@@ -48,13 +49,10 @@ function SendDocumentForm({
 }) {
   const [file, setFile] = useState<FileInput | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [issuedDate, setIssuedDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
-  const [documentNumber, setDocumentNumber] = useState('');
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [reading, setReading] = useState(false);
-  // Upload operation ID → the submit operation ID paired with it.
-  const submitIds = useRef(new Map<string, string>());
   async function choose(selected: File | undefined) {
     setFile(null);
     if (!selected) return setProblem(null);
@@ -78,24 +76,13 @@ function SendDocumentForm({
       submitLabel="Send to the Specialist"
       busy={reading}
       fieldErrors={errors}
-      send={async (body) => {
-        const uploaded = await complianceApi.upload(orderId, body);
-        const operationId = submitIds.current.get(body.operationId) ?? crypto.randomUUID();
-        submitIds.current.set(body.operationId, operationId);
-        return complianceApi.submit(orderId, requirement.requirementId, {
-          documentVersionId: uploaded.entityId,
-          recordVersion: uploaded.recordVersion,
-          operationId,
-        });
-      }}
+      send={(body) => complianceApi.uploadAndSubmit(orderId, requirement.requirementId, body)}
       build={() => {
-        const result = validateUpload({
-          documentType: requirement.documentType,
+        const result = validateUploadSubmit({
           file,
           fileProblem: problem,
-          issuedDate,
           expiryDate,
-          documentNumber,
+          referenceNumber,
         });
         setErrors(result.errors);
         return result.input;
@@ -119,19 +106,20 @@ function SendDocumentForm({
                 />
               )}
             </Field>
-            <Field label="Issued date" error={fields.issuedDate}>
-              {(id) => <DateInput id={id} value={issuedDate} onChange={setIssuedDate} />}
-            </Field>
-            <Field label="Expiry date" error={fields.expiryDate}>
+            <Field
+              label="Valid until"
+              hint="The expiry date printed on the document."
+              error={fields.expiryDate ?? fields.expiresAt}
+            >
               {(id) => <DateInput id={id} value={expiryDate} onChange={setExpiryDate} />}
             </Field>
-            <Field label="Document number (optional)" error={fields.documentNumber}>
+            <Field label="Certificate number (optional)" error={fields.referenceNumber}>
               {(id) => (
                 <input
                   id={id}
                   maxLength={50}
-                  value={documentNumber}
-                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  value={referenceNumber}
+                  onChange={(e) => setReferenceNumber(e.target.value)}
                 />
               )}
             </Field>
@@ -173,12 +161,24 @@ function PhaseList({
               <StatusBadge status={steps[step].badge}>{steps[step].label}</StatusBadge>
             </div>
             {r.instructions && <p className="muted">{r.instructions}</p>}
-            {step === 'RESUBMIT' && (
-              <p className="legal-feedback" role="note">
-                <strong>Specialist's note:</strong>{' '}
-                {r.feedback ?? 'This version was not accepted. Send a new version.'}
+            {r.attachment && (
+              <p className="muted">
+                Sent: {r.attachment.fileName}
+                {r.attachment.expiresAt && ` · valid until ${displayDate(r.attachment.expiresAt)}`}
               </p>
             )}
+            {step === 'RESUBMIT' &&
+              (r.status === 'EXPIRED' || r.status === 'REVOKED' ? (
+                <p className="legal-feedback" role="note">
+                  This document is {r.status === 'EXPIRED' ? 'no longer valid' : 'revoked'}. Send a
+                  current version.
+                </p>
+              ) : (
+                <p className="legal-feedback" role="note">
+                  <strong>Specialist's note:</strong>{' '}
+                  {r.feedback ?? 'This version was not accepted. Send a new version.'}
+                </p>
+              ))}
             {actionable &&
               (open === r.requirementId ? (
                 <SendDocumentForm

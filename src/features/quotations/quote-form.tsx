@@ -133,7 +133,7 @@ export function QuoteForm({
         source stays pending and the total stays empty until resolved. Approval and issue are
         separate Manager steps.
       </p>
-      <CommercialError error={command.error} backTo="/staff">
+      <CommercialError error={command.error} backTo="/staff" overrides={prepareHelp}>
         {code && prepareHelp[code] && <p>{prepareHelp[code]}</p>}
         {(command.conflict || command.frozen) && (
           <button

@@ -2,13 +2,16 @@ import { z } from 'zod';
 import { ApiError, request } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
 import {
+  closureSchema,
   completionSchema,
   costSchema,
   customerHandoverSchema,
+  handoverFileSchema,
   handoverSchema,
   profitabilitySchema,
   type CostInput,
   type Decision,
+  type HandoverFileInput,
   type HandoverInput,
   type IntermediateType,
 } from './contracts';
@@ -52,6 +55,24 @@ export const handoverApi = {
     request(`/api/coordinator/plans/${id(planId)}/actual-costs`, costSchema, {
       method: 'POST',
       body,
+    }),
+  /** Flat payload, no version or operation ID; returns the stored file and its key. */
+  uploadFile: (orderId: number, body: HandoverFileInput) =>
+    request(`/api/transport-orders/${id(orderId)}/handover-files`, handoverFileSchema, {
+      method: 'POST',
+      body,
+    }),
+  file: (orderId: number, fileKey: string, signal?: AbortSignal) =>
+    request(
+      `/api/transport-orders/${id(orderId)}/handover-files/${encodeURIComponent(fileKey)}`,
+      handoverFileSchema,
+      { signal },
+    ),
+  /** Manager only: DELIVERED → CLOSED against the reviewed order version. */
+  closeOrder: (orderId: number, command: { recordVersion: string; operationId: string }) =>
+    request(`/api/transport-orders/${id(orderId)}/handovers/close-order`, closureSchema, {
+      method: 'POST',
+      body: command,
     }),
   profitability: (planId: number, signal?: AbortSignal) =>
     request(`/api/manager/plans/${id(planId)}/profitability`, profitabilitySchema, { signal }),

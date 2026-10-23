@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
+import { errorHelpFor } from '../../shared/api/error-codes';
 
 // Source-backed F07 codes. Do not echo bank account/notes/proof bytes in errors.
 const help: Record<string, string> = {
@@ -49,7 +50,8 @@ export function PaymentError({ error, backTo }: { error: unknown; backTo?: strin
       <p>
         {api?.code && Object.hasOwn(help, api.code)
           ? help[api.code]
-          : messages[api?.status ?? 0] ||
+          : errorHelpFor(api?.code) ||
+            messages[api?.status ?? 0] ||
             'The payment service could not complete this request. Your input is kept.'}
       </p>
       {backTo && accessDenied(error) && <Link to={backTo}>Back to requests</Link>}

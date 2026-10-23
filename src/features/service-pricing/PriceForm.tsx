@@ -37,7 +37,7 @@ const conflictHelp: Record<string, string> = {
 function PriceError({ error }: { error: unknown }) {
   const code = error instanceof ApiError ? error.code : undefined;
   return (
-    <ErrorNotice error={error}>
+    <ErrorNotice error={error} overrides={conflictHelp}>
       {code && conflictHelp[code] && <p>{conflictHelp[code]}</p>}
       {error instanceof ApiError && error.status === 503 && (
         <p>Deployment blocked: price management requires database migration 006.</p>

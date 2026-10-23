@@ -148,6 +148,7 @@ const overview = (blockers: string[], patch: Partial<Overview> = {}): Overview =
       decision: null,
       instructions: 'Upload the full certificate.',
       feedback: null,
+      attachment: null,
     },
   ],
   page: 0,

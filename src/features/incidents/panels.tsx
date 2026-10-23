@@ -57,7 +57,7 @@ export function useWrite(reload: () => Promise<unknown>, help: Record<string, st
       });
     },
     notice: (
-      <ErrorNotice error={action.error}>
+      <ErrorNotice error={action.error} overrides={help}>
         {code && help[code] && <p>{help[code]}</p>}
         {unknown && (
           <>

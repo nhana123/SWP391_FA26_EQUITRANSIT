@@ -13,7 +13,7 @@ import { startSession } from '../../shared/api/session';
 
 vi.mock('./api', () => ({
   COMPLIANCE_PAGE_SIZE: 20,
-  complianceApi: { overview: vi.fn(), upload: vi.fn(), submit: vi.fn() },
+  complianceApi: { overview: vi.fn(), upload: vi.fn(), submit: vi.fn(), uploadAndSubmit: vi.fn() },
 }));
 
 const requirement = (patch: Partial<Requirement>): Requirement => ({
@@ -27,6 +27,7 @@ const requirement = (patch: Partial<Requirement>): Requirement => ({
   decision: null,
   instructions: null,
   feedback: null,
+  attachment: null,
   ...patch,
 });
 const overview = (phase: Phase, requirements: Requirement[]): Overview => ({
@@ -124,9 +125,8 @@ describe('customer legal documents checklist on the request page', () => {
     expect(screen.getByText('2 to send')).toBeInTheDocument();
   });
 
-  it('uploads and submits the exact new version in one action, retrying identically', async () => {
-    vi.mocked(complianceApi.upload).mockResolvedValue(receipt(103, '00000000000000a2'));
-    vi.mocked(complianceApi.submit)
+  it('sends the file in one upload-and-submit call, retrying identically', async () => {
+    vi.mocked(complianceApi.uploadAndSubmit)
       .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
       .mockResolvedValueOnce(receipt(500, '00000000000000a3'));
     const user = mount();
@@ -138,33 +138,67 @@ describe('customer legal documents checklist on the request page', () => {
       form.getByLabelText('File'),
       new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
     );
-    setDate(form.getByLabelText('Issued date'), '2026-10-01');
-    setDate(form.getByLabelText('Expiry date'), '2027-03-01');
+    setDate(form.getByLabelText('Valid until'), '2099-03-01');
+    await user.type(form.getByLabelText('Certificate number (optional)'), 'CERT-1');
     await waitFor(() =>
       expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeEnabled(),
     );
     await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
     await user.click(await form.findByRole('button', { name: 'Retry the same action' }));
-    await waitFor(() => expect(complianceApi.submit).toHaveBeenCalledTimes(2));
-    const [upload1, upload2] = vi.mocked(complianceApi.upload).mock.calls;
-    expect(upload2).toEqual(upload1);
-    expect(upload1[1]).toMatchObject({
-      documentType: 'HEALTH_CERTIFICATE',
-      recordVersion: '00000000000000a1',
-      fileName: 'cert.pdf',
-    });
-    const [submit1, submit2] = vi.mocked(complianceApi.submit).mock.calls;
-    expect(submit2).toEqual(submit1);
-    expect(submit1).toEqual([
+    await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(2));
+    const [first, second] = vi.mocked(complianceApi.uploadAndSubmit).mock.calls;
+    expect(second).toEqual(first);
+    // Flat payload: the base64 has no data: prefix and nothing is nested in "command".
+    expect(first).toEqual([
       9,
       44,
       {
-        documentVersionId: 103,
-        recordVersion: '00000000000000a2',
+        fileName: 'cert.pdf',
+        contentType: 'application/pdf',
+        contentBase64: 'AQ==',
+        expiresAt: '2099-03-01T23:59:00+07:00',
+        referenceNumber: 'CERT-1',
+        recordVersion: '00000000000000a1',
         operationId: expect.any(String),
       },
     ]);
-    expect(submit1[2].operationId).not.toBe(upload1[1].operationId);
+    expect(complianceApi.upload).not.toHaveBeenCalled();
+    expect(complianceApi.submit).not.toHaveBeenCalled();
+  });
+
+  it('asks for a current version when a submitted document expired', async () => {
+    vi.mocked(complianceApi.overview).mockImplementation((_o, phase) =>
+      Promise.resolve(
+        overview(
+          phase,
+          phase === 'PRE_EXPORT'
+            ? [
+                requirement({
+                  status: 'EXPIRED',
+                  submissionId: 9,
+                  documentVersionId: 90,
+                  decision: 'APPROVED',
+                  attachment: {
+                    fileKey: null,
+                    fileName: 'old-cert.pdf',
+                    contentType: 'application/pdf',
+                    fileSizeBytes: 10,
+                    referenceNumber: null,
+                    expiresAt: '2026-01-01T00:00:00Z',
+                  },
+                }),
+              ]
+            : [],
+        ),
+      ),
+    );
+    mount();
+    const item = (await screen.findByRole('list', { name: 'Pre-export documents' })).firstChild;
+    expect(item).toHaveTextContent('Sent: old-cert.pdf');
+    expect(item).toHaveTextContent('This document is no longer valid. Send a current version.');
+    expect(
+      screen.getByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
+    ).toHaveTextContent('Send a new version');
   });
 
   it('says the documents are not listed yet before the route checklist', async () => {

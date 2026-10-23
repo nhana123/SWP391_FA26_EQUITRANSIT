@@ -132,7 +132,7 @@ function CommandForm<T>({
   return (
     <form className="card" onSubmit={submit} noValidate aria-label={label}>
       <h3>{label}</h3>
-      <ErrorNotice error={command.error}>
+      <ErrorNotice error={command.error} overrides={errorHelp}>
         {code && errorHelp[code] && <p>{errorHelp[code]}</p>}
         {command.frozen && !command.pending && (
           <p>
@@ -584,7 +584,7 @@ function Workspace({ orderId }: { orderId: number }) {
   if (query.isPending) return <Loading />;
   if (query.error && !query.data)
     return (
-      <ErrorNotice error={query.error}>
+      <ErrorNotice error={query.error} overrides={errorHelp}>
         {query.error instanceof ApiError && query.error.code && errorHelp[query.error.code] && (
           <p>{errorHelp[query.error.code]}</p>
         )}
