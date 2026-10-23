@@ -6,6 +6,7 @@ import { useSession } from '../../../shared/api/session';
 import { ApiError } from '../../../shared/api/client';
 import { ErrorNotice } from '../../../shared/ui/common';
 import { plansApi } from '../api';
+import { resourcesApi } from '../../resources/api';
 import { planKeys, usePinnedVersion } from '../hooks';
 import { ConfirmForm, InsuranceForm, QuarantineForm } from '../forms';
 import type { PlanDetail } from '../contracts';
@@ -13,7 +14,9 @@ import { JourneyStudioCanvas, type Selection } from './JourneyStudioCanvas';
 import { compileBody, fromGraph, graphApi, type GraphView } from './graphApi';
 import {
   cascade,
+  distanceSourceFor,
   emptyJourney,
+  estimateArrival,
   graphErrors,
   internationalTemplate,
   latestRecordedProgress,
@@ -23,14 +26,16 @@ import {
   nodeKinds,
   offsetTime,
   ordered,
+  seededJourney,
   showTime,
   type Checkpoint,
   type Journey,
   type NodeDetails,
+  type StudioContext,
   type Wire,
 } from './model';
 import { ResourceAttachment } from './ResourceAttachment';
-import { SupplierPicker } from './SupplierPicker';
+import { CatalogPicker, SupplierPicker } from './SupplierPicker';
 import './studio.css';
 
 type Props = {
@@ -40,7 +45,18 @@ type Props = {
   recordVersion?: string;
   canCompile?: boolean;
   mode: 'edit' | 'driver' | 'customer';
-  onSaved?: (planId: number) => void;
+  /** Request facts a new journey starts from: pickup, delivery and departure. */
+  context?: StudioContext;
+  /** Vehicles chosen while drafting, by leg sequence; the driver is chosen per saved leg. */
+  vehiclePicks?: VehiclePicks;
+  onSaved?: (planId: number, vehiclePicks: VehiclePicks) => void;
+};
+export type VehiclePicks = Record<number, number>;
+type Pick = {
+  sequenceNo: number;
+  vehicleId: number | null;
+  stallId: number | null;
+  supplierId: number | null;
 };
 function Field({
   label,
@@ -383,11 +399,15 @@ export function JourneyStudio({
   recordVersion,
   mode,
   canCompile = true,
+  context,
+  vehiclePicks = {},
   onSaved,
 }: Props) {
   const session = useSession();
   const workspace = useRef<HTMLDivElement>(null);
-  const [journey, setJourney] = useState<Journey>(emptyJourney),
+  const [journey, setJourney] = useState<Journey>(() =>
+      planId ? emptyJourney() : seededJourney(context),
+    ),
     [selection, select] = useState<Selection>(null);
   const [seenGraph, setSeenGraph] = useState<GraphView | null>(null),
     [fork, setFork] = useState(false),
@@ -397,7 +417,7 @@ export function JourneyStudio({
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState('');
   const [frozen, setFrozen] = useState<
-    | { kind: 'compile'; body: ReturnType<typeof compileBody> }
+    | { kind: 'compile'; body: ReturnType<typeof compileBody>; picks: Pick[] }
     | { kind: 'layout'; journey: Journey; version: string; operationId: string }
     | null
   >(null);
@@ -480,11 +500,33 @@ export function JourneyStudio({
   }
   function updateWire(patch: Partial<Wire>) {
     if (!wire || !editable) return;
-    const next = {
+    let updated: Wire = { ...wire, ...patch };
+    if (patch.transportMode && patch.transportMode !== wire.transportMode)
+      // A road leg has no carrier, flight, fare or stall; a flight has no truck.
+      updated =
+        patch.transportMode === 'ROAD'
+          ? {
+              ...updated,
+              supplierId: null,
+              flightNumber: null,
+              estimatedAirfare: null,
+              stallEquipmentId: null,
+            }
+          : { ...updated, vehicleId: null, driverStaffId: null };
+    if ('distanceKm' in patch || 'plannedDeparture' in patch || 'transportMode' in patch) {
+      // Arrival follows distance at planning speed; a flight's landing stays editable.
+      const estimate = estimateArrival(
+        updated.transportMode,
+        updated.plannedDeparture,
+        updated.distanceKm,
+      );
+      if (estimate) updated = { ...updated, plannedArrival: estimate };
+    }
+    updated = { ...updated, distanceSource: distanceSourceFor(updated.transportMode) };
+    semantic({
       ...journey,
-      wires: journey.wires.map((w) => (w.id === wire.id ? { ...w, ...patch } : w)),
-    };
-    semantic(next);
+      wires: journey.wires.map((w) => (w.id === wire.id ? updated : w)),
+    });
   }
   function fit(next = journey) {
     const bounds = workspace.current?.querySelector('.js-canvas')?.getBoundingClientRect();
@@ -504,6 +546,52 @@ export function JourneyStudio({
       ...next,
       layout: { zoom, panX: 30 - minX * zoom, panY: 45 - minY * zoom },
     });
+  }
+  /**
+   * Holds the stalls chosen on AIR wires once their legs exist. Each hold is
+   * checked against the leg window first and never blocks the saved journey;
+   * the carrier still accepts it separately.
+   */
+  async function holdStalls(receipt: GraphView, picks: Pick[]) {
+    let version = receipt.recordVersion;
+    const notes: string[] = [];
+    for (const pick of picks) {
+      const leg = receipt.wires.find((w) => w.sequenceNo === pick.sequenceNo);
+      if (!pick.stallId || !leg) continue;
+      try {
+        const checked = await resourcesApi.probe('STALL', pick.stallId, {
+          orderId,
+          revisionId: receipt.revisionId,
+          mode: 'AIR',
+          start: leg.plannedDeparture,
+          end: leg.plannedArrival,
+          carrierSupplierId: pick.supplierId,
+          legId: leg.legId,
+        });
+        if (checked.status !== 'AVAILABLE') {
+          notes.push(`Chặng ${pick.sequenceNo}: chuồng #${pick.stallId} chưa trống, hãy chọn lại.`);
+          continue;
+        }
+        const plan = await plansApi.stall(orderId, receipt.planId, leg.legId, {
+          stallId: pick.stallId,
+          stallRecordVersion: checked.recordVersion,
+          carrierAcceptanceStatus: 'PENDING',
+          status: 'HELD',
+          positionDescription: null,
+          carrierApprovalFileKey: null,
+          carrierContact: null,
+          recordVersion: version,
+          operationId: crypto.randomUUID(),
+        });
+        version = plan.recordVersion;
+        notes.push(`Chặng ${pick.sequenceNo}: đã giữ chuồng #${pick.stallId}.`);
+      } catch {
+        notes.push(
+          `Chặng ${pick.sequenceNo}: chưa giữ được chuồng #${pick.stallId}; gán lại trên chặng.`,
+        );
+      }
+    }
+    return { version, notes };
   }
   async function save(layoutOnly = false) {
     if (!editRole || busy) return;
@@ -532,9 +620,16 @@ export function JourneyStudio({
         const errors = graphErrors(journey);
         setProblems(errors);
         if (errors.length) return;
+        const draft = cascade(journey);
         pending = {
           kind: 'compile',
-          body: compileBody(cascade(journey), rev, version, crypto.randomUUID()),
+          body: compileBody(draft, rev, version, crypto.randomUUID()),
+          picks: (ordered(draft)?.wires ?? []).map((w, i) => ({
+            sequenceNo: i + 1,
+            vehicleId: w.transportMode === 'ROAD' ? (w.vehicleId ?? null) : null,
+            stallId: w.transportMode === 'AIR' ? (w.stallEquipmentId ?? null) : null,
+            supplierId: w.supplierId ?? null,
+          })),
         };
       }
       setFrozen(pending);
@@ -556,10 +651,21 @@ export function JourneyStudio({
       setSemanticDirty(false);
       setSeenGraph(receipt);
       setJourney(fromGraph(receipt));
-      pinned.adopt(receipt.recordVersion);
-      setMessage('Đã lưu trên hệ thống. Tài nguyên cần được gán và xác nhận riêng.');
+      const picks = pending.kind === 'compile' ? pending.picks : [];
+      const held = await holdStalls(receipt, picks);
+      pinned.adopt(held.version);
+      setMessage(
+        ['Đã lưu lộ trình; giá vé các chặng bay được chuyển sang báo giá.', ...held.notes].join(
+          ' ',
+        ),
+      );
       await pinned.refreshAll();
-      onSaved?.(receipt.planId);
+      onSaved?.(
+        receipt.planId,
+        Object.fromEntries(
+          picks.filter((p) => p.vehicleId !== null).map((p) => [p.sequenceNo, p.vehicleId!]),
+        ),
+      );
     } catch (e) {
       setError(e);
       if (!(e instanceof ApiError) || !e.uncertain) setFrozen(null);
@@ -658,7 +764,11 @@ export function JourneyStudio({
               onClick={() => void save()}
               disabled={busy || (!frozen && !writeReady)}
             >
-              {busy ? 'Đang lưu…' : frozen ? 'Thử lại cùng yêu cầu' : '💾 Compile & lưu sơ đồ'}
+              {busy
+                ? 'Đang lưu…'
+                : frozen
+                  ? 'Thử lại cùng yêu cầu'
+                  : '📋 Lưu lộ trình & cập nhật báo giá'}
             </button>
           )}
         </div>
@@ -778,9 +888,9 @@ export function JourneyStudio({
               <button
                 className="js-template"
                 type="button"
-                disabled={!editable || journey.nodes.length > 0}
+                disabled={!editable || journey.wires.length > 0}
                 onClick={() => {
-                  const template = internationalTemplate();
+                  const template = internationalTemplate(context);
                   setSemanticDirty(true);
                   fit(template);
                   setMessage(
@@ -867,45 +977,80 @@ export function JourneyStudio({
                   value={wire.distanceKm}
                   onChange={(distanceKm) => updateWire({ distanceKm })}
                 />
-                {mode === 'edit' && (
-                  <label className="js-field">
-                    Nguồn khoảng cách
-                    <select
-                      value={wire.distanceSource}
-                      onChange={(e) => updateWire({ distanceSource: e.target.value })}
-                    >
-                      <option>MANUAL_VERIFIED</option>
-                      <option>ROUTE_MATRIX</option>
-                      <option>SUPPLIER_DECLARATION</option>
-                    </select>
-                  </label>
-                )}
-                {editRole && (
-                  <SupplierPicker
-                    key={wire.id}
-                    label="Hãng vận chuyển"
-                    disabled={!editable}
-                    value={wire.supplierId ?? leg?.supplierId ?? null}
-                    onChange={(supplierId) => updateWire({ supplierId })}
-                  />
-                )}
                 <DateField
-                  label="Khởi hành"
+                  label={wire.transportMode === 'AIR' ? 'Cất cánh' : 'Khởi hành'}
                   value={wire.plannedDeparture}
                   change={(v) => updateWire({ plannedDeparture: v ?? '' })}
                 />
-                <DateField
-                  label="Đến nơi"
-                  value={wire.plannedArrival}
-                  change={(v) => updateWire({ plannedArrival: v ?? '' })}
-                />
-                {wire.transportMode === 'AIR' && (
-                  <Field
-                    label="Số chuyến bay dự kiến"
-                    max={50}
-                    value={wire.flightNumber ?? ''}
-                    onChange={(flightNumber) => updateWire({ flightNumber })}
-                  />
+                {wire.transportMode === 'ROAD' ? (
+                  <>
+                    <p className="js-eta" aria-label="Dự kiến đến">
+                      ⏱️ Dự kiến đến: {showTime(wire.plannedArrival)} (+07)
+                      <small> · tính theo ~60 km/h</small>
+                    </p>
+                    {editRole && drafting && (
+                      <>
+                        <CatalogPicker
+                          key={`vehicle-${wire.id}`}
+                          kind="vehicles"
+                          label="Xe vận chuyển"
+                          disabled={!editable}
+                          autoPick
+                          value={wire.vehicleId ?? null}
+                          onChange={(vehicleId) => updateWire({ vehicleId })}
+                        />
+                        <small className="js-muted">
+                          Tài xế được chọn sau khi lưu sơ đồ, theo lịch trống của chặng.
+                        </small>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <DateField
+                      label="Hạ cánh"
+                      value={wire.plannedArrival}
+                      change={(v) => updateWire({ plannedArrival: v ?? '' })}
+                    />
+                    <small className="js-muted">
+                      Gợi ý theo ~750 km/h; sửa theo lịch bay thật.
+                    </small>
+                    {editRole && (
+                      <SupplierPicker
+                        key={wire.id}
+                        label="Hãng hàng không"
+                        disabled={!editable}
+                        value={wire.supplierId ?? leg?.supplierId ?? null}
+                        onChange={(supplierId) => updateWire({ supplierId })}
+                      />
+                    )}
+                    <Field
+                      label="Số hiệu chuyến bay"
+                      max={50}
+                      value={wire.flightNumber ?? ''}
+                      onChange={(flightNumber) => updateWire({ flightNumber })}
+                    />
+                    {editRole && (
+                      <Field
+                        label="Giá vé máy bay chặng này (USD)"
+                        max={18}
+                        value={wire.estimatedAirfare ?? ''}
+                        onChange={(estimatedAirfare) =>
+                          updateWire({ estimatedAirfare: estimatedAirfare || null })
+                        }
+                      />
+                    )}
+                    {editRole && drafting && (
+                      <CatalogPicker
+                        key={`stall-${wire.id}`}
+                        kind="stalls"
+                        label="Chuồng bay"
+                        disabled={!editable}
+                        value={wire.stallEquipmentId ?? null}
+                        onChange={(stallEquipmentId) => updateWire({ stallEquipmentId })}
+                      />
+                    )}
+                  </>
                 )}
                 <button
                   type="button"
@@ -935,6 +1080,9 @@ export function JourneyStudio({
                   plan={detail.data}
                   leg={leg}
                   pinned={pinned}
+                  preferredId={
+                    leg.transportMode === 'ROAD' ? vehiclePicks[leg.sequenceNo] : undefined
+                  }
                 />
               )}
               {mode === 'driver' &&

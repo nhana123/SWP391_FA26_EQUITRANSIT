@@ -145,6 +145,49 @@ export function offsetTime(local: string) {
 export function atOffset(ms: number) {
   return `${new Date(ms + 7 * 3_600_000).toISOString().slice(0, 19)}+07:00`;
 }
+/** Planning speeds: a horse truck ~60 km/h, a cargo flight ~750 km/h. */
+const speedKmh = { ROAD: 60, AIR: 750 } as const;
+/**
+ * Planned arrival from distance and departure, never under 30 minutes.
+ * Empty while either input is missing or invalid.
+ */
+export function estimateArrival(mode: Wire['transportMode'], departure: string, km: string) {
+  const start = Date.parse(departure),
+    distance = Number(km);
+  if (!Number.isFinite(start) || !Number.isFinite(distance) || distance <= 0) return '';
+  const minutes = Math.max(30, Math.ceil((distance / speedKmh[mode]) * 60));
+  return atOffset(start + minutes * 60_000);
+}
+/** Where the distance comes from; set by the mode, never typed by the Coordinator. */
+export const distanceSourceFor = (mode: Wire['transportMode']) =>
+  mode === 'AIR' ? 'SUPPLIER_DECLARATION' : 'MANUAL_VERIFIED';
+/** Request facts the Studio starts from, taken from the case revision. */
+export type StudioContext = {
+  originName: string | null;
+  originCountry: string | null;
+  destinationName: string | null;
+  destinationCountry: string | null;
+  departureAt: string | null;
+};
+/** Pickup and delivery checkpoints already filled from the request. */
+export function seededJourney(context: StudioContext | undefined): Journey {
+  const j = emptyJourney();
+  if (!context) return j;
+  const origin = newNode('ORIGIN', 0),
+    destination = newNode('DESTINATION', 1);
+  origin.locationName = context.originName ?? '';
+  origin.countryCode = context.originCountry ?? '';
+  origin.plannedDepartureAt = context.departureAt
+    ? atOffset(Date.parse(context.departureAt))
+    : null;
+  destination.locationName = context.destinationName ?? '';
+  destination.countryCode = context.destinationCountry ?? '';
+  destination.posX = 60 + 3 * 390;
+  destination.posY = 100;
+  origin.posX = 60;
+  origin.posY = 100;
+  return { ...j, nodes: [origin, destination] };
+}
 export function showTime(value: string | null | undefined) {
   if (!value || !Number.isFinite(Date.parse(value))) return 'Chưa đặt giờ';
   return new Intl.DateTimeFormat('vi-VN', {
@@ -255,6 +298,12 @@ export function graphErrors(j: Journey) {
     if (!/^\d+(\.\d{1,3})?$/.test(w.distanceKm) || Number(w.distanceKm) <= 0)
       errors.push(`Chặng ${i + 1}: nhập số km dương, tối đa 3 số thập phân.`);
     if (
+      w.transportMode === 'AIR' &&
+      w.estimatedAirfare &&
+      (!/^\d+(\.\d{1,2})?$/.test(w.estimatedAirfare) || Number(w.estimatedAirfare) <= 0)
+    )
+      errors.push(`Chặng ${i + 1}: giá vé phải là số USD dương, tối đa 2 số thập phân.`);
+    if (
       i > 0 &&
       start < Date.parse(chain.wires[i - 1].plannedArrival) + chain.nodes[i].dwellMinutes * 60_000
     )
@@ -262,7 +311,7 @@ export function graphErrors(j: Journey) {
   });
   return errors;
 }
-export function internationalTemplate(): Journey {
+export function internationalTemplate(context?: StudioContext): Journey {
   const kinds: NodeKind[] = [
     'ORIGIN',
     'REST_STOP',
@@ -288,9 +337,21 @@ export function internationalTemplate(): Journey {
     posX: 60 + (i % 4) * 390,
     posY: 100 + Math.floor(i / 4) * 300,
   }));
+  // The request's pickup and delivery replace the placeholders.
+  const seeded = seededJourney(context).nodes;
+  if (seeded.length) {
+    const [origin, destination] = [j.nodes[0], j.nodes[j.nodes.length - 1]];
+    origin.locationName = seeded[0].locationName || origin.locationName;
+    origin.countryCode = seeded[0].countryCode;
+    origin.plannedDepartureAt = seeded[0].plannedDepartureAt;
+    destination.locationName = seeded[1].locationName || destination.locationName;
+    destination.countryCode = seeded[1].countryCode;
+  }
   for (let i = 0; i < j.nodes.length - 1; i++) {
     j = connect(j, j.nodes[i].nodeKey, j.nodes[i + 1].nodeKey);
-    j.wires[i].transportMode = i === 2 || i === 3 ? 'AIR' : 'ROAD';
+    const mode = i === 2 || i === 3 ? 'AIR' : 'ROAD';
+    j.wires[i].transportMode = mode;
+    j.wires[i].distanceSource = distanceSourceFor(mode);
   }
   return j;
 }

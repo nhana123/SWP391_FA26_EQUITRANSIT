@@ -69,9 +69,17 @@ describe('Studio supplier picker', () => {
     expect(screen.getByLabelText('Hãng vận chuyển')).toHaveValue('21');
     expect(screen.getByLabelText('Selected ID')).toHaveTextContent('21');
   });
-  it('uses explicit Coordinator fallback without requesting a Manager-only catalogue', async () => {
+  it('lets the Coordinator choose a carrier by name from the catalogue', async () => {
     const user = mount('COORDINATOR');
-    expect(screen.getByText(/Danh mục hiện chỉ dành cho Manager/)).toBeInTheDocument();
+    await screen.findByRole('option', { name: 'Green Air · #21' });
+    await user.selectOptions(screen.getByLabelText('Hãng vận chuyển'), '21');
+    expect(screen.getByLabelText('Selected ID')).toHaveTextContent('21');
+    expect(screen.queryByText(/chỉ dành cho Manager/)).toBeNull();
+    expect(resourcesApi.list).toHaveBeenCalledWith('suppliers', 0, expect.anything());
+  });
+
+  it('keeps typing an ID for roles without the catalogue', async () => {
+    const user = mount('SPECIALIST');
     await user.type(screen.getByRole('textbox', { name: 'Hãng vận chuyển · ID' }), '31');
     expect(screen.getByLabelText('Selected ID')).toHaveTextContent('31');
     expect(resourcesApi.list).not.toHaveBeenCalled();
