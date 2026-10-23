@@ -31,25 +31,35 @@ export function customerStep(r: Requirement): Step {
 const readable = (code: string) =>
   code.charAt(0) + code.slice(1).toLowerCase().replaceAll('_', ' ');
 
+/** Six months ahead, as a calendar date in UTC+07:00; the user can change it. */
+export function suggestedExpiry(now = Date.now()) {
+  const date = new Date(now + 7 * 3_600_000);
+  date.setUTCMonth(date.getUTCMonth() + 6);
+  return date.toISOString().slice(0, 10);
+}
+
 /**
  * Stores the file, creates its version and submits it to the requirement in
  * one server transaction. A retry after an uncertain failure resends the same
- * operation ID, so the server replays instead of recording twice.
+ * operation ID, so the server replays instead of recording twice. The
+ * assigned Specialist may use it to upload on the customer's behalf.
  */
-function SendDocumentForm({
+export function SendDocumentForm({
   orderId,
   pinned,
   requirement,
   onClose,
+  onBehalf = false,
 }: {
   orderId: number;
   pinned: Pinned;
   requirement: Requirement;
   onClose: () => void;
+  onBehalf?: boolean;
 }) {
   const [file, setFile] = useState<FileInput | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [expiryDate, setExpiryDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState(suggestedExpiry);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [reading, setReading] = useState(false);
@@ -70,10 +80,14 @@ function SendDocumentForm({
   }
   return (
     <CommandForm
-      label={`Send ${requirement.documentType}`}
-      title={`Send the ${readable(requirement.documentType).toLowerCase()} to your Specialist`}
+      label={`${onBehalf ? 'Upload for the customer' : 'Send'} ${requirement.documentType}`}
+      title={
+        onBehalf
+          ? `Upload the ${readable(requirement.documentType).toLowerCase()} for the customer`
+          : `Send the ${readable(requirement.documentType).toLowerCase()} to your Specialist`
+      }
       pinned={pinned}
-      submitLabel="Send to the Specialist"
+      submitLabel={onBehalf ? 'Upload and submit' : 'Send to the Specialist'}
       busy={reading}
       fieldErrors={errors}
       send={(body) => complianceApi.uploadAndSubmit(orderId, requirement.requirementId, body)}
@@ -108,7 +122,7 @@ function SendDocumentForm({
             </Field>
             <Field
               label="Valid until"
-              hint="The expiry date printed on the document."
+              hint="Filled in six months ahead; change it to the expiry printed on the document."
               error={fields.expiryDate ?? fields.expiresAt}
             >
               {(id) => <DateInput id={id} value={expiryDate} onChange={setExpiryDate} />}
@@ -133,7 +147,7 @@ function SendDocumentForm({
   );
 }
 
-function PhaseList({
+export function PhaseList({
   orderId,
   overview,
   pinned,

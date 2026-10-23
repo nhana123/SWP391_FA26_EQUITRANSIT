@@ -24,6 +24,7 @@ vi.mock('./api', () => ({
     file: vi.fn(),
     upload: vi.fn(),
     submit: vi.fn(),
+    uploadAndSubmit: vi.fn(),
     review: vi.fn(),
     rule: vi.fn(),
     checklist: vi.fn(),
@@ -142,93 +143,80 @@ describe('customer legal documents (#78)', () => {
     expect(screen.getByText(/does not issue a government permit/)).toBeInTheDocument();
   });
 
-  it('uploads a new immutable version with the reviewed case version', async () => {
-    vi.mocked(complianceApi.upload).mockResolvedValue(receipt());
+  it('submits a document in one step from its card, with the reviewed case version', async () => {
+    vi.mocked(complianceApi.uploadAndSubmit).mockResolvedValue(receipt());
     const user = mount('CUSTOMER');
-    const form = within(await screen.findByRole('form', { name: 'Upload document version' }));
+    // No separate upload-then-submit forms remain.
+    await screen.findByRole('list', { name: 'Pre-export documents' });
+    expect(screen.queryByRole('form', { name: 'Upload document version' })).toBeNull();
+    await user.click(
+      screen.getByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
+    );
+    const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
+    // The expiry starts six months ahead and stays editable.
+    expect(form.getByLabelText('Valid until')).not.toHaveValue('');
     await user.upload(
       form.getByLabelText('File'),
       new File([new Uint8Array([137, 80, 78, 71])], 'cert.png', { type: 'image/png' }),
     );
-    setDate(form.getByLabelText('Issued date'), '2026-10-01');
-    setDate(form.getByLabelText('Expiry date'), '2027-03-01');
+    setDate(form.getByLabelText('Valid until'), '2099-03-01');
     await waitFor(() =>
-      expect(form.getByRole('button', { name: 'Upload new version' })).toBeEnabled(),
+      expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeEnabled(),
     );
-    await user.click(form.getByRole('button', { name: 'Upload new version' }));
-    await waitFor(() => expect(complianceApi.upload).toHaveBeenCalledTimes(1));
-    expect(complianceApi.upload).toHaveBeenCalledWith(9, {
+    await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
+    await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(1));
+    expect(complianceApi.uploadAndSubmit).toHaveBeenCalledWith(9, 44, {
       recordVersion: '00000000000000a1',
       operationId: expect.any(String),
-      documentType: 'HEALTH_CERTIFICATE',
       fileName: 'cert.png',
       contentType: 'image/png',
       contentBase64: 'iVBORw==',
-      issuedDate: '2026-10-01',
-      expiryDate: '2027-03-01',
-      documentNumber: null,
+      expiresAt: '2099-03-01T16:59:00Z',
+      referenceNumber: null,
     });
-    expect(await form.findByText(/It is not submitted yet/)).toBeInTheDocument();
   });
 
   it('rejects an unsupported file before sending', async () => {
     mount('CUSTOMER');
     // Bypass the input's accept filter to exercise the app's own check.
     const user = userEvent.setup({ delay: null, applyAccept: false });
-    const form = within(await screen.findByRole('form', { name: 'Upload document version' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
+    );
+    const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
     await user.upload(
       form.getByLabelText('File'),
       new File(['x'], 'notes.txt', { type: 'text/plain' }),
     );
-    await user.click(form.getByRole('button', { name: 'Upload new version' }));
+    await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
     expect(await form.findByText(/Only PDF, PNG or JPEG/)).toBeInTheDocument();
-    expect(complianceApi.upload).not.toHaveBeenCalled();
-  });
-
-  it('submits an exact current version of the required type', async () => {
-    vi.mocked(complianceApi.documents).mockResolvedValue([
-      doc(),
-      doc({ documentVersionId: 104, documentType: 'PASSPORT' }),
-      doc({ documentVersionId: 105, revokedAt: '2027-01-01T00:00:00Z' }),
-    ]);
-    vi.mocked(complianceApi.submit).mockResolvedValue(receipt());
-    const user = mount('CUSTOMER');
-    await user.click(
-      await screen.findByRole('button', { name: 'Submit a version for HEALTH_CERTIFICATE' }),
-    );
-    const form = within(screen.getByRole('form', { name: 'Submit HEALTH_CERTIFICATE' }));
-    // Only non-revoked versions of the same type are offered.
-    expect(form.getAllByRole('option').map((o) => o.textContent)).toEqual(['Version 2 (ID 103)']);
-    await user.click(form.getByRole('button', { name: 'Submit for review' }));
-    await waitFor(() => expect(complianceApi.submit).toHaveBeenCalledTimes(1));
-    expect(complianceApi.submit).toHaveBeenCalledWith(9, 44, {
-      recordVersion: '00000000000000a1',
-      operationId: expect.any(String),
-      documentVersionId: 103,
-    });
+    expect(complianceApi.uploadAndSubmit).not.toHaveBeenCalled();
   });
 
   it('blocks legal writes after a background change until reload and review', async () => {
-    vi.mocked(complianceApi.upload).mockResolvedValue(receipt('00000000000000a4'));
+    vi.mocked(complianceApi.uploadAndSubmit).mockResolvedValue(receipt('00000000000000a4'));
     const user = mount('CUSTOMER');
-    const form = within(await screen.findByRole('form', { name: 'Upload document version' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
+    );
+    const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
     vi.mocked(complianceApi.overview).mockResolvedValue(overview({}, '00000000000000a3'));
     await act(() => queryClient.refetchQueries());
     expect(await screen.findByText(/This case changed since you opened it/)).toBeInTheDocument();
-    expect(form.getByRole('button', { name: 'Upload new version' })).toBeDisabled();
+    expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Reload and review' }));
     await user.upload(
       form.getByLabelText('File'),
       new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
     );
-    setDate(form.getByLabelText('Issued date'), '2026-10-01');
-    setDate(form.getByLabelText('Expiry date'), '2027-03-01');
     await waitFor(() =>
-      expect(form.getByRole('button', { name: 'Upload new version' })).toBeEnabled(),
+      expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeEnabled(),
     );
-    await user.click(form.getByRole('button', { name: 'Upload new version' }));
-    await waitFor(() => expect(complianceApi.upload).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(complianceApi.upload).mock.calls[0][1].recordVersion).toBe('00000000000000a3');
+    await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
+    await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(complianceApi.uploadAndSubmit).mock.calls[0][2].recordVersion).toBe(
+      '00000000000000a3',
+    );
   });
 
   it('shows a deployment notice, not an empty checklist, when migration 009 is pending', async () => {
@@ -265,6 +253,31 @@ describe('customer legal documents (#78)', () => {
 });
 
 describe('specialist legal compliance (#78)', () => {
+  it('uploads a document for the customer through the same one-step call', async () => {
+    vi.mocked(complianceApi.uploadAndSubmit).mockResolvedValue(receipt());
+    const user = mount('SPECIALIST');
+    await user.click(
+      await screen.findByRole('button', { name: 'Upload HEALTH_CERTIFICATE for the customer' }),
+    );
+    const form = within(
+      screen.getByRole('form', { name: 'Upload for the customer HEALTH_CERTIFICATE' }),
+    );
+    await user.upload(
+      form.getByLabelText('File'),
+      new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
+    );
+    await waitFor(() =>
+      expect(form.getByRole('button', { name: 'Upload and submit' })).toBeEnabled(),
+    );
+    await user.click(form.getByRole('button', { name: 'Upload and submit' }));
+    await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(complianceApi.uploadAndSubmit).mock.calls[0]).toEqual([
+      9,
+      44,
+      expect.objectContaining({ fileName: 'cert.pdf', recordVersion: '00000000000000a1' }),
+    ]);
+  });
+
   it('reviews the exact submission and retries an uncertain review identically', async () => {
     vi.mocked(complianceApi.overview).mockResolvedValue(
       overview({ requirements: [requirement({ submissionId: 102, documentVersionId: 103 })] }),

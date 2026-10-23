@@ -5,6 +5,8 @@ import { Icon } from '../../components/ui/Icons';
 import { Link } from 'react-router-dom';
 import { Notice } from '../../shared/ui/common';
 import { activityApi } from './api';
+import type { Dashboard } from './contracts';
+import { legalStatuses } from '../compliance/link';
 import {
   ActivityHeading,
   ActivityPager,
@@ -13,6 +15,32 @@ import {
   useActivityPage,
   useActivityQuery,
 } from './shared';
+
+/**
+ * Requests whose legal file is open, each with a direct way to its documents.
+ * Covers the requests on the current page only, like the table below.
+ */
+function LegalDocumentsBanner({ items }: { items: Dashboard['items'] }) {
+  const open = items.filter((o) => legalStatuses.includes(o.status));
+  if (!open.length) return null;
+  return (
+    <section className="card legal-banner" aria-labelledby="legal-banner-heading">
+      <h2 id="legal-banner-heading">
+        <Icon name="shield" size={18} /> Legal documents
+      </h2>
+      <p>Send the documents your Specialist requires and follow their review.</p>
+      <ul>
+        {open.map((o) => (
+          <li key={o.orderId}>
+            <Link className="button primary" to={`/customer/requests/${o.orderId}/compliance`}>
+              {o.orderNumber}: Legal documents (submit / track review)
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function CustomerDashboardPage() {
   const paging = useActivityPage();
@@ -49,6 +77,7 @@ export function CustomerDashboardPage() {
       />
       {data && !query.error && (
         <>
+          <LegalDocumentsBanner items={data.items} />
           <section className="portfolio-overview">
             <h2>Request status overview</h2>
             <p>Counts cover all your requests, including those outside this page.</p>

@@ -77,3 +77,18 @@
   min-width: 1.15rem;
   min-height: 1.15rem;
 }
+
+/* Dashboard: open legal files */
+.legal-banner h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.legal-banner ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

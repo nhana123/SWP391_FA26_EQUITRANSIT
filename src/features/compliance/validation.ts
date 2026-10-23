@@ -107,7 +107,10 @@ export function validateUploadSubmit(
   return done(
     {
       ...(f.file ?? { fileName: '', contentType: '', contentBase64: '' }),
-      expiresAt: `${f.expiryDate}T23:59:00+07:00`,
+      // The handoff asks for UTC: 23:59 on that date in UTC+07:00 is 16:59Z.
+      expiresAt: localDate(f.expiryDate)
+        ? new Date(`${f.expiryDate}T23:59:00+07:00`).toISOString().replace('.000Z', 'Z')
+        : '',
       referenceNumber: referenceNumber || null,
     },
     e,

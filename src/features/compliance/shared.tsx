@@ -9,13 +9,11 @@ import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common
 import { COMPLIANCE_PAGE_SIZE, complianceApi } from './api';
 import {
   blockerText,
-  decisionLabels,
   phaseLabels,
   phases,
   type ComplianceDocument,
   type Overview,
   type Phase,
-  type Requirement,
 } from './contracts';
 import { blobUrl } from './files';
 import { complianceKeys, type Pinned } from './hooks';
@@ -89,67 +87,6 @@ export function ReadinessCard({ overview }: { overview: Overview }) {
           ))}
         </ul>
       )}
-    </section>
-  );
-}
-
-export function RequirementsTable({
-  overview,
-  page,
-  onPage,
-  action,
-}: {
-  overview: Overview;
-  page: number;
-  onPage: (page: number) => void;
-  action?: (r: Requirement) => ReactNode;
-}) {
-  const pages = Math.ceil(overview.totalElements / COMPLIANCE_PAGE_SIZE);
-  return (
-    <section className="card" aria-labelledby="requirements-heading">
-      <h2 id="requirements-heading">Required documents</h2>
-      {!overview.requirements.length ? (
-        <p>
-          No requirements yet. The specialist prepares the checklist from sourced rules for this
-          route; until then the phase stays pending.
-        </p>
-      ) : (
-        <div className="table-scroll">
-          <table aria-label="Required documents">
-            <thead>
-              <tr>
-                <th scope="col">Document type</th>
-                <th scope="col">Checklist</th>
-                <th scope="col">Submitted version</th>
-                <th scope="col">Review</th>
-                <th scope="col">Instructions</th>
-                {action && <th scope="col">Action</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {overview.requirements.map((r) => (
-                <tr key={r.requirementId}>
-                  <td>{r.documentType}</td>
-                  <td>
-                    <StatusBadge status={r.status}>{r.status}</StatusBadge>
-                  </td>
-                  <td>{r.documentVersionId ?? 'Not submitted'}</td>
-                  <td>
-                    {r.decision
-                      ? decisionLabels[r.decision]
-                      : r.submissionId
-                        ? 'Awaiting review'
-                        : '—'}
-                  </td>
-                  <td>{r.instructions ?? '—'}</td>
-                  {action && <td>{action(r)}</td>}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {(pages > 1 || page > 0) && <Pagination page={page} pages={pages} onChange={onPage} />}
     </section>
   );
 }

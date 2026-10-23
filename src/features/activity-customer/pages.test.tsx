@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -57,6 +57,23 @@ it.each(['MANAGER', 'SPECIALIST', 'COORDINATOR', 'DRIVER'] as const)(
     expect(activityApi.dashboard).not.toHaveBeenCalled();
   },
 );
+it('links each request with an open legal file straight to its documents', async () => {
+  vi.mocked(activityApi.dashboard).mockResolvedValue({
+    ...dashboardFixture,
+    items: [
+      ...dashboardFixture.items,
+      { orderId: 12, orderNumber: 'TEST-12', status: 'IN_PREPARATION' },
+    ],
+  });
+  mount(<CustomerDashboardPage />);
+  const banner = await screen.findByRole('region', { name: 'Legal documents' });
+  expect(
+    within(banner).getByRole('link', { name: 'TEST-12: Legal documents (submit / track review)' }),
+  ).toHaveAttribute('href', '/customer/requests/12/compliance');
+  // A request still under review has no legal file yet.
+  expect(within(banner).queryByText(/TEST-11/)).toBeNull();
+});
+
 it('uses the server total for pagination and permits returning from an empty later page', async () => {
   vi.mocked(activityApi.dashboard).mockImplementation(async (page) =>
     page === 0 ? dashboardFixture : { ...dashboardFixture, items: [], page, totalElements: 0 },

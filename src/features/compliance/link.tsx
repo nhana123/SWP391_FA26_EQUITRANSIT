@@ -10,8 +10,8 @@ export function ComplianceLink({ orderId, orderStatus }: { orderId: number; orde
   if (!legalStatuses.includes(orderStatus)) return null;
   if (session?.role === 'CUSTOMER')
     return (
-      <Link className="button" to={`/customer/requests/${orderId}/compliance`}>
-        Legal documents
+      <Link className="button primary" to={`/customer/requests/${orderId}/compliance`}>
+        Legal documents (submit / track review)
       </Link>
     );
   if (session?.role === 'SPECIALIST')
