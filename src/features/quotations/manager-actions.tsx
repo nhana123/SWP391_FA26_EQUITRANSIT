@@ -11,6 +11,7 @@ import { quotationKeys, useQuotation } from './hooks';
 import { quoteMutationsApi, type QuoteAction, type QuoteActionCommand } from './mutations';
 import { QuotationDetailPage } from './pages';
 import { refreshPreparationCase } from './source';
+import { PricingInputs } from './pricing-inputs';
 
 type ManagerAction = Exclude<QuoteAction, 'ACCEPT'>;
 
@@ -258,7 +259,7 @@ export function ManagerQuoteActions({
           </div>
         </div>
       )}
-      <ErrorNotice error={command.error}>
+      <ErrorNotice error={command.error} overrides={actionHelp}>
         {code && actionHelp[code] && <p>{actionHelp[code]}</p>}
         {command.frozen && (
           <p>
@@ -285,6 +286,7 @@ export function ManagerQuotationDetailPage() {
   return (
     <>
       <QuotationDetailPage />
+      {session?.role === 'MANAGER' && query.data && <PricingInputs quotation={query.data} />}
       {session?.role === 'MANAGER' && query.data && !query.error && (
         <ManagerQuoteActions
           key={`${session.generation}/${orderId}/${query.data.quote.quoteId}`}

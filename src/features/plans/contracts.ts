@@ -20,7 +20,14 @@ export const legModes = ['ROAD', 'AIR'] as const;
 export type LegMode = (typeof legModes)[number];
 export const reservationStates = ['HELD', 'CONFIRMED', 'CANCELLED', 'EXPIRED'] as const;
 export type ReservationState = (typeof reservationStates)[number];
-export const assignmentStates = ['HELD', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'INACTIVE'] as const;
+export const assignmentStates = [
+  'HELD',
+  'CONFIRMED',
+  'ACTIVE',
+  'COMPLETED',
+  'CANCELLED',
+  'INACTIVE',
+] as const;
 export type AssignmentState = (typeof assignmentStates)[number];
 export const carrierStates = ['PENDING', 'ACCEPTED', 'REJECTED'] as const;
 export type CarrierState = (typeof carrierStates)[number];
@@ -205,6 +212,11 @@ export type LegInput = {
   connectionBufferMinutes: number | null;
   restDurationMinutes: number | null;
   careInstructions: string | null;
+  /**
+   * AIR legs only: the surveyed fare in USD (> 0, 2 decimals). The BE totals
+   * it into the AIRFARE quotation source; plan reads do not return it.
+   */
+  estimatedAirfare?: number | null;
 };
 export type DraftInput = { revisionId: number; setAsCurrentDraft: boolean; legs: LegInput[] };
 export type RoadInput = {

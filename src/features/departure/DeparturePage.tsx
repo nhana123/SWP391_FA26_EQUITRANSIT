@@ -98,7 +98,7 @@ function CommandForm<T>({
   return (
     <form className="card" onSubmit={submit} noValidate aria-label={label}>
       <h3>{label}</h3>
-      <ErrorNotice error={command.error}>
+      <ErrorNotice error={command.error} overrides={errorHelp}>
         {code && errorHelp[code] && <p>{errorHelp[code]}</p>}
         {command.frozen && !command.pending && (
           <p>

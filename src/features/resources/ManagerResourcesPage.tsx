@@ -453,7 +453,7 @@ function RecordForm({
       {schemaPending(command.error) ? (
         <DeploymentNotice />
       ) : (
-        <ErrorNotice error={command.error}>
+        <ErrorNotice error={command.error} overrides={errorHelp}>
           {code && errorHelp[code] && <p>{errorHelp[code]}</p>}
           {command.frozen && !command.pending && (
             <p>

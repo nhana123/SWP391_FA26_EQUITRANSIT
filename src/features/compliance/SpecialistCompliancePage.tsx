@@ -1139,6 +1139,9 @@ function RequirementStack({
             const rejecting = open?.id === r.requirementId && open.kind === 'reject';
             const recording = open?.id === r.requirementId && open.kind === 'authority';
             const submitted = documents.find((d) => d.documentVersionId === r.documentVersionId);
+            // The server's own attachment wins; the uploads page is the fallback.
+            const file = r.attachment;
+            const fileKey = file?.fileKey ?? submitted?.fileKey ?? null;
             return (
               <li key={r.requirementId} className="dossier-sheet">
                 <div className="dossier-sheet-head">
@@ -1167,18 +1170,27 @@ function RequirementStack({
                     <dd>
                       {!r.documentVersionId
                         ? 'Not submitted yet'
-                        : submitted
-                          ? `v${submitted.versionNo} · expires ${submitted.expiryDate ?? 'not recorded'}${submitted.revokedAt ? ' · revoked' : ''}`
-                          : `Version ID ${r.documentVersionId}`}
+                        : file
+                          ? [
+                              file.fileName,
+                              file.expiresAt && `valid until ${displayDate(file.expiresAt)}`,
+                              file.referenceNumber && `no. ${file.referenceNumber}`,
+                              r.status === 'EXPIRED' && 'expired',
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                          : submitted
+                            ? `v${submitted.versionNo} · expires ${submitted.expiryDate ?? 'not recorded'}${submitted.revokedAt ? ' · revoked' : ''}`
+                            : `Version ID ${r.documentVersionId}`}
                     </dd>
                   </div>
-                  {submitted?.fileKey && (
+                  {fileKey && (
                     <div>
                       <dt>File</dt>
                       <dd>
                         <FileViewer
                           orderId={orderId}
-                          fileKey={submitted.fileKey}
+                          fileKey={fileKey}
                           label="View the customer's file"
                         />
                       </dd>

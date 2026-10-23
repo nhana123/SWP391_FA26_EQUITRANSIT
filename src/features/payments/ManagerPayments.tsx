@@ -21,6 +21,7 @@ import {
 import { managerPaymentsApi, type Bank, type RefundAction } from './manager-api';
 import { LedgerPager, useEvidence, type WorkspaceProps } from './workspace';
 import { RequestPayment } from './RequestPayment';
+import { FundingStatus, refreshFunding } from './FundingStatus';
 
 type Panel =
   | { kind: 'reconcile' | 'refund' | 'allocate' | 'reverse' }
@@ -64,11 +65,13 @@ export function ManagerPayments(props: WorkspaceProps) {
     if (panel?.kind === 'reconcile') setRecent((ids) => [...new Set([...ids, receipt.entityId])]);
     setPanel(null);
     setNotice(`Action recorded, reference ${receipt.entityId}. The ledger has been refreshed.`);
+    void refreshFunding(session.generation, orderId);
   }
   if (accessDenied(lookup.error) && lookup.error instanceof ApiError && lookup.error.status !== 404)
     return <PaymentError error={lookup.error} backTo={backTo} />;
   return (
     <>
+      <FundingStatus orderId={orderId} />
       {notice && (
         <p className="notice" role="status">
           {notice}

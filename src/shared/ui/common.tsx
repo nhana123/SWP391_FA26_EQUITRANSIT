@@ -2,6 +2,7 @@ import { isValidElement, useId, type ReactNode } from 'react';
 import { ApiError } from '../api/client';
 import { Skeleton } from '../../components/ui/Primitives';
 import { useSession } from '../api/session';
+import { errorHelpFor } from '../api/error-codes';
 export function Field({
   label,
   children,
@@ -36,11 +37,25 @@ export function Field({
     </div>
   );
 }
-export function ErrorNotice({ error, children }: { error: unknown; children?: ReactNode }) {
+export function ErrorNotice({
+  error,
+  children,
+  overrides,
+}: {
+  error: unknown;
+  children?: ReactNode;
+  /** The feature's own help for some codes; the shared help then stays out. */
+  overrides?: Record<string, string>;
+}) {
   if (!error) return null;
+  const help =
+    error instanceof ApiError && !(error.code && overrides && Object.hasOwn(overrides, error.code))
+      ? errorHelpFor(error.code)
+      : undefined;
   return (
     <div className="notice error" role="alert">
       <p>{error instanceof ApiError ? error.message : 'The request could not be completed.'}</p>
+      {help && <p className="error-help">{help}</p>}
       {error instanceof ApiError && error.code && <small>{error.code}</small>}
       {children}
     </div>

@@ -46,6 +46,7 @@ const requirement = (patch: Partial<Requirement> = {}): Requirement => ({
   decision: null,
   instructions: 'Upload the full authority-issued certificate.',
   feedback: null,
+  attachment: null,
   ...patch,
 });
 const overview = (patch: Partial<Overview> = {}, version = '00000000000000a1'): Overview => ({
