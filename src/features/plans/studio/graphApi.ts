@@ -8,6 +8,7 @@ import {
   type Layout,
   type Wire,
   ordered,
+  distanceSourceFor,
   atOffset,
   TIMEZONE,
 } from './model';
@@ -140,7 +141,7 @@ export function compileBody(
         startPoint: nodes[i].locationName.trim(),
         endPoint: nodes[i + 1].locationName.trim(),
         distanceKm: Number(w.distanceKm),
-        distanceSource: w.distanceSource,
+        distanceSource: distanceSourceFor(w.transportMode),
         plannedDeparture: canonical(w.plannedDeparture),
         plannedArrival: canonical(w.plannedArrival),
         startTimezone: TIMEZONE,

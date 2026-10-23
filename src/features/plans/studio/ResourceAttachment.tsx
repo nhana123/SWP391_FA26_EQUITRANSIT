@@ -1,12 +1,14 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { request } from '../../../shared/api/client';
+import { useSession } from '../../../shared/api/session';
 import { ErrorNotice } from '../../../shared/ui/common';
 import { plansApi } from '../api';
 import { resourcesApi } from '../../resources/api';
 import type { Leg, PlanDetail, RoadInput, StallInput } from '../contracts';
 import { FlightForm } from '../forms';
-import { CommandForm, type Pinned } from '../hooks';
+import { CommandForm, planKeys, type Pinned } from '../hooks';
 import { graphApi } from './graphApi';
 const optionSchema = z.object({
   id: z.number(),
@@ -20,26 +22,78 @@ export function ResourceAttachment({
   plan,
   leg,
   pinned,
+  preferredId,
 }: {
   plan: PlanDetail;
   leg: Leg;
   pinned: Pinned;
+  /** The vehicle chosen on the wire before the leg existed. */
+  preferredId?: number;
 }) {
-  const [options, setOptions] = useState<Option[]>([]),
-    [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Option | null>(null);
-  const [drivers, setDrivers] = useState<{ staffId: number; fullName: string }[]>([]),
+  const session = useSession()!;
+  const [search, setSearch] = useState(''),
     [driverSearch, setDriverSearch] = useState(''),
-    [driver, setDriver] = useState('');
+    [applied, setApplied] = useState({ search: '', driverSearch: '' });
+  // A shared stall checked from another order's proposal joins the choices.
+  const [extra, setExtra] = useState<Option[]>([]);
+  // null follows the default choice; 0 means the user cleared it.
+  const [chosenId, setChosenId] = useState<number | null>(null);
+  const [driver, setDriver] = useState('');
   const [error, setError] = useState<unknown>(null),
-    [loading, setLoading] = useState(false);
+    [probing, setProbing] = useState(false);
   const [approval, setApproval] = useState(''),
     [acceptance, setAcceptance] = useState<'PENDING' | 'ACCEPTED' | 'REJECTED'>('PENDING');
   const [assignment, setAssignment] = useState<'HELD' | 'CONFIRMED'>('HELD');
   const [candidates, setCandidates] = useState<Awaited<ReturnType<typeof plansApi.candidates>>>([]);
   const air = leg.transportMode === 'AIR';
+  // Free resources and drivers for this leg load as soon as it opens.
+  const found = useQuery({
+    queryKey: [
+      ...planKeys.all(session.generation, plan.orderId),
+      'leg-resources',
+      leg.legId,
+      applied,
+    ],
+    queryFn: async ({ signal }) => {
+      const data = await request(
+        `/api/resources/${air ? 'STALL' : 'VEHICLE'}/candidates?${new URLSearchParams({ ...(applied.search ? { search: applied.search } : {}), page: '0', size: '10' })}`,
+        z.object({ items: z.array(optionSchema) }),
+        {
+          method: 'POST',
+          body: {
+            orderId: plan.orderId,
+            revisionId: plan.revisionId,
+            mode: air ? 'AIR' : 'ROAD',
+            start: leg.plannedDeparture,
+            end: leg.plannedArrival,
+            carrierSupplierId: air ? leg.supplierId : null,
+            legId: leg.legId,
+          },
+          signal,
+        },
+      );
+      const drivers = air
+        ? []
+        : await graphApi.drivers(plan.orderId, plan.planId, leg.legId, applied.driverSearch);
+      return { items: data.items, drivers };
+    },
+    retry: false,
+    staleTime: 0,
+  });
+  const options = [
+    ...(found.data?.items ?? []).filter((o) => !extra.some((e) => e.id === o.id)),
+    ...extra,
+  ];
+  const drivers = found.data?.drivers ?? [];
+  const loading = found.isFetching || probing;
+  // Start from the choice made on the wire, else the first resource free for this leg.
+  const fallback =
+    options.find((o) => o.id === preferredId && o.status === 'AVAILABLE') ??
+    options.find((o) => o.status === 'AVAILABLE') ??
+    null;
+  const selected = chosenId === null ? fallback : (options.find((o) => o.id === chosenId) ?? null);
   async function chooseSharedStall(stallId: number) {
-    setLoading(true);
+    setProbing(true);
     setError(null);
     try {
       const checked = await resourcesApi.probe('STALL', stallId, {
@@ -61,43 +115,20 @@ export function ResourceAttachment({
         status: checked.status,
         blockers: checked.blockers,
       };
-      setOptions((current) => [...current.filter((o) => o.id !== stallId), option]);
-      setSelected(option);
+      setExtra((current) => [...current.filter((o) => o.id !== stallId), option]);
+      setChosenId(stallId);
     } catch (e) {
       setError(e);
     } finally {
-      setLoading(false);
+      setProbing(false);
     }
   }
-  async function find() {
-    setLoading(true);
-    setError(null);
-    setSelected(null);
-    try {
-      const data = await request(
-        `/api/resources/${air ? 'STALL' : 'VEHICLE'}/candidates?${new URLSearchParams({ ...(search.trim() ? { search: search.trim() } : {}), page: '0', size: '10' })}`,
-        z.object({ items: z.array(optionSchema) }),
-        {
-          method: 'POST',
-          body: {
-            orderId: plan.orderId,
-            revisionId: plan.revisionId,
-            mode: air ? 'AIR' : 'ROAD',
-            start: leg.plannedDeparture,
-            end: leg.plannedArrival,
-            carrierSupplierId: air ? leg.supplierId : null,
-            legId: leg.legId,
-          },
-        },
-      );
-      setOptions(data.items);
-      if (!air)
-        setDrivers(await graphApi.drivers(plan.orderId, plan.planId, leg.legId, driverSearch));
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
+  function find() {
+    setChosenId(null);
+    const next = { search: search.trim(), driverSearch: driverSearch.trim() };
+    if (next.search === applied.search && next.driverSearch === applied.driverSearch)
+      void found.refetch();
+    else setApplied(next);
   }
   const common = (
     <>
@@ -115,19 +146,17 @@ export function ResourceAttachment({
           />
         </label>
       )}
-      <button type="button" disabled={loading} onClick={() => void find()}>
-        {loading ? 'Đang kiểm tra…' : '🔍 Tìm tài nguyên & kiểm tra lịch trống'}
+      <button type="button" disabled={loading} onClick={find}>
+        {loading ? 'Đang kiểm tra…' : '🔄 Tìm lại theo mã / tên'}
       </button>
-      <ErrorNotice error={error} />
+      <ErrorNotice error={found.error ?? error} />
       <label>
         {air ? 'Chuồng bay' : 'Xe tải'}
         <select
           value={selected?.id ?? ''}
-          onChange={(e) =>
-            setSelected(options.find((o) => o.id === Number(e.target.value)) ?? null)
-          }
+          onChange={(e) => setChosenId(e.target.value ? Number(e.target.value) : 0)}
         >
-          <option value="">Chọn từ kết quả kiểm tra</option>
+          <option value="">{loading ? 'Đang tải…' : 'Chọn tài nguyên còn trống'}</option>
           {options.map((o) => (
             <option key={o.id} value={o.id} disabled={o.status !== 'AVAILABLE'}>
               {o.code} · {o.status}

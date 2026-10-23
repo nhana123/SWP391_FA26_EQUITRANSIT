@@ -14,8 +14,7 @@ import { Details, show, SnapshotView } from '../assessment/case';
 import type { ManagerCase } from '../assessment/contracts';
 import { caseRoleLabels } from '../assessment/staff';
 import { useAssignedCase, useAssignedCases } from './hooks';
-import { AvailabilityLink } from '../resources/availability';
-import { PlansLink } from '../plans/link';
+import { PlansLink, StudioBanner, studioStatuses } from '../plans/link';
 import { DepartureLink } from '../departure/DeparturePage';
 import { ExecutionLink } from '../execution/ExecutionPage';
 import { staffDashboardLink, staffTaskLink } from '../activity-operations/routes';
@@ -264,10 +263,22 @@ export function AssignedCasePage() {
         <Link to="/staff/cases">Back to my cases</Link>
       </StaffHeading>
       <OrderWorkflowBanner status={current.orderStatus} role="COORDINATOR" />
+      <StudioBanner
+        orderId={current.orderId}
+        orderStatus={current.orderStatus}
+        route={
+          revision?.snapshot.request.originCountryCode
+            ? `${revision.snapshot.request.originCountryCode} → ${revision.snapshot.request.destinationCountryCode ?? '—'}`
+            : null
+        }
+        horse={revision?.snapshot.horse?.name ?? null}
+      />
       <div className="actions">
         <SettlementPreviewLink orderId={current.orderId} />
-        <AvailabilityLink orderId={current.orderId} orderStatus={current.orderStatus} />
-        <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        {/* During preparation the Studio banner above is the way in. */}
+        {!studioStatuses.includes(current.orderStatus) && (
+          <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        )}
         <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
         <ComplianceLink orderId={current.orderId} orderStatus={current.orderStatus} />

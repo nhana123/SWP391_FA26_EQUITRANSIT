@@ -15,6 +15,8 @@ import { CommandForm, StaleBanner, planKeys, usePinnedVersion, type Pinned } fro
 import { TextInput } from './ui';
 import { emptyLeg, legToForm, validateLegs, type LegForm } from './validation';
 import { JourneyStudio } from './studio/JourneyStudio';
+import type { StudioContext } from './studio/model';
+import type { ManagerCase } from '../assessment/contracts';
 import './plans.css';
 
 const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
@@ -337,6 +339,19 @@ function CandidatesSection({ orderId }: { orderId: number }) {
   );
 }
 
+/** Pickup, delivery and departure from the submitted request revision. */
+function studioContext(current: ManagerCase): StudioContext | undefined {
+  const request = current.revision?.snapshot.request;
+  if (!request) return undefined;
+  return {
+    originName: request.originAddress ?? null,
+    originCountry: request.originCountryCode ?? null,
+    destinationName: request.destinationAddress ?? null,
+    destinationCountry: request.destinationCountryCode ?? null,
+    departureAt: request.preferredDepartureAt ?? null,
+  };
+}
+
 function PlansWorkspace({ orderId }: { orderId: number }) {
   const session = useSession()!;
   const navigate = useNavigate();
@@ -373,7 +388,10 @@ function PlansWorkspace({ orderId }: { orderId: number }) {
           revisionId={revisionId}
           recordVersion={caseQuery.data.recordVersion}
           canCompile={!pinned.changed}
-          onSaved={(planId) => navigate(`${plansPath(role, orderId)}/${planId}`)}
+          context={studioContext(caseQuery.data)}
+          onSaved={(planId, vehiclePicks) =>
+            navigate(`${plansPath(role, orderId)}/${planId}`, { state: { vehiclePicks } })
+          }
         />
       )}
       <section className="card" aria-labelledby="plans-heading">

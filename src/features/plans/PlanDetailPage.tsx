@@ -18,7 +18,7 @@ import {
 } from './forms';
 import { StaleBanner, planKeys, usePinnedVersion, type Pinned } from './hooks';
 import { DeploymentNotice, planAccess, plansPath, schemaPending } from './PlansPage';
-import { JourneyStudio } from './studio/JourneyStudio';
+import { JourneyStudio, type VehiclePicks } from './studio/JourneyStudio';
 import './plans.css';
 
 const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
@@ -98,8 +98,10 @@ function LegCard({
 function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number }) {
   const session = useSession()!;
   const navigate = useNavigate();
-  const { hash } = useLocation();
+  const { hash, state } = useLocation();
   const role = session.role as 'MANAGER' | 'COORDINATOR';
+  // Vehicles chosen while drafting, handed over by the Studio after its save.
+  const vehiclePicks = (state as { vehiclePicks?: VehiclePicks } | null)?.vehiclePicks;
   const query = useQuery({
     queryKey: planKeys.detail(session.generation, orderId, planId),
     queryFn: ({ signal }) => plansApi.get(orderId, planId, signal),
@@ -177,8 +179,10 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
         revisionId={plan.revisionId}
         recordVersion={plan.recordVersion}
         canCompile={editable && !pinned.changed}
-        onSaved={(nextId) => {
-          if (nextId !== planId) navigate(`${plansPath(role, orderId)}/${nextId}`);
+        vehiclePicks={vehiclePicks}
+        onSaved={(nextId, picks) => {
+          if (nextId !== planId)
+            navigate(`${plansPath(role, orderId)}/${nextId}`, { state: { vehiclePicks: picks } });
           else
             void query.refetch().then(({ data }) => {
               if (data) pinned.adopt(data.recordVersion);

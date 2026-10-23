@@ -8,6 +8,8 @@ import { graphApi, graphSchema, type GraphView } from './graphApi';
 import { newNode, type Journey } from './model';
 import type { Selection } from './JourneyStudioCanvas';
 import { plansApi } from '../api';
+import { resourcesApi } from '../../resources/api';
+import { catalogs } from '../../resources/contracts';
 import { planDetailSchema } from '../contracts';
 import { planDetail } from '../testing';
 import { ApiError } from '../../../shared/api/client';
@@ -19,7 +21,8 @@ vi.mock('./graphApi', async (original) => ({
   ...(await original<typeof import('./graphApi')>()),
   graphApi: { get: vi.fn(), compile: vi.fn(), positions: vi.fn() },
 }));
-vi.mock('../api', () => ({ plansApi: { get: vi.fn() } }));
+vi.mock('../api', () => ({ plansApi: { get: vi.fn(), stall: vi.fn() } }));
+vi.mock('../../resources/api', () => ({ resourcesApi: { list: vi.fn(), probe: vi.fn() } }));
 vi.mock('../forms', () => ({
   ConfirmForm: () => <div>Confirmation evidence form</div>,
   QuarantineForm: () => <div>Quarantine evidence form</div>,
@@ -128,11 +131,63 @@ function graph(patch: Partial<GraphView> = {}): GraphView {
     ...patch,
   });
 }
+const WINDOW = {
+  maintenanceFrom: null,
+  maintenanceTo: null,
+  documentExpiresAt: null,
+  bufferMinutes: null,
+  notes: null,
+};
 beforeEach(() => {
   vi.clearAllMocks();
   queryClient.clear();
   vi.mocked(graphApi.get).mockResolvedValue(graph());
   vi.mocked(plansApi.get).mockResolvedValue(planDetailSchema.parse(planDetail()));
+  // The catalogue the Coordinator chooses from: one truck, one stall, one carrier.
+  vi.mocked(resourcesApi.list).mockImplementation(async (key) => {
+    const items =
+      key === 'vehicles'
+        ? [
+            catalogs.vehicles.view.parse({
+              id: 51,
+              recordVersion: '0000000000000001',
+              data: {
+                vehicleCode: 'TR-1',
+                plateNumber: '51C-123',
+                horseCapacity: 2,
+                climateSystemType: 'AIR_CONDITIONED',
+                status: 'ACTIVE',
+                ownerSupplierId: null,
+                window: WINDOW,
+              },
+            }),
+          ]
+        : key === 'stalls'
+          ? [
+              catalogs.stalls.view.parse({
+                id: 61,
+                recordVersion: '0000000000000001',
+                data: {
+                  stallCode: 'ST-1',
+                  capacitySlots: 1.5,
+                  internalHeightCm: 240,
+                  internalWidthCm: 120,
+                  weightLimitKg: null,
+                  status: 'ACTIVE',
+                  ownerSupplierId: null,
+                  window: WINDOW,
+                },
+              }),
+            ]
+          : [
+              catalogs.suppliers.view.parse({
+                id: 21,
+                recordVersion: '0000000000000001',
+                data: { name: 'Green Air', active: true, services: ['Air transport'] },
+              }),
+            ];
+    return { items, page: 0, size: 20, totalElements: items.length } as never;
+  });
 });
 function mount(role: Role, mode: 'edit' | 'driver' | 'customer' = 'edit', canCompile = true) {
   startSession({ accessToken: 'unit-test', tokenType: 'Bearer', expiresIn: 60, role });
@@ -201,7 +256,7 @@ describe('Journey Studio role safety and write consistency', () => {
       .mockResolvedValueOnce(graph({ planId: 312 }));
     const user = mount('COORDINATOR');
     await user.click(await screen.findByRole('button', { name: 'Soạn phiên bản mới' }));
-    await user.click(screen.getByRole('button', { name: /Compile & lưu sơ đồ/ }));
+    await user.click(screen.getByRole('button', { name: /Lưu lộ trình & cập nhật báo giá/ }));
     const retry = await screen.findByRole('button', { name: 'Thử lại cùng yêu cầu' });
     expect(screen.getByRole('button', { name: 'Move checkpoint' })).toBeDisabled();
     expect(screen.getByRole('button', { name: /\+ Nghỉ/ })).toBeDisabled();
@@ -221,16 +276,76 @@ describe('Journey Studio role safety and write consistency', () => {
     expect(screen.queryByText('Confirmation evidence form')).toBeNull();
   });
 
-  it('updates checkpoint arrival immediately when an unsaved wire arrival changes', async () => {
+  it('derives a road arrival from distance at 60 km/h and moves the next checkpoint', async () => {
     const user = mount('COORDINATOR');
     await user.click(await screen.findByRole('button', { name: 'Soạn phiên bản mới' }));
     expect(screen.getByTestId('canvas')).toHaveAttribute('data-can-connect', 'true');
     await user.click(screen.getByRole('button', { name: 'Select road' }));
-    fireEvent.change(screen.getByLabelText('Đến nơi (+07)'), {
-      target: { value: '2027-02-01T17:00' },
-    });
-    expect(screen.getByTestId('last-arrival')).toHaveTextContent('2027-02-01T17:00:00+07:00');
+    // No arrival field, carrier, flight or technical distance source on a road leg.
+    expect(screen.queryByLabelText('Đến nơi (+07)')).toBeNull();
+    expect(screen.queryByText('Nguồn khoảng cách')).toBeNull();
+    expect(screen.queryByLabelText('Hãng hàng không')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Khoảng cách (km)'), { target: { value: '300' } });
+    // Departs 13:00 (+07); 300 km at 60 km/h is five hours.
+    expect(screen.getByTestId('last-arrival')).toHaveTextContent('2027-02-01T18:00:00+07:00');
+    expect(screen.getByLabelText('Dự kiến đến')).toHaveTextContent('18:00');
     expect(graphApi.compile).not.toHaveBeenCalled();
+  });
+
+  it('prices a flight leg and sends its fare with the saved journey', async () => {
+    vi.mocked(graphApi.compile).mockResolvedValue(graph({ planId: 312 }));
+    const user = mount('COORDINATOR');
+    await user.click(await screen.findByRole('button', { name: 'Soạn phiên bản mới' }));
+    await user.click(screen.getByRole('button', { name: 'Select road' }));
+    await user.selectOptions(screen.getByLabelText('Phương thức'), 'AIR');
+    expect(screen.getByLabelText('Hãng hàng không')).toBeInTheDocument();
+    expect(screen.getByLabelText('Hạ cánh (+07)')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Giá vé máy bay chặng này (USD)'), {
+      target: { value: '1500.5' },
+    });
+    await user.click(screen.getByRole('button', { name: /Lưu lộ trình & cập nhật báo giá/ }));
+    await waitFor(() => expect(graphApi.compile).toHaveBeenCalled());
+    const leg = vi.mocked(graphApi.compile).mock.calls[0][1].draft.legs[0];
+    expect(leg).toMatchObject({
+      transportMode: 'AIR',
+      estimatedAirfare: 1500.5,
+      distanceSource: 'SUPPLIER_DECLARATION',
+    });
+  });
+
+  it('holds the stall chosen on a flight leg once the leg exists', async () => {
+    const saved = graph({ planId: 312 });
+    saved.wires[0].transportMode = 'AIR';
+    vi.mocked(graphApi.compile).mockResolvedValue(saved);
+    vi.mocked(resourcesApi.probe).mockResolvedValue({
+      status: 'AVAILABLE',
+      recordVersion: '00000000000000f1',
+      blockers: [],
+    } as never);
+    vi.mocked(plansApi.stall).mockResolvedValue(
+      planDetailSchema.parse({ ...planDetail(), recordVersion: '00000000000000c3' }),
+    );
+    const user = mount('COORDINATOR');
+    await user.click(await screen.findByRole('button', { name: 'Soạn phiên bản mới' }));
+    await user.click(screen.getByRole('button', { name: 'Select road' }));
+    await user.selectOptions(screen.getByLabelText('Phương thức'), 'AIR');
+    await screen.findByRole('option', { name: /ST-1 · 1.5 slot/ });
+    await user.selectOptions(screen.getByLabelText('Chuồng bay'), '61');
+    await user.click(screen.getByRole('button', { name: /Lưu lộ trình & cập nhật báo giá/ }));
+    await waitFor(() => expect(plansApi.stall).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(plansApi.stall).mock.calls[0]).toEqual([
+      101,
+      312,
+      saved.wires[0].legId,
+      expect.objectContaining({
+        stallId: 61,
+        stallRecordVersion: '00000000000000f1',
+        status: 'HELD',
+        carrierAcceptanceStatus: 'PENDING',
+        recordVersion: saved.recordVersion,
+      }),
+    ]);
+    expect(await screen.findByText(/đã giữ chuồng #61/)).toBeInTheDocument();
   });
 
   it('preserves the carrier from authorized plan detail when compiling a fork', async () => {
@@ -241,8 +356,8 @@ describe('Journey Studio role safety and write consistency', () => {
     const user = mount('COORDINATOR');
     await user.click(await screen.findByRole('button', { name: 'Soạn phiên bản mới' }));
     await user.click(screen.getByRole('button', { name: 'Select road' }));
-    expect(screen.getByRole('textbox', { name: 'Hãng vận chuyển · ID' })).toHaveValue('73');
-    await user.click(screen.getByRole('button', { name: /Compile & lưu sơ đồ/ }));
+    // A road leg shows no carrier field, but the authorized carrier still travels with the fork.
+    await user.click(screen.getByRole('button', { name: /Lưu lộ trình & cập nhật báo giá/ }));
     await waitFor(() => expect(graphApi.compile).toHaveBeenCalled());
     expect(vi.mocked(graphApi.compile).mock.calls[0][1].draft.legs[0].supplierId).toBe(73);
   });
