@@ -206,10 +206,12 @@ export interface CostInput {
 /** BE error codes for F14, explained in plain words. */
 export const errorHelp: Record<string, string> = {
   QUARANTINE_RELEASE_REQUIRED:
-    'Final delivery is blocked: the destination quarantine release has not passed yet.',
+    '⚠️ The horse has not been released from quarantine (Quarantine Release). Ask the legal Specialist to clear that phase before the handover.',
+  HANDOVER_TIME_BEFORE_DEPARTURE:
+    "The handover time cannot be earlier than the leg's actual departure.",
   RECEIVER_IDENTITY_MISMATCH:
     'The receiver does not match the order receiver. Enter their authority (e.g. STABLE_MANAGER, TRAINER, GROOM, VETERINARIAN) if they receive on the owner’s behalf.',
-  SIGNATURE_REQUIRED: 'Final delivery needs the receiver’s signature file key.',
+  SIGNATURE_REQUIRED: 'Final delivery needs the receiver’s signature.',
   HANDOVER_PHOTO_REQUIRED: 'Final delivery needs a photo of the horse at the destination stall.',
   NOT_FINAL_LEG: 'Final delivery is only possible on the last leg of the plan.',
   LEG_NOT_IN_TRANSIT: 'This leg is not in transit, so no handover can be recorded.',

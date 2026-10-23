@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { RequestTable } from './RequestTable';
@@ -40,9 +40,29 @@ it('keeps long request identifiers accessible and preserves the detail route whi
 
 it('does not mark transit or delivery as complete from preparation approval', () => {
   render(<OrderLifecycle status="APPROVED" />);
-  expect(screen.getByText('Request').closest('li')).toHaveAttribute('aria-current', 'step');
-  expect(screen.getByText('Transit').closest('li')).not.toHaveClass('done');
+  expect(screen.getByText('Approved').closest('li')).toHaveAttribute('aria-current', 'step');
+  expect(screen.getByText('Submitted').closest('li')).toHaveClass('done');
+  expect(screen.getByText('In transit').closest('li')).not.toHaveClass('done');
   expect(screen.getByText('Delivered').closest('li')).not.toHaveClass('done');
+});
+
+it('shows the eight standard stages and completes them all once closed', () => {
+  render(<OrderLifecycle status="CLOSED" />);
+  const stages = within(screen.getByRole('list', { name: 'Order lifecycle' })).getAllByRole(
+    'listitem',
+  );
+  expect(stages.map((s) => s.textContent?.replace(/^\d+/, ''))).toEqual([
+    'Draft',
+    'Submitted',
+    'Approved',
+    'In preparation',
+    'Confirmed',
+    'In transit',
+    'Delivered',
+    'Closed',
+  ]);
+  for (const stage of stages) expect(stage).toHaveClass('done');
+  expect(document.querySelector('[aria-current="step"]')).toBeNull();
 });
 
 it('filters current transit requests consistently in dashboards and loaded queues', async () => {

@@ -78,6 +78,9 @@ export const overviewSchema = z.object({
   legs: z.array(legSchema),
   milestones: z.array(milestoneSchema),
   welfareLogs: z.array(welfareSchema),
+  // The consignee from the request, for the final handover; older servers omit it.
+  receiverName: text,
+  receiverAuthority: text,
 });
 export type ExecutionOverview = z.infer<typeof overviewSchema>;
 export const receiptSchema = z.object({

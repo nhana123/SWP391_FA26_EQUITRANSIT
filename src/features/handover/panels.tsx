@@ -29,6 +29,7 @@ import {
   type Handover,
   type Outcome,
 } from './contracts';
+import { HandoverFileField, HandoverFileView } from './files';
 import './handover.css';
 
 export const handoverKeys = {
@@ -43,7 +44,6 @@ export const handoverKeys = {
     [...handoverKeys.all(generation), 'profit', planId] as const,
 };
 const dateHint = 'Cannot be in the future.';
-const keyHint = 'Stored file reference. This release has no upload for handover files.';
 /** The BE allows five minutes of clock skew for "not in the future". */
 const future = (value: string) => Date.parse(value) > Date.now() + 5 * 60_000;
 const text = (v: string) => v.trim();
@@ -128,12 +128,25 @@ interface HandoverForm {
   exceptionNotes: string;
   locationDescription: string;
 }
-export function validateHandover(f: HandoverForm): FieldErrors {
+export function validateHandover(
+  f: HandoverForm,
+  context: { departedAt?: string | null; receiverName?: string | null } = {},
+): FieldErrors {
   const e: FieldErrors = {};
   const final = f.kind === 'FINAL_RECEIVER';
   if (!validOffsetDate(f.handoverTime)) e.handoverTime = 'Choose a date and time.';
   else if (future(f.handoverTime)) e.handoverTime = 'The handover time cannot be in the future.';
+  else if (context.departedAt && Date.parse(f.handoverTime) < Date.parse(context.departedAt))
+    e.handoverTime = "The handover time cannot be earlier than the leg's actual departure.";
   if (!text(f.receivedByName)) e.receivedByName = 'Enter who received the horse.';
+  // Someone other than the request's receiver needs a stated authority.
+  else if (
+    final &&
+    context.receiverName &&
+    text(f.receivedByName).toLowerCase() !== context.receiverName.trim().toLowerCase() &&
+    !text(f.receiverAuthority)
+  )
+    e.receiverAuthority = 'Enter their authority, e.g. STABLE_MANAGER, TRAINER or GROOM.';
   if (final && !text(f.receiverSignatureFileKey))
     e.receiverSignatureFileKey = 'Final delivery needs the receiver’s signature.';
   if (final && !text(f.photoFileKey))
@@ -145,14 +158,24 @@ export function validateHandover(f: HandoverForm): FieldErrors {
 
 /** Handovers on one leg plus the form to record one. Recording completes the leg. */
 export function LegHandovers({
+  orderId,
   legId,
   asDriver,
   finalLeg,
+  departedAt = null,
+  receiverName = null,
+  receiverAuthority = null,
   onRecorded,
 }: {
+  orderId: number;
   legId: number;
   asDriver: boolean;
   finalLeg: boolean;
+  /** The leg's actual departure; a handover cannot be earlier. */
+  departedAt?: string | null;
+  /** The consignee the customer named on the request. */
+  receiverName?: string | null;
+  receiverAuthority?: string | null;
   onRecorded: (message: string) => Promise<unknown>;
 }) {
   const { generation } = useSession()!;
@@ -167,8 +190,9 @@ export function LegHandovers({
   const [f, setF] = useState<HandoverForm>({
     kind: finalLeg ? 'FINAL_RECEIVER' : 'INTERMEDIATE_AIRPORT',
     handoverTime: '',
-    receivedByName: '',
-    receiverAuthority: '',
+    // The final receiver comes from the request; a proxy is entered explicitly.
+    receivedByName: finalLeg ? (receiverName ?? '') : '',
+    receiverAuthority: finalLeg ? (receiverAuthority ?? '') : '',
     receiverSignatureFileKey: '',
     photoFileKey: '',
     horseConditionStatus: 'GOOD',
@@ -182,9 +206,12 @@ export function LegHandovers({
     ? ['FINAL_RECEIVER', ...intermediateTypes]
     : [...intermediateTypes];
   const final = f.kind === 'FINAL_RECEIVER';
+  const [proxy, setProxy] = useState(false);
+  // The request's receiver is shown, not retyped, unless someone else receives.
+  const fixedReceiver = final && !!receiverName && !proxy;
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const errors = validateHandover(f);
+    const errors = validateHandover(f, { departedAt, receiverName });
     setFields(errors);
     if (Object.keys(errors).length) return;
     const body = {
@@ -225,16 +252,22 @@ export function LegHandovers({
       ) : (
         <ul className="handover-list">
           {list.data.map((h) => (
-            <StaffHandover key={h.handoverId} h={h} />
+            <StaffHandover key={h.handoverId} h={h} orderId={orderId} />
           ))}
         </ul>
       )}
       <form aria-label="Record handover" onSubmit={submit} noValidate>
         <Notice>
           {final
-            ? 'Final delivery completes this leg, the plan and marks the order Delivered. It needs quarantine release, the receiver’s signature and a photo. It does not settle payments.'
+            ? 'Final delivery completes this leg, the plan and marks the order Delivered. It needs the receiver’s signature and a photo. It does not settle payments.'
             : 'An intermediate handover completes this leg; the order stays in transit.'}
         </Notice>
+        {final && (
+          <p className="handover-gate" role="note">
+            🛂 Quarantine release must be cleared by the legal Specialist before the final handover;
+            the server checks it when you record.
+          </p>
+        )}
         <Select
           label="Handover type"
           value={f.kind}
@@ -251,39 +284,62 @@ export function LegHandovers({
           onChange={(handoverTime) => set({ handoverTime })}
           error={fields.handoverTime}
         />
-        <Input
-          label="Received by"
-          max={300}
-          value={f.receivedByName}
-          onChange={(receivedByName) => set({ receivedByName })}
-          error={fields.receivedByName}
-        />
-        <Input
-          label="Receiver authority (optional)"
-          hint={
-            final
-              ? 'Needed when the receiver is not the order receiver, e.g. STABLE_MANAGER, TRAINER, GROOM, VETERINARIAN.'
-              : 'E.g. AIRPORT_RAMP_SUPERVISOR or the carrier.'
-          }
-          max={50}
-          value={f.receiverAuthority}
-          onChange={(receiverAuthority) => set({ receiverAuthority })}
-        />
-        <Input
-          label={final ? 'Receiver signature file' : 'Receiver signature file (optional)'}
-          hint={keyHint}
-          max={1024}
-          value={f.receiverSignatureFileKey}
+        {fixedReceiver ? (
+          <div className="handover-receiver">
+            <span>
+              Received by <strong>{receiverName}</strong>
+              <small> · the receiver named on the request</small>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setProxy(true);
+                set({ receivedByName: '', receiverAuthority: '' });
+              }}
+            >
+              Someone else receives
+            </button>
+          </div>
+        ) : (
+          <Input
+            label="Received by"
+            max={300}
+            value={f.receivedByName}
+            onChange={(receivedByName) => set({ receivedByName })}
+            error={fields.receivedByName}
+          />
+        )}
+        {!fixedReceiver && (
+          <Input
+            label="Receiver authority (optional)"
+            hint={
+              final
+                ? 'Needed when the receiver is not the order receiver, e.g. STABLE_MANAGER, TRAINER, GROOM, VETERINARIAN.'
+                : 'E.g. AIRPORT_RAMP_SUPERVISOR or the carrier.'
+            }
+            max={50}
+            value={f.receiverAuthority}
+            onChange={(receiverAuthority) => set({ receiverAuthority })}
+            error={fields.receiverAuthority}
+          />
+        )}
+        <HandoverFileField
+          orderId={orderId}
+          purpose="HANDOVER_SIGNATURE"
+          label={final ? 'Receiver signature' : 'Receiver signature (optional)'}
+          fileKey={f.receiverSignatureFileKey}
           onChange={(receiverSignatureFileKey) => set({ receiverSignatureFileKey })}
           error={fields.receiverSignatureFileKey}
+          disabled={write.locked}
         />
-        <Input
-          label={final ? 'Handover photo file' : 'Handover photo file (optional)'}
-          hint={keyHint}
-          max={1024}
-          value={f.photoFileKey}
+        <HandoverFileField
+          orderId={orderId}
+          purpose="HANDOVER_PHOTO"
+          label={final ? 'Handover photo' : 'Handover photo (optional)'}
+          fileKey={f.photoFileKey}
           onChange={(photoFileKey) => set({ photoFileKey })}
           error={fields.photoFileKey}
+          disabled={write.locked}
         />
         <Select
           label="Horse condition"
@@ -322,7 +378,27 @@ export function LegHandovers({
   );
 }
 
-function StaffHandover({ h }: { h: Handover }) {
+function HandoverEvidence({
+  orderId,
+  signature,
+  photo,
+}: {
+  orderId: number;
+  signature: string | null;
+  photo: string | null;
+}) {
+  if (!signature && !photo) return null;
+  return (
+    <div className="handover-evidence">
+      {signature && (
+        <HandoverFileView orderId={orderId} fileKey={signature} label="Receiver signature" />
+      )}
+      {photo && <HandoverFileView orderId={orderId} fileKey={photo} label="Handover photo" />}
+    </div>
+  );
+}
+
+function StaffHandover({ h, orderId }: { h: Handover; orderId: number }) {
   return (
     <li>
       <strong>{label(typeLabels, h.handoverType)}</strong> · {displayDate(h.handoverTime)} · to{' '}
@@ -333,6 +409,11 @@ function StaffHandover({ h }: { h: Handover }) {
       {label(outcomeLabels, h.outcome)}
       {h.recordedByName && ` · recorded by ${h.recordedByName}`}
       {h.exceptionNotes && <p>{h.exceptionNotes}</p>}
+      <HandoverEvidence
+        orderId={orderId}
+        signature={h.receiverSignatureFileKey}
+        photo={h.photoFileKey}
+      />
       {h.customerDecision && (
         <p>
           Customer answer: {label(decisionLabels, h.customerDecision)}
@@ -418,19 +499,12 @@ function CustomerHandoverCard({ h, orderId }: { h: CustomerHandover; orderId: nu
             <dd>{h.locationDescription}</dd>
           </div>
         )}
-        {h.receiverSignatureFileKey && (
-          <div>
-            <dt>Signature reference</dt>
-            <dd>{h.receiverSignatureFileKey}</dd>
-          </div>
-        )}
-        {h.photoFileKey && (
-          <div>
-            <dt>Photo reference</dt>
-            <dd>{h.photoFileKey}</dd>
-          </div>
-        )}
       </dl>
+      <HandoverEvidence
+        orderId={orderId}
+        signature={h.receiverSignatureFileKey}
+        photo={h.photoFileKey}
+      />
       {h.customerDecision ? (
         <p>
           Your answer: <strong>{label(decisionLabels, h.customerDecision)}</strong>
@@ -501,10 +575,12 @@ export function validateCost(f: CostForm): FieldErrors {
 
 /** Internal supplier costs on one plan. Never shown to customers. */
 export function ActualCosts({
+  orderId,
   planId,
   legs,
   canWrite,
 }: {
+  orderId: number;
   planId: number;
   legs: { legId: number; sequenceNo: number }[];
   canWrite: boolean;
@@ -590,6 +666,13 @@ export function ActualCosts({
                   <td>
                     {c.description}
                     {c.recordedByName && <small> · by {c.recordedByName}</small>}
+                    {c.evidenceFileKey && (
+                      <HandoverFileView
+                        orderId={orderId}
+                        fileKey={c.evidenceFileKey}
+                        label="Receipt"
+                      />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -648,12 +731,15 @@ export function ActualCosts({
             value={f.description}
             onChange={(description) => set({ description })}
           />
-          <Input
-            label="Invoice file (optional)"
-            hint={keyHint}
-            max={1024}
-            value={f.evidenceFileKey}
+          <HandoverFileField
+            // A fresh field after each saved cost.
+            key={saved}
+            orderId={orderId}
+            purpose="ACTUAL_COST_EVIDENCE"
+            label="Invoice or receipt (optional)"
+            fileKey={f.evidenceFileKey}
             onChange={(evidenceFileKey) => set({ evidenceFileKey })}
+            disabled={write.locked}
           />
           {write.notice}
           {saved && <p role="status">{saved}</p>}

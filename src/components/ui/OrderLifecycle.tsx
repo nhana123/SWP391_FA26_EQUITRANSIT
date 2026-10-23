@@ -1,15 +1,37 @@
-const stages = ['Request', 'Quote', 'Prep', 'Transit', 'Delivered'];
-/** Broad workflow stage only; approval is never treated as payment or clearance. */
+/** The standard request lifecycle, DRAFT → CLOSED, one stage per status. */
+export const lifecycleStages = [
+  'Draft',
+  'Submitted',
+  'Approved',
+  'In preparation',
+  'Confirmed',
+  'In transit',
+  'Delivered',
+  'Closed',
+] as const;
+const stageOf: Record<string, number> = {
+  DRAFT: 0,
+  // Sent back to the customer: the request is being edited again.
+  CHANGES_REQUESTED: 0,
+  SUBMITTED: 1,
+  APPROVED: 2,
+  IN_PREPARATION: 3,
+  CONFIRMED: 4,
+  IN_TRANSIT: 5,
+  DELIVERED: 6,
+  // Legacy delivered-and-settled state.
+  COMPLETED: 6,
+  CLOSED: 7,
+};
+/** Stage of a status; approval is never treated as payment or clearance. */
 export function lifecycleStage(status: string): number {
-  if (['DELIVERED', 'COMPLETED', 'CLOSED'].includes(status)) return 4;
-  if (status === 'IN_TRANSIT') return 3;
-  if (['CONFIRMED', 'IN_PREPARATION'].includes(status)) return 2;
-  if (['QUOTED', 'ACCEPTED'].includes(status)) return 1;
-  return 0;
+  return stageOf[status] ?? 0;
 }
 export function OrderLifecycle({ status, compact = false }: { status: string; compact?: boolean }) {
   const stage = lifecycleStage(status);
   const interrupted = ['REJECTED', 'CANCELLED', 'CANCELED'].includes(status);
+  // A closed request has finished every stage, including the last.
+  const finished = status === 'CLOSED';
   return (
     <div className={`order-lifecycle ${compact ? 'compact' : ''}`}>
       {!compact && (
@@ -19,11 +41,13 @@ export function OrderLifecycle({ status, compact = false }: { status: string; co
         </div>
       )}
       <ol aria-label="Order lifecycle">
-        {stages.map((label, i) => (
+        {lifecycleStages.map((label, i) => (
           <li
             key={label}
-            className={!interrupted && i < stage ? 'done' : i === stage ? 'current' : ''}
-            aria-current={!interrupted && i === stage ? 'step' : undefined}
+            className={
+              !interrupted && (i < stage || finished) ? 'done' : i === stage ? 'current' : ''
+            }
+            aria-current={!interrupted && !finished && i === stage ? 'step' : undefined}
           >
             <span className="lifecycle-point" aria-hidden="true">
               {compact ? '' : i + 1}

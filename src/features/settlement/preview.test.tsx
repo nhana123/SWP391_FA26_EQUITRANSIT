@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { router } from '../../app/router';
@@ -45,14 +45,19 @@ it('Customer handover page loads only the redacted customer handovers', async ()
   expect(calls()).toEqual(['http://localhost:8080/api/customer/transport-orders/11/handovers']);
 });
 
-it('Manager page states that costs never close a request financially', async () => {
+it('Manager page reads the request for closing and says closing moves no money', async () => {
   mount('/manager/requests/11/settlement', 'MANAGER');
   expect(
     await screen.findByRole('heading', { name: 'Costs and profitability' }),
   ).toBeInTheDocument();
-  expect(screen.getByText(/do not close a request financially/)).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Close transport request' })).toBeNull();
-  expect(calls()).toEqual(['http://localhost:8080/api/transport-orders/11/plans?page=0&size=20']);
+  await waitFor(() =>
+    expect(calls().sort()).toEqual([
+      'http://localhost:8080/api/manager/transport-orders/11',
+      'http://localhost:8080/api/transport-orders/11/plans?page=0&size=20',
+    ]),
+  );
+  // The close action appears only for a delivered request the server returned.
+  expect(screen.queryByRole('button', { name: /Settle & close/ })).toBeNull();
 });
 
 it.each([

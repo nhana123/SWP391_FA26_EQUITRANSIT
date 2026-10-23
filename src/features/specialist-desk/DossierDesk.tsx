@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../components/ui/Icons';
-import { lifecycleStage } from '../../components/ui/OrderLifecycle';
+import { lifecycleStage, lifecycleStages } from '../../components/ui/OrderLifecycle';
 import { CodeChip, EmptyState } from '../../components/ui/Primitives';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { ApiError } from '../../shared/api/client';
@@ -60,10 +60,10 @@ export function DossierCard({ dossier }: { dossier: Dossier }) {
             role="progressbar"
             aria-label="Journey progress"
             aria-valuemin={1}
-            aria-valuemax={5}
+            aria-valuemax={lifecycleStages.length}
             aria-valuenow={stage + 1}
           >
-            <span style={{ width: `${((stage + 1) / 5) * 100}%` }} />
+            <span style={{ width: `${((stage + 1) / lifecycleStages.length) * 100}%` }} />
           </span>
         </div>
         {!dossier.caseAvailable ? (
