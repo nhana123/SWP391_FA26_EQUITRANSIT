@@ -69,6 +69,14 @@ const cost = {
 
 beforeEach(() => {
   queryClient.clear();
+  // Stored evidence reads back as the image it was saved as.
+  vi.spyOn(handoverApi, 'file').mockImplementation(async (_orderId, fileKey) => ({
+    fileKey,
+    purpose: 'HANDOVER_PHOTO',
+    contentType: 'image/png',
+    fileName: fileKey.split('/').pop()!,
+    contentBase64: 'AQ==',
+  }));
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -113,7 +121,40 @@ describe('handover rules (F14)', () => {
       }).handoverTime,
     ).toMatch(/future/);
   });
+  it('rejects a handover before the leg left and a proxy without authority', () => {
+    const complete = { ...base, receiverSignatureFileKey: 's', photoFileKey: 'p' };
+    expect(validateHandover(complete, { departedAt: '2026-10-18T10:00:00Z' }).handoverTime).toMatch(
+      /earlier than the leg's actual departure/,
+    );
+    expect(
+      validateHandover(
+        { ...complete, receivedByName: 'Someone Else' },
+        { receiverName: 'Jean-Pierre Dubois' },
+      ),
+    ).toEqual({
+      receiverAuthority: 'Enter their authority, e.g. STABLE_MANAGER, TRAINER or GROOM.',
+    });
+    // The named receiver needs no authority, whatever the letter case.
+    expect(
+      validateHandover(
+        { ...complete, receivedByName: 'jean-pierre dubois' },
+        { receiverName: 'Jean-Pierre Dubois' },
+      ),
+    ).toEqual({});
+  });
 });
+
+/** Every upload returns a stored file carrying the purpose it was sent with. */
+function stubUploads() {
+  return vi.spyOn(handoverApi, 'uploadFile').mockImplementation(async (_orderId, body) => ({
+    fileKey: `${body.purpose.toLowerCase()}-key`,
+    purpose: body.purpose,
+    contentType: body.contentType,
+    fileName: body.fileName,
+    contentBase64: body.contentBase64,
+  }));
+}
+const png = (name: string) => new File([new Uint8Array([1])], name, { type: 'image/png' });
 
 describe('leg handover (F14)', () => {
   it('a driver records final delivery on the last leg through the driver route', async () => {
@@ -130,30 +171,50 @@ describe('leg handover (F14)', () => {
       horseConditionStatus: 'EXCELLENT',
       quarantineReleaseVerified: true,
     });
+    const upload = stubUploads();
     const onRecorded = vi.fn().mockResolvedValue(undefined);
     const user = mount(
       'DRIVER',
-      <LegHandovers legId={903} asDriver finalLeg onRecorded={onRecorded} />,
+      <LegHandovers
+        orderId={101}
+        legId={903}
+        asDriver
+        finalLeg
+        departedAt="2026-10-18T06:00:00Z"
+        receiverName="Jean-Pierre Dubois"
+        onRecorded={onRecorded}
+      />,
     );
     const form = within(await screen.findByRole('form', { name: 'Record handover' }));
     expect(form.getByLabelText('Handover type')).toHaveValue('FINAL_RECEIVER');
+    // The receiver comes from the request; nothing to retype.
+    expect(form.queryByLabelText('Received by')).toBeNull();
+    expect(form.getByText('Jean-Pierre Dubois')).toBeInTheDocument();
     setDateTime(form.getByLabelText('Handover time'), '2026-10-18T09:00:00Z');
-    await fill(user, form.getByLabelText('Received by'), 'Jean-Pierre Dubois');
-    await fill(user, form.getByLabelText(/Receiver authority/), 'STABLE_MANAGER');
-    await fill(user, form.getByLabelText('Receiver signature file'), 'signatures/dubois.png');
-    await fill(user, form.getByLabelText('Handover photo file'), 'photos/stall.jpg');
+    await user.upload(form.getByLabelText('Receiver signature'), png('signature.png'));
+    await user.upload(form.getByLabelText('Handover photo'), png('stall.png'));
+    // Each upload is previewed from the stored file.
+    expect(await form.findByRole('img', { name: 'signature.png' })).toHaveAttribute(
+      'src',
+      'data:image/png;base64,AQ==',
+    );
+    expect(await form.findByRole('img', { name: 'stall.png' })).toBeInTheDocument();
+    expect(upload.mock.calls.map((c) => [c[0], c[1].purpose, c[1].contentBase64])).toEqual([
+      [101, 'HANDOVER_SIGNATURE', 'AQ=='],
+      [101, 'HANDOVER_PHOTO', 'AQ=='],
+    ]);
     await user.selectOptions(form.getByLabelText('Horse condition'), 'EXCELLENT');
     await user.click(form.getByRole('button', { name: 'Record final delivery' }));
     await waitFor(() => expect(final).toHaveBeenCalledTimes(1));
     expect(final).toHaveBeenCalledWith(true, 903, {
       handoverTime: '2026-10-18T09:00:00Z',
       receivedByName: 'Jean-Pierre Dubois',
-      receiverAuthority: 'STABLE_MANAGER',
-      receiverSignatureFileKey: 'signatures/dubois.png',
+      receiverAuthority: null,
+      receiverSignatureFileKey: 'handover_signature-key',
       horseConditionStatus: 'EXCELLENT',
       outcome: 'SUCCESSFUL',
       exceptionNotes: null,
-      photoFileKey: 'photos/stall.jpg',
+      photoFileKey: 'handover_photo-key',
       locationDescription: null,
     });
     await waitFor(() =>
@@ -166,7 +227,13 @@ describe('leg handover (F14)', () => {
     const intermediate = vi.spyOn(handoverApi, 'intermediate').mockResolvedValue(handover());
     const user = mount(
       'COORDINATOR',
-      <LegHandovers legId={902} asDriver={false} finalLeg={false} onRecorded={vi.fn()} />,
+      <LegHandovers
+        orderId={101}
+        legId={902}
+        asDriver={false}
+        finalLeg={false}
+        onRecorded={vi.fn()}
+      />,
     );
     expect(await screen.findByText(/Markus Vance/)).toBeInTheDocument();
     const form = within(screen.getByRole('form', { name: 'Record handover' }));
@@ -185,18 +252,21 @@ describe('leg handover (F14)', () => {
       .spyOn(handoverApi, 'finalDelivery')
       .mockRejectedValueOnce(new ApiError(409, 'Blocked', 'QUARANTINE_RELEASE_REQUIRED'))
       .mockRejectedValueOnce(new ApiError(0, 'Network'));
+    stubUploads();
     const user = mount(
-      'MANAGER',
-      <LegHandovers legId={903} asDriver={false} finalLeg onRecorded={vi.fn()} />,
+      'COORDINATOR',
+      <LegHandovers orderId={101} legId={903} asDriver={false} finalLeg onRecorded={vi.fn()} />,
     );
     const form = within(await screen.findByRole('form', { name: 'Record handover' }));
+    // Without a receiver on the request, the name is typed.
     setDateTime(form.getByLabelText('Handover time'), '2026-10-18T09:00:00Z');
     await fill(user, form.getByLabelText('Received by'), 'Owner');
-    await fill(user, form.getByLabelText('Receiver signature file'), 'sig');
-    await fill(user, form.getByLabelText('Handover photo file'), 'photo');
+    await user.upload(form.getByLabelText('Receiver signature'), png('sig.png'));
+    await user.upload(form.getByLabelText('Handover photo'), png('photo.png'));
+    await form.findByRole('img', { name: 'photo.png' });
     const button = form.getByRole('button', { name: 'Record final delivery' });
     await user.click(button);
-    expect(await screen.findByText(/quarantine release has not passed/)).toBeInTheDocument();
+    expect(await screen.findByText(/has not been released from quarantine/)).toBeInTheDocument();
     await user.click(button);
     expect(await screen.findByText(/cannot be safely repeated/)).toBeInTheDocument();
     expect(button).toBeDisabled();
@@ -212,7 +282,14 @@ describe('customer delivery answer (F14)', () => {
       .mockResolvedValue(customerView({ customerDecision: 'EXCEPTION' }));
     const user = mount('CUSTOMER', <CustomerHandovers orderId={101} />);
     const form = within(await screen.findByRole('form', { name: 'Delivery answer' }));
-    expect(screen.getByText('signatures/dubois.png')).toBeInTheDocument();
+    // The customer sees the signature and the photo, not storage keys.
+    expect(await screen.findByRole('img', { name: 'dubois.png' })).toHaveAttribute(
+      'src',
+      'data:image/png;base64,AQ==',
+    );
+    expect(await screen.findByRole('img', { name: 'stall.jpg' })).toBeInTheDocument();
+    expect(handoverApi.file).toHaveBeenCalledWith(101, 'signatures/dubois.png', expect.anything());
+    expect(screen.queryByText('signatures/dubois.png')).toBeNull();
     expect(document.body).not.toHaveTextContent(/cost|Antoine|recorded by/i);
     await user.click(form.getByLabelText('Delivered with a problem'));
     await user.click(form.getByRole('button', { name: 'Send answer' }));
@@ -249,6 +326,7 @@ describe('actual costs and profitability (F14)', () => {
     const user = mount(
       'COORDINATOR',
       <ActualCosts
+        orderId={101}
         planId={801}
         legs={[
           { legId: 901, sequenceNo: 1 },

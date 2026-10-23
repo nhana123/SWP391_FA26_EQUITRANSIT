@@ -7,6 +7,8 @@ import { useSession } from '../../shared/api/session';
 import { ErrorNotice, Loading, Notice, PageHeading } from '../../shared/ui/common';
 import { ActualCosts, CustomerHandovers, Profitability } from '../handover/panels';
 import { plansApi } from '../plans/api';
+import { useManagerCase } from '../assessment/hooks';
+import { CloseOrderCard } from '../handover/CloseOrder';
 
 // F14 pages on the BE handover/actual-cost API (3d6dd6d). There is still no
 // financial settlement or close API: delivery never implies financial closure.
@@ -57,7 +59,7 @@ function PlanCosts({ orderId, manager }: { orderId: number; manager: boolean }) 
   const legs = plan.data.legs.map((l) => ({ legId: l.legId, sequenceNo: l.sequenceNo }));
   return (
     <>
-      <ActualCosts planId={plan.data.planId} legs={legs} canWrite={!manager} />
+      <ActualCosts orderId={orderId} planId={plan.data.planId} legs={legs} canWrite={!manager} />
       {manager && <Profitability planId={plan.data.planId} />}
     </>
   );
@@ -87,6 +89,24 @@ export function StaffActualCostsPage() {
   );
 }
 
+/** Closing follows the review of costs; it does not move payments. */
+function ManagerClosure({ orderId }: { orderId: number }) {
+  const order = useManagerCase(orderId);
+  if (!order.data) return null;
+  return (
+    <>
+      <Notice>
+        Payments stay on the payments page; closing the request does not move or settle money.
+      </Notice>
+      <CloseOrderCard
+        orderId={orderId}
+        orderStatus={order.data.orderStatus}
+        recordVersion={order.data.recordVersion}
+      />
+    </>
+  );
+}
+
 export function ManagerSettlementPage() {
   return (
     <OrderPage
@@ -97,10 +117,7 @@ export function ManagerSettlementPage() {
       {(orderId) => (
         <>
           <PlanCosts orderId={orderId} manager />
-          <Notice>
-            Delivery and recorded costs do not close a request financially. Payments stay on the
-            payments page; financial closing is not available from the server yet.
-          </Notice>
+          <ManagerClosure orderId={orderId} />
         </>
       )}
     </OrderPage>

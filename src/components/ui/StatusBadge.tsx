@@ -51,6 +51,7 @@ export function statusTone(status: string) {
       'PASS',
       'DELIVERED',
       'COMPLETED',
+      'CLOSED',
       'ACTIVE',
       'PAID',
       'RECONCILED',

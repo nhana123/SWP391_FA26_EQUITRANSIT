@@ -40,6 +40,7 @@ import {
 } from '../incidents/panels';
 import { incidentsEnabled } from '../incidents/capability';
 import { LegHandovers } from '../handover/panels';
+import { CloseOrderCard } from '../handover/CloseOrder';
 import { JourneyStudio } from '../plans/studio/JourneyStudio';
 import './execution.css';
 
@@ -660,6 +661,11 @@ function Workspace({ orderId }: { orderId: number }) {
           mode={session.role === 'DRIVER' ? 'driver' : 'customer'}
         />
       )}
+      <CloseOrderCard
+        orderId={o.orderId}
+        orderStatus={o.orderStatus}
+        recordVersion={o.recordVersion}
+      />
       <section className="card" aria-label="Legs">
         <h2>Legs</h2>
         <p className="muted">
@@ -777,7 +783,11 @@ function Workspace({ orderId }: { orderId: number }) {
           ) : activePanel.kind === 'handover' ? (
             <LegHandovers
               key={`h-${activePanel.leg.legId}`}
+              orderId={o.orderId}
               legId={activePanel.leg.legId}
+              departedAt={activePanel.leg.actualDeparture}
+              receiverName={o.receiverName}
+              receiverAuthority={o.receiverAuthority}
               asDriver={session.role === 'DRIVER'}
               finalLeg={activePanel.leg.sequenceNo === lastLeg}
               onRecorded={async (message) => {

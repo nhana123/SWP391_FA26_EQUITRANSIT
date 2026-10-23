@@ -25,6 +25,7 @@ import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
 import { OrderWorkflowBanner } from '../workflow/OrderWorkflowBanner';
 import { GatesSummary } from '../workflow/GatesSummary';
+import { CloseOrderCard } from '../handover/CloseOrder';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -263,6 +264,11 @@ export function ManagerCasePage() {
         <Link to="/manager/requests">Back to requests</Link>
       </ManagerHeading>
       <OrderWorkflowBanner status={current.orderStatus} role="MANAGER" />
+      <CloseOrderCard
+        orderId={current.orderId}
+        orderStatus={current.orderStatus}
+        recordVersion={current.recordVersion}
+      />
       <div className="actions">
         <QuotationLink orderId={current.orderId} />
         <SettlementPreviewLink orderId={current.orderId} />
