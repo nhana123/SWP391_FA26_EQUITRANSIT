@@ -321,8 +321,8 @@ describe('open two-page dossier', () => {
     ]);
     // Checklist exists → folded into a summary with a change button.
     expect(within(steps[0]).queryByRole('form', { name: 'Assess route checklist' })).toBeNull();
-    expect(steps[0]).toHaveTextContent('Route checklist recorded · VN → US');
-    await user.click(within(steps[0]).getByRole('button', { name: 'Change route' }));
+    expect(steps[0]).toHaveTextContent('Route checklist: VN → US');
+    await user.click(within(steps[0]).getByRole('button', { name: 'Update transit' }));
     expect(
       within(steps[0]).getByRole('form', { name: 'Assess route checklist' }),
     ).toBeInTheDocument();

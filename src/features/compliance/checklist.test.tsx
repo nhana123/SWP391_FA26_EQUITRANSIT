@@ -156,7 +156,7 @@ describe('customer legal documents checklist on the request page', () => {
         fileName: 'cert.pdf',
         contentType: 'application/pdf',
         contentBase64: 'AQ==',
-        expiresAt: '2099-03-01T23:59:00+07:00',
+        expiresAt: '2099-03-01T16:59:00Z',
         referenceNumber: 'CERT-1',
         recordVersion: '00000000000000a1',
         operationId: expect.any(String),

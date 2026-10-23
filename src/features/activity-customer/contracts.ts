@@ -27,6 +27,7 @@ export const notificationSchema = z.object({
 });
 export const notificationsSchema = z.object({ items: z.array(notificationSchema), ...pageFields });
 export const emailPreferenceSchema = z.object({ enabled: z.boolean() });
+export type Dashboard = z.infer<typeof dashboardSchema>;
 export type Notification = z.infer<typeof notificationSchema>;
 export type NotificationPage = z.infer<typeof notificationsSchema>;
 export type EmailPreference = z.infer<typeof emailPreferenceSchema>;

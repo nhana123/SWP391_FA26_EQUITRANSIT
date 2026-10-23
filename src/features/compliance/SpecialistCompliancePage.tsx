@@ -25,6 +25,7 @@ import {
   type Rule,
 } from './contracts';
 import { usePhase } from './CustomerCompliancePage';
+import { SendDocumentForm } from './CustomerChecklist';
 import { acceptedTypes, fileProblem, readFile } from './files';
 import {
   CommandForm,
@@ -1037,13 +1038,15 @@ function RouteChecklistStep({
       ) : (
         <div className="dossier-summary-bar">
           <span>
-            <Icon name="check" size={16} /> Route checklist recorded
-            {route && ` · ${route}`}
-            {transit.length ? ` via ${transit.join(', ')}` : ''} · {overview.totalElements} required
-            document{overview.totalElements === 1 ? '' : 's'}
+            <Icon name="pin" size={16} /> Route checklist: {route ?? 'route'}
+            {transit.length ? ` via ${transit.join(', ')}` : ' · direct'} · {overview.totalElements}{' '}
+            required document{overview.totalElements === 1 ? '' : 's'}
+            <small className="muted">
+              Created from the journey plan; update the transit stops only if they differ.
+            </small>
           </span>
           <button type="button" onClick={() => setEditing(true)}>
-            Change route
+            Update transit
           </button>
         </div>
       )}
@@ -1104,9 +1107,12 @@ function RequirementStack({
     queryFn: ({ signal }) => complianceApi.procedures(orderId, phase, signal),
     retry: false,
   });
-  const [open, setOpen] = useState<{ id: number; kind: 'reject' | 'authority' } | null>(null);
+  const [open, setOpen] = useState<{
+    id: number;
+    kind: 'reject' | 'authority' | 'upload';
+  } | null>(null);
   const pages = Math.ceil(overview.totalElements / COMPLIANCE_PAGE_SIZE);
-  const toggle = (id: number, kind: 'reject' | 'authority') =>
+  const toggle = (id: number, kind: 'reject' | 'authority' | 'upload') =>
     setOpen((o) => (o?.id === id && o.kind === kind ? null : { id, kind }));
   const blockers = overview.readiness.blockers;
   return (
@@ -1138,6 +1144,7 @@ function RequirementStack({
             const reviewable = !!r.submissionId && r.status !== 'SUPERSEDED';
             const rejecting = open?.id === r.requirementId && open.kind === 'reject';
             const recording = open?.id === r.requirementId && open.kind === 'authority';
+            const uploading = open?.id === r.requirementId && open.kind === 'upload';
             const submitted = documents.find((d) => d.documentVersionId === r.documentVersionId);
             // The server's own attachment wins; the uploads page is the fallback.
             const file = r.attachment;
@@ -1248,10 +1255,31 @@ function RequirementStack({
                       {result ? 'Update authority decision' : 'Record authority decision'}
                     </button>
                   )}
+                  {r.decision !== 'APPROVED' && r.status !== 'SUPERSEDED' && (
+                    <button
+                      type="button"
+                      disabled={pinned.changed}
+                      aria-expanded={uploading}
+                      onClick={() => toggle(r.requirementId, 'upload')}
+                      aria-label={`Upload ${r.documentType} for the customer`}
+                    >
+                      Upload for the customer
+                    </button>
+                  )}
                   {!reviewable && (
                     <span className="muted">Waiting for the customer to submit this document.</span>
                   )}
                 </div>
+                {uploading && (
+                  <SendDocumentForm
+                    key={`upload-${r.requirementId}`}
+                    orderId={orderId}
+                    pinned={pinned}
+                    requirement={r}
+                    onClose={() => setOpen(null)}
+                    onBehalf
+                  />
+                )}
                 {rejecting && (
                   <RejectForm
                     key={r.submissionId}
