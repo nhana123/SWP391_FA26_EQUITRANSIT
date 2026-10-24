@@ -142,7 +142,14 @@ async function attempt<T>(
 
 /** Private bytes (files, previews) with the same session, refresh and error handling. */
 export function requestBlob(path: string, signal?: AbortSignal) {
-  // Checked by shape: a Blob may come from another realm than the page global.
-  const blob = z.custom<Blob>((v) => typeof (v as Blob | null)?.arrayBuffer === 'function');
+  // Checked by shape: a Blob may come from another realm than the page global,
+  // and not every implementation has arrayBuffer(); all have size and type.
+  const blob = z.custom<Blob>(
+    (v) =>
+      typeof v === 'object' &&
+      v !== null &&
+      typeof (v as Blob).size === 'number' &&
+      typeof (v as Blob).type === 'string',
+  );
   return request(path, blob, { blob: true, signal });
 }
