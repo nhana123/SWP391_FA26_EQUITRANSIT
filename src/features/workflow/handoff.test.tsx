@@ -4,6 +4,7 @@ import { complianceApi } from '../compliance/api';
 import { handoverApi } from '../handover/api';
 import { compileBody } from '../plans/studio/graphApi';
 import { ApiError } from '../../shared/api/client';
+import { filesApi } from '../../shared/api/files';
 import { handoffErrorHelp } from '../../shared/api/error-codes';
 import { startSession } from '../../shared/api/session';
 import { ErrorNotice } from '../../shared/ui/common';
@@ -27,22 +28,47 @@ describe('backend handoff contracts', () => {
     vi.stubGlobal('fetch', fetch);
     const result = await complianceApi.uploadAndSubmit(9, 44, {
       ...command,
-      fileName: 'cert.pdf',
-      contentType: 'application/pdf',
-      contentBase64: 'JVBERi0x',
-      expiresAt: '2027-03-01T23:59:00+07:00',
-      referenceNumber: null,
+      fileKey: '84032724-eac7-45df-8d04-e54f092279d0',
+      documentNumber: null,
+      issuedDate: '2026-10-01',
+      expiryDate: '2027-03-01',
     });
     expect(fetch.mock.calls[0][0]).toBe(`${api}/compliance/requirements/44/upload-and-submit`);
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
       ...command,
-      fileName: 'cert.pdf',
-      contentType: 'application/pdf',
-      contentBase64: 'JVBERi0x',
-      expiresAt: '2027-03-01T23:59:00+07:00',
-      referenceNumber: null,
+      fileKey: '84032724-eac7-45df-8d04-e54f092279d0',
+      documentNumber: null,
+      issuedDate: '2026-10-01',
+      expiryDate: '2027-03-01',
     });
     expect(result.recordVersion).toBe('000000000001A2B4');
+  });
+
+  it('stores files as multipart and reads them back as bytes with the session', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        json({
+          fileKey: '84032724-eac7-45df-8d04-e54f092279d0',
+          fileName: 'cert.pdf',
+          fileSizeBytes: 3,
+          contentType: 'application/pdf',
+        }),
+      )
+      .mockResolvedValueOnce(new Response('%PDF', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    const file = new File(['%PDF'], 'cert.pdf', { type: 'application/pdf' });
+    const stored = await filesApi.upload(file);
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:8080/api/files/upload');
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get('file')).toBe(file);
+    // The browser sets the multipart boundary; no JSON content type is forced.
+    expect(init.headers['Content-Type']).toBeUndefined();
+    expect(init.headers.Authorization).toBe('Bearer test-only');
+    const bytes = await filesApi.read(stored.fileKey);
+    expect(fetch.mock.calls[1][0]).toBe(`http://localhost:8080/api/files/${stored.fileKey}`);
+    expect(await bytes.text()).toBe('%PDF');
   });
 
   it('uploads and reads handover files by key, and closes a delivered order', async () => {

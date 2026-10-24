@@ -28,6 +28,10 @@ type RequestOptions = {
   public?: boolean;
   /** Send and accept the HttpOnly refresh cookie (login). */
   withCookies?: boolean;
+  /** Multipart upload; the browser sets the boundary header. */
+  formData?: FormData;
+  /** Read the successful response as bytes instead of JSON. */
+  blob?: boolean;
 };
 /** The access token was renewed after a 401: repeat the identical request once. */
 class RetryAfterRefresh extends Error {}
@@ -63,13 +67,18 @@ async function attempt<T>(
       signal: controller.signal,
       credentials: options.withCookies ? 'include' : 'omit',
       headers: {
-        Accept: 'application/json',
+        Accept: options.blob ? '*/*' : 'application/json',
         ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(session ? { Authorization: `${session.tokenType} ${session.accessToken}` } : {}),
       },
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+      ...(options.formData
+        ? { body: options.formData }
+        : options.body !== undefined
+          ? { body: JSON.stringify(options.body) }
+          : {}),
     });
-    const data: unknown = await response.json().catch(() => null);
+    const data: unknown =
+      options.blob && response.ok ? await response.blob() : await response.json().catch(() => null);
     if (!options.public && getSession()?.generation !== session?.generation)
       throw new DOMException('Session changed', 'AbortError');
     if (!response.ok) {
@@ -129,4 +138,11 @@ async function attempt<T>(
     clearTimeout(timeout);
     options.signal?.removeEventListener('abort', abort);
   }
+}
+
+/** Private bytes (files, previews) with the same session, refresh and error handling. */
+export function requestBlob(path: string, signal?: AbortSignal) {
+  // Checked by shape: a Blob may come from another realm than the page global.
+  const blob = z.custom<Blob>((v) => typeof (v as Blob | null)?.arrayBuffer === 'function');
+  return request(path, blob, { blob: true, signal });
 }

@@ -74,3 +74,155 @@
   background: #fff4f1;
   color: #a8443b;
 }
+
+/* Legal documents: two cabinets, source choice and the standard form viewer */
+.dossier-tabs button[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.send-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: 0;
+}
+.send-source legend {
+  width: 100%;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+.send-source .horse-choice {
+  flex: 1 1 14rem;
+}
+.send-source .horse-choice span {
+  display: grid;
+  gap: 0.15rem;
+}
+.send-stored {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--brand);
+}
+.template-open {
+  justify-self: start;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--gold);
+  font-weight: 600;
+  cursor: pointer;
+}
+.template-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 20, 0.45);
+}
+.template-sheet {
+  width: min(42rem, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--gold);
+  border-radius: 9px;
+  box-shadow: var(--shadow-card);
+}
+.template-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px double var(--gold);
+}
+.template-head > div {
+  flex: 1 1 14rem;
+  display: grid;
+  gap: 0.1rem;
+}
+.template-head small {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+}
+.template-head h2 {
+  margin: 0.2rem 0 0;
+}
+.template-emblem {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+.template-code {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #fff8eb;
+  color: var(--gold);
+}
+.template-code.tone-blue,
+.template-code.tone-cyan {
+  background: #eaf2fb;
+  color: #1d4f91;
+}
+.template-code.tone-green {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.template-code.tone-red,
+.template-code.tone-volcano {
+  background: #fff1ee;
+  color: #a8443b;
+}
+.template-code.tone-purple {
+  background: #f3effa;
+  color: #5b3f8c;
+}
+.template-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.template-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.template-close {
+  justify-self: end;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .template-sheet,
+  .template-sheet * {
+    visibility: visible;
+  }
+  .template-backdrop {
+    position: absolute;
+    background: none;
+  }
+  .template-sheet {
+    position: absolute;
+    inset: 0 auto auto 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .template-actions,
+  .template-close {
+    display: none;
+  }
+}

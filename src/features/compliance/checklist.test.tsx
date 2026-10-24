@@ -6,14 +6,25 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomerLegalChecklist } from './CustomerChecklist';
 import { complianceApi } from './api';
+import { filesApi } from '../../shared/api/files';
 import type { Overview, Phase, Requirement } from './contracts';
 import { ApiError } from '../../shared/api/client';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
+vi.mock('../../shared/api/files', async (original) => ({
+  ...(await original<typeof import('../../shared/api/files')>()),
+  filesApi: { upload: vi.fn(), read: vi.fn() },
+}));
 vi.mock('./api', () => ({
   COMPLIANCE_PAGE_SIZE: 20,
-  complianceApi: { overview: vi.fn(), upload: vi.fn(), submit: vi.fn(), uploadAndSubmit: vi.fn() },
+  complianceApi: {
+    overview: vi.fn(),
+    documents: vi.fn(),
+    upload: vi.fn(),
+    submit: vi.fn(),
+    uploadAndSubmit: vi.fn(),
+  },
 }));
 
 const requirement = (patch: Partial<Requirement>): Requirement => ({
@@ -91,6 +102,8 @@ beforeEach(() => {
   vi.mocked(complianceApi.overview).mockImplementation((_o, phase) =>
     Promise.resolve(overview(phase, byPhase[phase])),
   );
+  // No paper is on file for this horse yet.
+  vi.mocked(complianceApi.documents).mockResolvedValue([]);
   startSession({ accessToken: 'test-only', tokenType: 'Bearer', expiresIn: 60, role: 'CUSTOMER' });
 });
 function mount(orderStatus = 'IN_PREPARATION') {
@@ -113,7 +126,11 @@ describe('customer legal documents checklist on the request page', () => {
     expect(health).toHaveTextContent('Action required');
     expect(health).toHaveTextContent('Issued within 10 days of departure.');
     expect(permit).toHaveTextContent('Submitted · under review');
-    expect(within(permit).queryByRole('button')).toBeNull();
+    // Nothing to send while under review; the standard form stays available.
+    expect(within(permit).queryByRole('button', { name: /Send/ })).toBeNull();
+    expect(
+      within(permit).getByRole('button', { name: 'View the standard form for EXPORT_PERMIT' }),
+    ).toBeInTheDocument();
     const arrival = screen.getByRole('list', { name: 'Arrival documents' });
     expect(arrival).toHaveTextContent('Send a new version');
     expect(within(arrival).getByRole('note')).toHaveTextContent(
@@ -125,7 +142,13 @@ describe('customer legal documents checklist on the request page', () => {
     expect(screen.getByText('2 to send')).toBeInTheDocument();
   });
 
-  it('sends the file in one upload-and-submit call, retrying identically', async () => {
+  it('stores a new file first, then submits it by key and retries identically', async () => {
+    vi.mocked(filesApi.upload).mockResolvedValue({
+      fileKey: '84032724-eac7-45df-8d04-e54f092279d0',
+      fileName: 'cert.pdf',
+      fileSizeBytes: 1024,
+      contentType: 'application/pdf',
+    });
     vi.mocked(complianceApi.uploadAndSubmit)
       .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
       .mockResolvedValueOnce(receipt(500, '00000000000000a3'));
@@ -134,30 +157,28 @@ describe('customer legal documents checklist on the request page', () => {
       await screen.findByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
     );
     const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
-    await user.upload(
-      form.getByLabelText('File'),
-      new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
-    );
+    // No paper on file yet: uploading is the only way.
+    expect(form.getByRole('radio', { name: /Choose from this horse's papers/ })).toBeDisabled();
+    const file = new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' });
+    await user.upload(form.getByLabelText('File'), file);
+    expect(await form.findByText(/cert\.pdf · 1 KB uploaded/)).toBeInTheDocument();
+    expect(filesApi.upload).toHaveBeenCalledWith(file);
+    setDate(form.getByLabelText('Issued on'), '2026-10-01');
     setDate(form.getByLabelText('Valid until'), '2099-03-01');
     await user.type(form.getByLabelText('Certificate number (optional)'), 'CERT-1');
-    await waitFor(() =>
-      expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeEnabled(),
-    );
     await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
     await user.click(await form.findByRole('button', { name: 'Retry the same action' }));
     await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(2));
     const [first, second] = vi.mocked(complianceApi.uploadAndSubmit).mock.calls;
     expect(second).toEqual(first);
-    // Flat payload: the base64 has no data: prefix and nothing is nested in "command".
     expect(first).toEqual([
       9,
       44,
       {
-        fileName: 'cert.pdf',
-        contentType: 'application/pdf',
-        contentBase64: 'AQ==',
-        expiresAt: '2099-03-01T16:59:00Z',
-        referenceNumber: 'CERT-1',
+        fileKey: '84032724-eac7-45df-8d04-e54f092279d0',
+        documentNumber: 'CERT-1',
+        issuedDate: '2026-10-01',
+        expiryDate: '2099-03-01',
         recordVersion: '00000000000000a1',
         operationId: expect.any(String),
       },

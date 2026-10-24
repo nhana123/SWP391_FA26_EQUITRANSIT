@@ -41,55 +41,77 @@ function CustomerWorkspace({ orderId }: { orderId: number }) {
   const documents = useDocuments(orderId, docPage);
   const pinned = usePinnedVersion(orderId, overview.data?.recordVersion);
   const [open, setOpen] = useState<number | null>(null);
+  // Two cabinets: this journey's checklist, and the papers the horse already has.
+  const [tab, setTab] = useState<'checklist' | 'papers'>('checklist');
   return (
     <>
-      <PhaseTabs
-        phase={phase}
-        onChange={(p) => {
-          setOpen(null);
-          setPhase(p);
-        }}
-      />
-      <StaleBanner pinned={pinned} latest={overview.data?.recordVersion} />
-      <OverviewState query={overview}>
-        {(o) => {
-          const pages = Math.ceil(o.totalElements / COMPLIANCE_PAGE_SIZE);
-          return (
-            <>
-              <ReadinessCard overview={o} />
-              <section className="card" aria-labelledby="requirements-heading">
-                <h2 id="requirements-heading">Required documents</h2>
-                {!o.requirements.length ? (
-                  <p>
-                    No requirements yet. The specialist prepares the checklist from sourced rules
-                    for this route; until then the phase stays pending.
-                  </p>
-                ) : (
-                  <PhaseList
-                    orderId={orderId}
-                    overview={o}
-                    pinned={pinned}
-                    open={open}
-                    onOpen={setOpen}
-                  />
-                )}
-                {(pages > 1 || page > 0) && (
-                  <Pagination page={page} pages={pages} onChange={setPage} />
-                )}
-              </section>
-            </>
-          );
-        }}
-      </OverviewState>
-      <details className="card">
-        <summary>Every version you uploaded</summary>
-        <DocumentsSection
-          orderId={orderId}
-          documents={documents}
-          page={docPage}
-          onPage={setDocPage}
-        />
-      </details>
+      <nav className="actions dossier-tabs" aria-label="Legal document views">
+        <button
+          type="button"
+          aria-pressed={tab === 'checklist'}
+          onClick={() => setTab('checklist')}
+        >
+          ✈️ Journey checklist
+        </button>
+        <button type="button" aria-pressed={tab === 'papers'} onClick={() => setTab('papers')}>
+          🐎 Horse papers
+        </button>
+      </nav>
+      {tab === 'papers' ? (
+        <>
+          <p className="muted">
+            Every paper you have sent for this horse, oldest versions included. A paper on file can
+            be reused for a requirement without scanning it again.
+          </p>
+          <DocumentsSection
+            orderId={orderId}
+            documents={documents}
+            page={docPage}
+            onPage={setDocPage}
+          />
+        </>
+      ) : (
+        <>
+          <PhaseTabs
+            phase={phase}
+            onChange={(p) => {
+              setOpen(null);
+              setPhase(p);
+            }}
+          />
+          <StaleBanner pinned={pinned} latest={overview.data?.recordVersion} />
+          <OverviewState query={overview}>
+            {(o) => {
+              const pages = Math.ceil(o.totalElements / COMPLIANCE_PAGE_SIZE);
+              return (
+                <>
+                  <ReadinessCard overview={o} />
+                  <section className="card" aria-labelledby="requirements-heading">
+                    <h2 id="requirements-heading">Required documents</h2>
+                    {!o.requirements.length ? (
+                      <p>
+                        No requirements yet. The specialist prepares the checklist from sourced
+                        rules for this route; until then the phase stays pending.
+                      </p>
+                    ) : (
+                      <PhaseList
+                        orderId={orderId}
+                        overview={o}
+                        pinned={pinned}
+                        open={open}
+                        onOpen={setOpen}
+                      />
+                    )}
+                    {(pages > 1 || page > 0) && (
+                      <Pagination page={page} pages={pages} onChange={setPage} />
+                    )}
+                  </section>
+                </>
+              );
+            }}
+          </OverviewState>
+        </>
+      )}
     </>
   );
 }

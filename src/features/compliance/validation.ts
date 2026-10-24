@@ -85,33 +85,48 @@ export function validateUpload(f: UploadForm): Result<UploadInput> {
   );
 }
 
+/** What the customer chose to send for one required paper. */
+export type SubmitSource =
+  | { source: 'existing'; existingVersionId: string }
+  | {
+      source: 'upload';
+      /** Key of the file already stored through /api/files/upload. */
+      fileKey: string | null;
+      uploadProblem: string | null;
+      documentNumber: string;
+      issuedDate: string;
+      expiryDate: string;
+    };
 /**
- * One-step upload and submit. The expiry is a calendar date, sent as the end of
- * that day in UTC+07:00 so it stays on the chosen date for the server.
+ * One-step submission from either source. Dates are calendar dates; the
+ * paper must be issued by today and still valid after it.
  */
 export function validateUploadSubmit(
-  f: {
-    file: FileInput | null;
-    fileProblem: string | null;
-    expiryDate: string;
-    referenceNumber: string;
-  },
+  f: SubmitSource,
   today = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10),
 ): Result<UploadSubmitInput> {
   const e: FieldErrors = {};
-  if (f.fileProblem) e.file = f.fileProblem;
-  else if (!f.file) e.file = 'Choose a PDF, PNG or JPEG file.';
+  if (f.source === 'existing') {
+    const id = Number(f.existingVersionId);
+    if (!Number.isSafeInteger(id) || id <= 0)
+      e.existingDocumentVersionId = "Choose one of this horse's papers.";
+    return done({ existingDocumentVersionId: id }, e);
+  }
+  if (f.uploadProblem) e.file = f.uploadProblem;
+  else if (!f.fileKey) e.file = 'Choose a PDF, PNG or JPEG file.';
+  if (!localDate(f.issuedDate)) e.issuedDate = 'Use a date like 2026-10-01.';
+  else if (f.issuedDate > today) e.issuedDate = 'The issue date cannot be in the future.';
   if (!localDate(f.expiryDate)) e.expiryDate = 'Use a date like 2027-03-01.';
   else if (f.expiryDate <= today) e.expiryDate = 'The document must still be valid after today.';
-  const referenceNumber = text(e, 'referenceNumber', f.referenceNumber, 50, false);
+  else if (!e.issuedDate && f.expiryDate < f.issuedDate)
+    e.expiryDate = 'The expiry cannot be before the issue date.';
+  const documentNumber = text(e, 'documentNumber', f.documentNumber, 50, false);
   return done(
     {
-      ...(f.file ?? { fileName: '', contentType: '', contentBase64: '' }),
-      // The handoff asks for UTC: 23:59 on that date in UTC+07:00 is 16:59Z.
-      expiresAt: localDate(f.expiryDate)
-        ? new Date(`${f.expiryDate}T23:59:00+07:00`).toISOString().replace('.000Z', 'Z')
-        : '',
-      referenceNumber: referenceNumber || null,
+      fileKey: f.fileKey ?? '',
+      documentNumber: documentNumber || null,
+      issuedDate: f.issuedDate,
+      expiryDate: f.expiryDate,
     },
     e,
   );
