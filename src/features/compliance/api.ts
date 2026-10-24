@@ -56,7 +56,8 @@ export const complianceApi = {
     request(`${base(orderId)}/rules?${query({ phase })}`, z.array(ruleSchema), { signal }),
   documents: (orderId: number, page: number, signal?: AbortSignal) =>
     request(
-      `${base(orderId)}/documents?${query({ page, size: COMPLIANCE_PAGE_SIZE })}`,
+      // The default shape is now an envelope; this view keeps the version list.
+      `${base(orderId)}/documents?${query({ view: 'versions', page, size: COMPLIANCE_PAGE_SIZE })}`,
       z.array(documentSchema),
       { signal },
     ),

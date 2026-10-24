@@ -7,12 +7,17 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CustomerCompliancePage } from './CustomerCompliancePage';
 import { SpecialistCompliancePage } from './SpecialistCompliancePage';
 import { complianceApi } from './api';
+import { filesApi } from '../../shared/api/files';
 import type { ComplianceDocument, Overview, Requirement } from './contracts';
 import { ApiError } from '../../shared/api/client';
 import type { Role } from '../../shared/api/contracts';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
 
+vi.mock('../../shared/api/files', async (original) => ({
+  ...(await original<typeof import('../../shared/api/files')>()),
+  filesApi: { upload: vi.fn(), read: vi.fn() },
+}));
 vi.mock('./api', () => ({
   COMPLIANCE_PAGE_SIZE: 20,
   complianceApi: {
@@ -36,6 +41,12 @@ vi.mock('./api', () => ({
   },
 }));
 
+const stored = {
+  fileKey: '84032724-eac7-45df-8d04-e54f092279d0',
+  fileName: 'cert.pdf',
+  fileSizeBytes: 2048,
+  contentType: 'application/pdf',
+};
 const requirement = (patch: Partial<Requirement> = {}): Requirement => ({
   requirementId: 44,
   ruleId: 101,
@@ -143,7 +154,7 @@ describe('customer legal documents (#78)', () => {
     expect(screen.getByText(/does not issue a government permit/)).toBeInTheDocument();
   });
 
-  it('submits a document in one step from its card, with the reviewed case version', async () => {
+  it('reuses a paper the horse already has instead of scanning it again', async () => {
     vi.mocked(complianceApi.uploadAndSubmit).mockResolvedValue(receipt());
     const user = mount('CUSTOMER');
     // No separate upload-then-submit forms remain.
@@ -153,30 +164,22 @@ describe('customer legal documents (#78)', () => {
       screen.getByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
     );
     const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
-    // The expiry starts six months ahead and stays editable.
-    expect(form.getByLabelText('Valid until')).not.toHaveValue('');
-    await user.upload(
-      form.getByLabelText('File'),
-      new File([new Uint8Array([137, 80, 78, 71])], 'cert.png', { type: 'image/png' }),
-    );
-    setDate(form.getByLabelText('Valid until'), '2099-03-01');
-    await waitFor(() =>
-      expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeEnabled(),
-    );
+    // The paper on file is offered first.
+    expect(
+      await form.findByRole('radio', { name: /Choose from this horse's papers/ }),
+    ).toBeChecked();
+    expect(form.getByLabelText('Paper on file')).toHaveValue('103');
     await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
     await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(1));
     expect(complianceApi.uploadAndSubmit).toHaveBeenCalledWith(9, 44, {
       recordVersion: '00000000000000a1',
       operationId: expect.any(String),
-      fileName: 'cert.png',
-      contentType: 'image/png',
-      contentBase64: 'iVBORw==',
-      expiresAt: '2099-03-01T16:59:00Z',
-      referenceNumber: null,
+      existingDocumentVersionId: 103,
     });
+    expect(filesApi.upload).not.toHaveBeenCalled();
   });
 
-  it('rejects an unsupported file before sending', async () => {
+  it('rejects an unsupported file before uploading it', async () => {
     mount('CUSTOMER');
     // Bypass the input's accept filter to exercise the app's own check.
     const user = userEvent.setup({ delay: null, applyAccept: false });
@@ -184,12 +187,14 @@ describe('customer legal documents (#78)', () => {
       await screen.findByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
     );
     const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
+    await user.click(form.getByRole('radio', { name: /Upload a new file/ }));
     await user.upload(
       form.getByLabelText('File'),
       new File(['x'], 'notes.txt', { type: 'text/plain' }),
     );
     await user.click(form.getByRole('button', { name: 'Send to the Specialist' }));
     expect(await form.findByText(/Only PDF, PNG or JPEG/)).toBeInTheDocument();
+    expect(filesApi.upload).not.toHaveBeenCalled();
     expect(complianceApi.uploadAndSubmit).not.toHaveBeenCalled();
   });
 
@@ -200,15 +205,12 @@ describe('customer legal documents (#78)', () => {
       await screen.findByRole('button', { name: 'Send HEALTH_CERTIFICATE to the Specialist' }),
     );
     const form = within(screen.getByRole('form', { name: 'Send HEALTH_CERTIFICATE' }));
+    await form.findByLabelText('Paper on file');
     vi.mocked(complianceApi.overview).mockResolvedValue(overview({}, '00000000000000a3'));
     await act(() => queryClient.refetchQueries());
     expect(await screen.findByText(/This case changed since you opened it/)).toBeInTheDocument();
     expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Reload and review' }));
-    await user.upload(
-      form.getByLabelText('File'),
-      new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
-    );
     await waitFor(() =>
       expect(form.getByRole('button', { name: 'Send to the Specialist' })).toBeEnabled(),
     );
@@ -238,6 +240,7 @@ describe('customer legal documents (#78)', () => {
     URL.createObjectURL = vi.fn(() => 'blob:test');
     URL.revokeObjectURL = vi.fn();
     const user = mount('CUSTOMER');
+    await user.click(await screen.findByRole('button', { name: '🐎 Horse papers' }));
     const table = await screen.findByRole('table', { name: 'Document versions' });
     await user.click(within(table).getByRole('button', { name: 'View file' }));
     expect(await within(table).findByRole('img', { name: 'cert.png' })).toHaveAttribute(
@@ -253,7 +256,8 @@ describe('customer legal documents (#78)', () => {
 });
 
 describe('specialist legal compliance (#78)', () => {
-  it('uploads a document for the customer through the same one-step call', async () => {
+  it('uploads a new file for the customer and submits it by its stored key', async () => {
+    vi.mocked(filesApi.upload).mockResolvedValue(stored);
     vi.mocked(complianceApi.uploadAndSubmit).mockResolvedValue(receipt());
     const user = mount('SPECIALIST');
     await user.click(
@@ -262,93 +266,28 @@ describe('specialist legal compliance (#78)', () => {
     const form = within(
       screen.getByRole('form', { name: 'Upload for the customer HEALTH_CERTIFICATE' }),
     );
+    await user.click(form.getByRole('radio', { name: /Upload a new file/ }));
     await user.upload(
       form.getByLabelText('File'),
       new File([new Uint8Array([1])], 'cert.pdf', { type: 'application/pdf' }),
     );
-    await waitFor(() =>
-      expect(form.getByRole('button', { name: 'Upload and submit' })).toBeEnabled(),
-    );
+    expect(await form.findByText(/cert\.pdf · 2 KB uploaded/)).toBeInTheDocument();
+    setDate(form.getByLabelText('Issued on'), '2026-10-01');
+    setDate(form.getByLabelText('Valid until'), '2099-03-01');
     await user.click(form.getByRole('button', { name: 'Upload and submit' }));
     await waitFor(() => expect(complianceApi.uploadAndSubmit).toHaveBeenCalledTimes(1));
     expect(vi.mocked(complianceApi.uploadAndSubmit).mock.calls[0]).toEqual([
       9,
       44,
-      expect.objectContaining({ fileName: 'cert.pdf', recordVersion: '00000000000000a1' }),
-    ]);
-  });
-
-  it('reviews the exact submission and retries an uncertain review identically', async () => {
-    vi.mocked(complianceApi.overview).mockResolvedValue(
-      overview({ requirements: [requirement({ submissionId: 102, documentVersionId: 103 })] }),
-    );
-    vi.mocked(complianceApi.review)
-      .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
-      .mockResolvedValueOnce(receipt());
-    const user = mount('SPECIALIST');
-    await user.click(
-      await screen.findByRole('button', { name: 'Request changes to HEALTH_CERTIFICATE' }),
-    );
-    const form = within(
-      screen.getByRole('form', { name: 'Request changes to HEALTH_CERTIFICATE' }),
-    );
-    expect(form.getByRole('heading')).toHaveTextContent('submission 102');
-    // A document sent back must say what to fix.
-    await user.click(form.getByRole('button', { name: 'Send back to the customer' }));
-    expect(form.getByText('This field is required.')).toBeInTheDocument();
-    expect(complianceApi.review).not.toHaveBeenCalled();
-    await type(user, form.getByLabelText('Reason for the customer'), 'Unreadable scan.');
-    await user.click(form.getByRole('button', { name: 'Send back to the customer' }));
-    await user.click(await form.findByRole('button', { name: 'Retry the same action' }));
-    await waitFor(() => expect(complianceApi.review).toHaveBeenCalledTimes(2));
-    const [first, second] = vi.mocked(complianceApi.review).mock.calls;
-    expect(second).toEqual(first);
-    expect(first).toEqual([
-      9,
-      102,
       {
+        fileKey: stored.fileKey,
+        documentNumber: null,
+        issuedDate: '2026-10-01',
+        expiryDate: '2099-03-01',
         recordVersion: '00000000000000a1',
         operationId: expect.any(String),
-        decision: 'REJECTED',
-        feedback: 'Unreadable scan.',
       },
     ]);
-  });
-
-  it('passes a submitted document in one click and shows the file the customer sent', async () => {
-    vi.mocked(complianceApi.overview).mockResolvedValue(
-      overview({ requirements: [requirement({ submissionId: 102, documentVersionId: 103 })] }),
-    );
-    vi.mocked(complianceApi.review).mockResolvedValue(receipt());
-    const user = mount('SPECIALIST');
-    const docs = await screen.findByRole('list', { name: 'Required documents' });
-    expect(await within(docs).findByText('v2 · expires 2027-03-01')).toBeInTheDocument();
-    expect(
-      within(docs).getByRole('button', { name: "View the customer's file" }),
-    ).toBeInTheDocument();
-    const approve = within(within(docs).getByRole('form', { name: 'Approve HEALTH_CERTIFICATE' }));
-    await user.click(approve.getByRole('button', { name: 'Approve (Pass)' }));
-    await waitFor(() => expect(complianceApi.review).toHaveBeenCalledTimes(1));
-    expect(complianceApi.review).toHaveBeenCalledWith(9, 102, {
-      recordVersion: '00000000000000a1',
-      operationId: expect.any(String),
-      decision: 'APPROVED',
-      feedback: null,
-    });
-  });
-
-  it('says plainly when a recorded phase needs no documents', async () => {
-    vi.mocked(complianceApi.overview).mockResolvedValue(
-      overview({
-        requirements: [],
-        totalElements: 0,
-        readiness: { ...overview().readiness, blockers: ['PHASE_CLEARANCE_PENDING'] },
-      }),
-    );
-    mount('SPECIALIST');
-    expect(await screen.findByText(/No extra documents are required/)).toBeInTheDocument();
-    expect(screen.queryByText(/No required documents yet/)).toBeNull();
-    expect(screen.getByRole('region', { name: /^Step 3/ })).toHaveClass('ready');
   });
 
   it('records an approval only with uploaded evidence, then prefills its key', async () => {

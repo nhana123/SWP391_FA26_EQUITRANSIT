@@ -1,15 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Icon } from '../../components/ui/Icons';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ApiError } from '../../shared/api/client';
+import {
+  filesApi,
+  storedFileProblem,
+  storedFileTypes,
+  type StoredFile,
+} from '../../shared/api/files';
 import { displayDate, type FieldErrors } from '../../shared/lib/validation';
 import { DateInput } from '../../shared/ui/DateTimeInput';
 import { Field, Loading } from '../../shared/ui/common';
 import { complianceApi } from './api';
-import { phaseLabels, phases, type FileInput, type Overview, type Requirement } from './contracts';
-import { acceptedTypes, fileProblem, readFile } from './files';
-import { CommandForm, useOverview, usePinnedVersion, type Pinned } from './hooks';
+import { phaseLabels, phases, type Overview, type Requirement } from './contracts';
+import { CommandForm, useDocuments, useOverview, usePinnedVersion, type Pinned } from './hooks';
 import { legalStatuses } from './link';
 import { schemaPending, StaleBanner } from './shared';
+import { StandardFormTemplate } from './StandardFormTemplate';
 import { validateUploadSubmit } from './validation';
 import './compliance.css';
 
@@ -32,9 +40,9 @@ const readable = (code: string) =>
   code.charAt(0) + code.slice(1).toLowerCase().replaceAll('_', ' ');
 
 /** Six months ahead, as a calendar date in UTC+07:00; the user can change it. */
-export function suggestedExpiry(now = Date.now()) {
+export function suggestedExpiry(now = Date.now(), months = 6) {
   const date = new Date(now + 7 * 3_600_000);
-  date.setUTCMonth(date.getUTCMonth() + 6);
+  date.setUTCMonth(date.getUTCMonth() + months);
   return date.toISOString().slice(0, 10);
 }
 
@@ -57,30 +65,48 @@ export function SendDocumentForm({
   onClose: () => void;
   onBehalf?: boolean;
 }) {
-  const [file, setFile] = useState<FileInput | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  // Papers this horse already has of the required type: reused, never re-scanned.
+  const documents = useDocuments(orderId, 0);
+  const onFile = (documents.data ?? []).filter(
+    (d) => d.documentType === requirement.documentType && !d.revokedAt && d.fileKey,
+  );
+  const [source, setSource] = useState<'existing' | 'upload'>('upload');
+  const [existingVersionId, setExistingVersionId] = useState('');
+  const [stored, setStored] = useState<StoredFile | null>(null);
+  const [uploadProblem, setUploadProblem] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [issuedDate, setIssuedDate] = useState(() => suggestedExpiry(Date.now(), 0));
   const [expiryDate, setExpiryDate] = useState(suggestedExpiry);
-  const [referenceNumber, setReferenceNumber] = useState('');
+  const [documentNumber, setDocumentNumber] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [reading, setReading] = useState(false);
+  // Offer the paper on file first when there is one.
+  const [seenOnFile, setSeenOnFile] = useState(false);
+  if (!seenOnFile && onFile.length) {
+    setSeenOnFile(true);
+    setSource('existing');
+    setExistingVersionId(String(onFile[0].documentVersionId));
+  }
   async function choose(selected: File | undefined) {
-    setFile(null);
-    if (!selected) return setProblem(null);
-    const issue = fileProblem(selected);
-    setProblem(issue);
-    if (issue) return;
-    setReading(true);
+    setStored(null);
+    setUploadProblem(null);
+    if (!selected) return;
+    const issue = storedFileProblem(selected);
+    if (issue) return setUploadProblem(issue);
+    setUploading(true);
     try {
-      setFile(await readFile(selected));
-    } catch {
-      setProblem('The file could not be read. Choose it again.');
+      setStored(await filesApi.upload(selected));
+    } catch (e) {
+      setUploadProblem(
+        e instanceof ApiError ? e.message : 'The file could not be uploaded. Choose it again.',
+      );
     } finally {
-      setReading(false);
+      setUploading(false);
     }
   }
+  const verb = onBehalf ? 'Upload for the customer' : 'Send';
   return (
     <CommandForm
-      label={`${onBehalf ? 'Upload for the customer' : 'Send'} ${requirement.documentType}`}
+      label={`${verb} ${requirement.documentType}`}
       title={
         onBehalf
           ? `Upload the ${readable(requirement.documentType).toLowerCase()} for the customer`
@@ -88,16 +114,22 @@ export function SendDocumentForm({
       }
       pinned={pinned}
       submitLabel={onBehalf ? 'Upload and submit' : 'Send to the Specialist'}
-      busy={reading}
+      busy={uploading}
       fieldErrors={errors}
       send={(body) => complianceApi.uploadAndSubmit(orderId, requirement.requirementId, body)}
       build={() => {
-        const result = validateUploadSubmit({
-          file,
-          fileProblem: problem,
-          expiryDate,
-          referenceNumber,
-        });
+        const result = validateUploadSubmit(
+          source === 'existing'
+            ? { source, existingVersionId }
+            : {
+                source,
+                fileKey: stored?.fileKey ?? null,
+                uploadProblem,
+                documentNumber,
+                issuedDate,
+                expiryDate,
+              },
+        );
         setErrors(result.errors);
         return result.input;
       }}
@@ -105,39 +137,98 @@ export function SendDocumentForm({
     >
       {(locked, fields) => (
         <>
-          <p className="muted">
-            PDF, PNG or JPEG, at most 5 MiB. Your Specialist reviews exactly this file; earlier
-            versions are kept.
-          </p>
-          <fieldset className="form-grid" disabled={locked}>
-            <Field label="File" error={fields.file ?? fields.contentBase64 ?? fields.fileName}>
-              {(id) => (
-                <input
-                  id={id}
-                  type="file"
-                  accept={acceptedTypes}
-                  onChange={(e) => void choose(e.target.files?.[0])}
-                />
-              )}
-            </Field>
-            <Field
-              label="Valid until"
-              hint="Filled in six months ahead; change it to the expiry printed on the document."
-              error={fields.expiryDate ?? fields.expiresAt}
-            >
-              {(id) => <DateInput id={id} value={expiryDate} onChange={setExpiryDate} />}
-            </Field>
-            <Field label="Certificate number (optional)" error={fields.referenceNumber}>
-              {(id) => (
-                <input
-                  id={id}
-                  maxLength={50}
-                  value={referenceNumber}
-                  onChange={(e) => setReferenceNumber(e.target.value)}
-                />
-              )}
-            </Field>
+          <fieldset className="send-source" disabled={locked}>
+            <legend>How do you want to send it?</legend>
+            <label className="horse-choice">
+              <input
+                type="radio"
+                name={`source-${requirement.requirementId}`}
+                checked={source === 'existing'}
+                disabled={!onFile.length}
+                onChange={() => setSource('existing')}
+              />
+              <span>
+                <strong>Choose from this horse&apos;s papers</strong>
+                <small>
+                  {onFile.length
+                    ? 'Already on file: nothing to scan again.'
+                    : 'No paper of this type is on file yet.'}
+                </small>
+              </span>
+            </label>
+            <label className="horse-choice">
+              <input
+                type="radio"
+                name={`source-${requirement.requirementId}`}
+                checked={source === 'upload'}
+                onChange={() => setSource('upload')}
+              />
+              <span>
+                <strong>Upload a new file</strong>
+                <small>PDF, PNG or JPEG, at most 10 MB.</small>
+              </span>
+            </label>
           </fieldset>
+          {source === 'existing' ? (
+            <fieldset className="form-grid" disabled={locked}>
+              <Field label="Paper on file" error={fields.existingDocumentVersionId}>
+                {(id) => (
+                  <select
+                    id={id}
+                    value={existingVersionId}
+                    onChange={(e) => setExistingVersionId(e.target.value)}
+                  >
+                    {onFile.map((d) => (
+                      <option key={d.documentVersionId} value={d.documentVersionId}>
+                        Version {d.versionNo}
+                        {d.expiryDate ? ` · valid until ${d.expiryDate}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+            </fieldset>
+          ) : (
+            <fieldset className="form-grid" disabled={locked}>
+              <Field label="File" error={fields.file ?? fields.fileKey}>
+                {(id) => (
+                  <input
+                    id={id}
+                    type="file"
+                    accept={storedFileTypes}
+                    onChange={(e) => void choose(e.target.files?.[0])}
+                  />
+                )}
+              </Field>
+              {uploading && <p role="status">Uploading…</p>}
+              {stored && (
+                <p className="send-stored" role="status">
+                  <Icon name="file" size={16} /> {stored.fileName} ·{' '}
+                  {Math.max(1, Math.round(stored.fileSizeBytes / 1024))} KB uploaded
+                </p>
+              )}
+              <Field label="Issued on" error={fields.issuedDate}>
+                {(id) => <DateInput id={id} value={issuedDate} onChange={setIssuedDate} />}
+              </Field>
+              <Field
+                label="Valid until"
+                hint="Filled in six months ahead; change it to the expiry printed on the document."
+                error={fields.expiryDate}
+              >
+                {(id) => <DateInput id={id} value={expiryDate} onChange={setExpiryDate} />}
+              </Field>
+              <Field label="Certificate number (optional)" error={fields.documentNumber}>
+                {(id) => (
+                  <input
+                    id={id}
+                    maxLength={50}
+                    value={documentNumber}
+                    onChange={(e) => setDocumentNumber(e.target.value)}
+                  />
+                )}
+              </Field>
+            </fieldset>
+          )}
           <button type="button" onClick={onClose} disabled={locked}>
             Cancel
           </button>
@@ -160,63 +251,77 @@ export function PhaseList({
   open: number | null;
   onOpen: (id: number | null) => void;
 }) {
+  const [form, setForm] = useState<string | null>(null);
   return (
-    <ul
-      className="legal-checklist"
-      aria-label={`${phaseLabels[overview.readiness.phase]} documents`}
-    >
-      {overview.requirements.map((r) => {
-        const step = customerStep(r);
-        const actionable = (step === 'ACTION' || step === 'RESUBMIT') && r.status !== 'SUPERSEDED';
-        return (
-          <li key={r.requirementId} className={`legal-item ${step.toLowerCase()}`}>
-            <div className="legal-item-head">
-              <strong>{readable(r.documentType)}</strong>
-              <StatusBadge status={steps[step].badge}>{steps[step].label}</StatusBadge>
-            </div>
-            {r.instructions && <p className="muted">{r.instructions}</p>}
-            {r.attachment && (
-              <p className="muted">
-                Sent: {r.attachment.fileName}
-                {r.attachment.expiresAt && ` · valid until ${displayDate(r.attachment.expiresAt)}`}
-              </p>
-            )}
-            {step === 'RESUBMIT' &&
-              (r.status === 'EXPIRED' || r.status === 'REVOKED' ? (
-                <p className="legal-feedback" role="note">
-                  This document is {r.status === 'EXPIRED' ? 'no longer valid' : 'revoked'}. Send a
-                  current version.
+    <>
+      {form && <StandardFormTemplate typeCode={form} onClose={() => setForm(null)} />}
+      <ul
+        className="legal-checklist"
+        aria-label={`${phaseLabels[overview.readiness.phase]} documents`}
+      >
+        {overview.requirements.map((r) => {
+          const step = customerStep(r);
+          const actionable =
+            (step === 'ACTION' || step === 'RESUBMIT') && r.status !== 'SUPERSEDED';
+          return (
+            <li key={r.requirementId} className={`legal-item ${step.toLowerCase()}`}>
+              <div className="legal-item-head">
+                <strong>{readable(r.documentType)}</strong>
+                <StatusBadge status={steps[step].badge}>{steps[step].label}</StatusBadge>
+              </div>
+              {r.instructions && <p className="muted">{r.instructions}</p>}
+              <button
+                type="button"
+                className="template-open"
+                onClick={() => setForm(r.documentType)}
+                aria-label={`View the standard form for ${r.documentType}`}
+              >
+                📄 View the standard form
+              </button>
+              {r.attachment && (
+                <p className="muted">
+                  Sent: {r.attachment.fileName}
+                  {r.attachment.expiresAt &&
+                    ` · valid until ${displayDate(r.attachment.expiresAt)}`}
                 </p>
-              ) : (
-                <p className="legal-feedback" role="note">
-                  <strong>Specialist's note:</strong>{' '}
-                  {r.feedback ?? 'This version was not accepted. Send a new version.'}
-                </p>
-              ))}
-            {actionable &&
-              (open === r.requirementId ? (
-                <SendDocumentForm
-                  key={r.requirementId}
-                  orderId={orderId}
-                  pinned={pinned}
-                  requirement={r}
-                  onClose={() => onOpen(null)}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="primary"
-                  disabled={pinned.changed}
-                  onClick={() => onOpen(r.requirementId)}
-                  aria-label={`Send ${r.documentType} to the Specialist`}
-                >
-                  {step === 'RESUBMIT' ? 'Send a new version' : 'Upload & send'}
-                </button>
-              ))}
-          </li>
-        );
-      })}
-    </ul>
+              )}
+              {step === 'RESUBMIT' &&
+                (r.status === 'EXPIRED' || r.status === 'REVOKED' ? (
+                  <p className="legal-feedback" role="note">
+                    This document is {r.status === 'EXPIRED' ? 'no longer valid' : 'revoked'}. Send
+                    a current version.
+                  </p>
+                ) : (
+                  <p className="legal-feedback" role="note">
+                    <strong>Specialist's note:</strong>{' '}
+                    {r.feedback ?? 'This version was not accepted. Send a new version.'}
+                  </p>
+                ))}
+              {actionable &&
+                (open === r.requirementId ? (
+                  <SendDocumentForm
+                    key={r.requirementId}
+                    orderId={orderId}
+                    pinned={pinned}
+                    requirement={r}
+                    onClose={() => onOpen(null)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={pinned.changed}
+                    onClick={() => onOpen(r.requirementId)}
+                    aria-label={`Send ${r.documentType} to the Specialist`}
+                  >
+                    {step === 'RESUBMIT' ? 'Send a new version' : 'Upload & send'}
+                  </button>
+                ))}
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 

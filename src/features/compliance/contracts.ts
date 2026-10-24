@@ -167,10 +167,18 @@ export type UploadInput = FileInput & {
 };
 export type SubmissionInput = { documentVersionId: number };
 /** Flat one-step upload + submit: the BE takes no nested `command`. */
-export type UploadSubmitInput = FileInput & {
-  expiresAt: string;
-  referenceNumber: string | null;
-};
+/**
+ * One-step submission. Exactly one source per call: a file stored through
+ * /api/files/upload, or a paper this horse already has on file.
+ */
+export type UploadSubmitInput =
+  | {
+      fileKey: string;
+      documentNumber: string | null;
+      issuedDate: string;
+      expiryDate: string;
+    }
+  | { existingDocumentVersionId: number };
 export type ReviewInput = { decision: LegalDecision; feedback: string | null };
 export type AuthorityInput = {
   ruleId: number;
