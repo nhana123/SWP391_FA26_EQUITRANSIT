@@ -1286,27 +1286,29 @@ function StepOneRouteAndMode({
               error={fieldError('originCountryCode')}
             >
               {(id) => (
-                <select
-                  id={id}
-                  aria-label="Pickup country (ISO code)"
-                  value={originCode}
-                  aria-invalid={!!fieldError('originCountryCode')}
-                  aria-describedby={
-                    fieldError('originCountryCode') ? `${id}-error` : undefined
-                  }
-                  onChange={(e) => handleOriginCountryChange(e.target.value)}
-                >
-                  <option value="">-- Chọn quốc gia xuất phát --</option>
-                  {countries.map((c) => (
-                    <option key={c.countryCode} value={c.countryCode}>
-                      {c.countryName} ({c.countryCode})
-                    </option>
-                  ))}
-                  {originCode &&
-                    !countries.some((c) => c.countryCode === originCode) && (
-                      <option value={originCode}>{originCode}</option>
-                    )}
-                </select>
+                <>
+                  <input
+                    id={id}
+                    aria-label="Pickup country (ISO code)"
+                    list="origin-countries-datalist"
+                    maxLength={2}
+                    style={{ textTransform: 'uppercase' }}
+                    value={originCode}
+                    placeholder="VD: VN"
+                    aria-invalid={!!fieldError('originCountryCode')}
+                    aria-describedby={
+                      fieldError('originCountryCode') ? `${id}-error` : undefined
+                    }
+                    onChange={(e) => handleOriginCountryChange(e.target.value)}
+                  />
+                  <datalist id="origin-countries-datalist">
+                    {countries.map((c) => (
+                      <option key={c.countryCode} value={c.countryCode}>
+                        {c.countryName} ({c.countryCode})
+                      </option>
+                    ))}
+                  </datalist>
+                </>
               )}
             </Field>
 
@@ -1638,30 +1640,31 @@ function StepOneRouteAndMode({
               error={fieldError('destinationCountryCode')}
             >
               {(id) => (
-                <select
-                  id={id}
-                  aria-label="Destination country (ISO code)"
-                  value={destCode}
-                  aria-invalid={!!fieldError('destinationCountryCode')}
-                  aria-describedby={
-                    fieldError('destinationCountryCode') ? `${id}-error` : undefined
-                  }
-                  onChange={(e) => handleDestCountryChange(e.target.value)}
-                >
-                  <option value="">-- Chọn quốc gia đến --</option>
-                  {countries
-                    .filter((c) => c.countryCode !== originCode)
-                    .map((c) => (
-                      <option key={c.countryCode} value={c.countryCode}>
-                        {c.countryName} ({c.countryCode})
-                        {activeMode === 'ROAD' && !c.supportsRoad ? ' — Chỉ bay' : ''}
-                      </option>
-                    ))}
-                  {destCode &&
-                    !countries.some(
-                      (c) => c.countryCode === destCode && c.countryCode !== originCode,
-                    ) && <option value={destCode}>{destCode}</option>}
-                </select>
+                <>
+                  <input
+                    id={id}
+                    aria-label="Destination country (ISO code)"
+                    list="dest-countries-datalist"
+                    maxLength={2}
+                    style={{ textTransform: 'uppercase' }}
+                    value={destCode}
+                    placeholder="VD: GB"
+                    aria-invalid={!!fieldError('destinationCountryCode')}
+                    aria-describedby={
+                      fieldError('destinationCountryCode') ? `${id}-error` : undefined
+                    }
+                    onChange={(e) => handleDestCountryChange(e.target.value)}
+                  />
+                  <datalist id="dest-countries-datalist">
+                    {countries
+                      .filter((c) => c.countryCode !== originCode)
+                      .map((c) => (
+                        <option key={c.countryCode} value={c.countryCode}>
+                          {c.countryName} ({c.countryCode})
+                        </option>
+                      ))}
+                  </datalist>
+                </>
               )}
             </Field>
 
@@ -1926,57 +1929,55 @@ function StepOneRouteAndMode({
         </div>
 
         {/* Cấu hình Múi giờ nâng cao */}
-        {(showTimezoneOverride ||
-          !!fieldError('originTimezone') ||
-          !!fieldError('destinationTimezone')) && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: '16px 20px',
-              backgroundColor: '#f8fafc',
-              borderRadius: 12,
-              border: '1px dashed #cbd5e1',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: 16,
-            }}
+        <div
+          style={{
+            marginTop: 16,
+            padding: '16px 20px',
+            backgroundColor: '#f8fafc',
+            borderRadius: 12,
+            border: '1px dashed #cbd5e1',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 16,
+          }}
+        >
+          <Field
+            label="Múi giờ xuất phát"
+            hint="Chuẩn IANA (VD: Asia/Ho_Chi_Minh)"
+            error={fieldError('originTimezone')}
           >
-            <Field
-              label="Múi giờ xuất phát"
-              hint="Chuẩn IANA (VD: Asia/Ho_Chi_Minh)"
-              error={fieldError('originTimezone')}
-            >
-              {(id) => (
-                <input
-                  id={id}
-                  maxLength={100}
-                  value={form.originTimezone}
-                  onChange={(e) => change('originTimezone', e.target.value)}
-                  aria-invalid={!!fieldError('originTimezone')}
-                  aria-describedby={fieldError('originTimezone') ? `${id}-error` : undefined}
-                />
-              )}
-            </Field>
-            <Field
-              label="Múi giờ điểm đến"
-              hint="Chuẩn IANA (VD: Europe/London)"
-              error={fieldError('destinationTimezone')}
-            >
-              {(id) => (
-                <input
-                  id={id}
-                  maxLength={100}
-                  value={form.destinationTimezone}
-                  onChange={(e) => change('destinationTimezone', e.target.value)}
-                  aria-invalid={!!fieldError('destinationTimezone')}
-                  aria-describedby={
-                    fieldError('destinationTimezone') ? `${id}-error` : undefined
-                  }
-                />
-              )}
-            </Field>
-          </div>
-        )}
+            {(id) => (
+              <input
+                id={id}
+                aria-label="Origin timezone"
+                maxLength={100}
+                value={form.originTimezone}
+                onChange={(e) => change('originTimezone', e.target.value)}
+                aria-invalid={!!fieldError('originTimezone')}
+                aria-describedby={fieldError('originTimezone') ? `${id}-error` : undefined}
+              />
+            )}
+          </Field>
+          <Field
+            label="Múi giờ điểm đến"
+            hint="Chuẩn IANA (VD: Europe/London)"
+            error={fieldError('destinationTimezone')}
+          >
+            {(id) => (
+              <input
+                id={id}
+                aria-label="Destination timezone"
+                maxLength={100}
+                value={form.destinationTimezone}
+                onChange={(e) => change('destinationTimezone', e.target.value)}
+                aria-invalid={!!fieldError('destinationTimezone')}
+                aria-describedby={
+                  fieldError('destinationTimezone') ? `${id}-error` : undefined
+                }
+              />
+            )}
+          </Field>
+        </div>
       </div>
 
       {/* ============================================================ */}
@@ -2647,7 +2648,7 @@ function StepOneRouteAndMode({
               }}
             >
               <span style={{ color: '#dc2626' }}>* </span>
-              Khoảng thời gian sẵn sàng nhận ngựa (Pickup window)
+              Preferred departure
             </label>
             <DateTimeInput
               id="field-preferredDepartureAt"
@@ -2677,7 +2678,7 @@ function StepOneRouteAndMode({
               }}
             >
               <span style={{ color: '#dc2626' }}>* </span>
-              Hạn chót giao ngựa muộn nhất (Latest delivery date)
+              Latest lawful handover deadline
             </label>
             <DateTimeInput
               id="field-deliveryDeadline"
@@ -2798,7 +2799,7 @@ function StepOneRouteAndMode({
                 marginBottom: 6,
               }}
             >
-              Họ tên người nhận (Receiver Name) *
+              Receiver name *
             </label>
             <input
               id="field-receiverName"
@@ -2833,7 +2834,7 @@ function StepOneRouteAndMode({
                 marginBottom: 6,
               }}
             >
-              Số điện thoại liên hệ (Phone) *
+              Receiver phone *
             </label>
             <PhoneInput
               id="field-receiverPhone"
@@ -2907,6 +2908,101 @@ function StepOneRouteAndMode({
                 boxSizing: 'border-box',
               }}
             />
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* HEALTH DECLARATION */}
+      {/* ============================================================ */}
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 16,
+          border: '1px solid #e2e8f0',
+          padding: '24px 28px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+          marginTop: 20,
+        }}
+      >
+        <div style={{ marginBottom: 18 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 17,
+              fontWeight: 800,
+              color: '#0f172a',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Health declaration
+          </h3>
+          <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+            A preliminary health record for your horse.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gap: 16 }}>
+          <fieldset className="health-radio-group">
+            <legend style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
+              Influenza vaccination status
+            </legend>
+            <div style={{ display: 'flex', gap: 20 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="influenzaVaccinated"
+                  value="true"
+                  checked={form.influenzaVaccinated === 'true'}
+                  onChange={() => change('influenzaVaccinated', 'true')}
+                />
+                <span>Yes</span>
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="influenzaVaccinated"
+                  value="false"
+                  checked={form.influenzaVaccinated === 'false'}
+                  onChange={() => change('influenzaVaccinated', 'false')}
+                />
+                <span>No</span>
+              </label>
+            </div>
+          </fieldset>
+          <div>
+            <label
+              htmlFor="field-lastInfluenzaVaccinationDate"
+              style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}
+            >
+              Date of the last influenza dose
+            </label>
+            <input
+              id="field-lastInfluenzaVaccinationDate"
+              type="date"
+              value={form.lastInfluenzaVaccinationDate || ''}
+              onChange={(e) => change('lastInfluenzaVaccinationDate', e.target.value)}
+              style={{
+                width: '100%',
+                maxWidth: 240,
+                padding: '10px 14px',
+                fontSize: 13.5,
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 8 }}>
+              <input
+                type="checkbox"
+                checked={form.declaredAccurate === 'true'}
+                onChange={(e) => change('declaredAccurate', e.target.checked ? 'true' : '')}
+              />
+              <span style={{ fontSize: 13.5, color: '#334155' }}>
+                I confirm this health declaration is accurate to the best of my knowledge
+              </span>
+            </label>
           </div>
         </div>
       </div>
@@ -3150,27 +3246,10 @@ export function OrderEditor({
       setStep(nextStep);
     }
     const validation = validateDraft(form);
-    if (
-      originAddressValidation.status === 'invalid' ||
-      originAddressValidation.status === 'provider_error'
-    ) {
-      validation.originAddress =
-        originAddressValidation.errorMessage ||
-        'Địa chỉ đón không hợp lệ. Vui lòng tìm và chọn địa chỉ thực tế trên bản đồ.';
-    }
-    if (
-      destAddressValidation.status === 'invalid' ||
-      destAddressValidation.status === 'provider_error'
-    ) {
-      validation.destinationAddress =
-        destAddressValidation.errorMessage ||
-        'Địa chỉ giao không hợp lệ. Vui lòng tìm và chọn địa chỉ thực tế trên bản đồ.';
-    }
     setErrors(validation);
     if (Object.keys(validation).length || !isDraft || frozenSubmit || conflict || uncertain) return;
     void action.run(async () => {
-      const addressesOk = await ensureAddressesValidated();
-      if (!addressesOk) return;
+      // Save draft does not block on geocoding
       const input = draftInput(form, services);
       const saved = current
         ? await ordersApi.update(current.orderId, {
@@ -3466,7 +3545,7 @@ export function OrderEditor({
       <nav className="steps" aria-label="Request steps">
         {labels.map((label, i) => {
           const isCurrent = step === i;
-          const isLocked = !current && i > step;
+          const isLocked = !current && i > Math.max(1, step);
           return (
             <button
               key={label}
@@ -3475,35 +3554,6 @@ export function OrderEditor({
               disabled={isLocked}
               onClick={() => {
                 if (isLocked) return;
-                if (
-                  step === 0 &&
-                  i > 0 &&
-                  (originAddressValidation.status === 'invalid' ||
-                    originAddressValidation.status === 'provider_error' ||
-                    destAddressValidation.status === 'invalid' ||
-                    destAddressValidation.status === 'provider_error')
-                ) {
-                  setErrors((prev) => ({
-                    ...prev,
-                    ...(originAddressValidation.status === 'invalid' ||
-                    originAddressValidation.status === 'provider_error'
-                      ? {
-                          originAddress:
-                            originAddressValidation.errorMessage ||
-                            'Địa chỉ đón không hợp lệ.',
-                        }
-                      : {}),
-                    ...(destAddressValidation.status === 'invalid' ||
-                    destAddressValidation.status === 'provider_error'
-                      ? {
-                          destinationAddress:
-                            destAddressValidation.errorMessage ||
-                            'Địa chỉ giao không hợp lệ.',
-                        }
-                      : {}),
-                  }));
-                  return;
-                }
                 setStep(i);
               }}
               style={{

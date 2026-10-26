@@ -69,7 +69,7 @@ describe('Address Geocoding Search & Validation in Step 1', () => {
     );
 
     // Select pickup country VN
-    await user.selectOptions(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
+    await user.type(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
 
     const pickupInput = screen.getByLabelText('Pickup address');
     await user.type(pickupInput, '123 Nguyen Hue');
@@ -120,7 +120,7 @@ describe('Address Geocoding Search & Validation in Step 1', () => {
       </QueryClientProvider>,
     );
 
-    await user.selectOptions(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
+    await user.type(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
     await user.type(screen.getByLabelText('Pickup address'), 'đâsd');
 
     const searchButtons = screen.getAllByRole('button', { name: /Tìm địa chỉ/i });
@@ -160,7 +160,7 @@ describe('Address Geocoding Search & Validation in Step 1', () => {
       </QueryClientProvider>,
     );
 
-    await user.selectOptions(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
+    await user.type(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
     await user.type(screen.getByLabelText('Pickup address'), 'asdfgh999');
 
     await user.click(
@@ -194,7 +194,7 @@ describe('Address Geocoding Search & Validation in Step 1', () => {
       </QueryClientProvider>,
     );
 
-    await user.selectOptions(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
+    await user.type(screen.getByLabelText('Pickup country (ISO code)'), 'VN');
     await user.type(screen.getByLabelText('Pickup address'), '123 Nguyen Hue');
 
     const searchButtons = screen.getAllByRole('button', { name: /Tìm địa chỉ/i });

@@ -11,7 +11,9 @@ const links = [
   { to: '/manager/resources', label: 'Fleet & Resources' },
   { to: '/manager/service-prices', label: 'Tariffs & Pricing' },
   { to: '/manager/staff-administration', label: 'Staff Management' },
+  { to: '/manager/staff', label: 'Case Staff' },
   { to: '/manager/reports/financial', label: 'Financial Report' },
+  { to: '/manager/audit-events', label: 'Audit Events' },
 ];
 
 export function ManagerLayout() {

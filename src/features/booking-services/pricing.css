@@ -661,13 +661,7 @@
   line-height: 1.3;
 }
 
-/* Hide the giant estimate table and subtotal banner as requested */
-.content .live-preview,
-.live-preview,
-.content .booking-dirty,
-.booking-dirty {
-  display: none !important;
-}
+
 
 
 
