@@ -23,9 +23,9 @@ import { DepartureLink } from '../departure/DeparturePage';
 import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
-import { OrderWorkflowBanner } from '../workflow/OrderWorkflowBanner';
 import { GatesSummary } from '../workflow/GatesSummary';
 import { CloseOrderCard } from '../handover/CloseOrder';
+import './assessment.css';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
   APPROVED: reviewStateLabels.APPROVED,
@@ -54,8 +54,10 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
   const h = snapshot.horse;
   return (
     <>
-      <section className="card">
-        <h2>Journey (as submitted)</h2>
+      <section className="card manager-info-card">
+        <h2>
+          <span>📍</span> Journey (as submitted)
+        </h2>
         <Details
           rows={[
             ['Route', `${show(r.originCountryCode)} → ${show(r.destinationCountryCode)}`],
@@ -80,8 +82,10 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
           ]}
         />
       </section>
-      <section className="card">
-        <h2>Horse (captured at submission)</h2>
+      <section className="card manager-info-card">
+        <h2>
+          <span>🐎</span> Horse (captured at submission)
+        </h2>
         {h ? (
           <Details
             rows={[
@@ -102,8 +106,10 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
           <EmptyState title="No horse was captured in this revision." />
         )}
       </section>
-      <section className="card">
-        <h2>Requested services</h2>
+      <section className="card manager-info-card">
+        <h2>
+          <span>🛡️</span> Requested services
+        </h2>
         <p className="muted">Requested intent only, not confirmed eligibility or price.</p>
         {snapshot.services.length ? (
           <div className="table-scroll">
@@ -140,8 +146,8 @@ function TeamView({ current }: { current: ManagerCase }) {
   const active = current.assignments.filter((a) => a.endedAt === null);
   if (!active.length) return null;
   return (
-    <section className="card">
-      <h2>Current team</h2>
+    <section className="card manager-info-card">
+      <h2>Case team</h2>
       <Details
         rows={active.map((a) => [
           caseRoleLabels[a.role],
@@ -160,7 +166,7 @@ function DecisionHistory({ id }: { id: number }) {
   const [page, setPage] = useState(0);
   const query = useDecisionHistory(id, page);
   return (
-    <section className="card">
+    <section className="card manager-info-card">
       <h2>Decision history</h2>
       {query.isPending ? (
         <Loading />
@@ -263,26 +269,10 @@ export function ManagerCasePage() {
       >
         <Link to="/manager/requests">Back to requests</Link>
       </ManagerHeading>
-      <OrderWorkflowBanner status={current.orderStatus} role="MANAGER" />
-      <CloseOrderCard
-        orderId={current.orderId}
-        orderStatus={current.orderStatus}
-        recordVersion={current.recordVersion}
-      />
-      <div className="actions">
-        <QuotationLink orderId={current.orderId} />
-        <SettlementPreviewLink orderId={current.orderId} />
-        <PaymentLink orderId={current.orderId} />
-        {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
-        <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
-        <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
-        <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
-      </div>
+
+      {/* Hero Stepper & Summary Banner */}
       <OrderLifecycle status={current.orderStatus} />
-      {['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'].includes(
-        current.orderStatus,
-      ) && <GatesSummary orderId={current.orderId} />}
-      <OrderTimeline orderId={current.orderId} />
+
       {receipt && (
         <Notice>
           Decision recorded: {receipt.decision ? outcomeLabels[receipt.decision.decision] : '—'}.
@@ -291,42 +281,91 @@ export function ManagerCasePage() {
         </Notice>
       )}
       {teamChanged && <Notice>Case team updated. The current team is shown below.</Notice>}
-      <section className="card">
-        <Details
-          rows={[
-            [
-              'Status',
-              <StatusBadge status={current.orderStatus}>{current.orderStatus}</StatusBadge>,
-            ],
-            [
-              'Current decision',
-              current.decision ? outcomeLabels[current.decision.decision] : 'Not decided',
-            ],
-            ['Revision change reason', show(revision?.changeReason)],
-          ]}
-        />
-      </section>
-      {revision ? (
-        <SnapshotView snapshot={revision.snapshot} />
-      ) : (
-        <Notice>No submitted revision is available for this request.</Notice>
-      )}
-      {current.orderStatus === 'APPROVED' ? (
-        <TeamManager current={current} onChanged={refreshAfterTeamChange} onReload={reload} />
-      ) : (
-        <TeamView current={current} />
-      )}
+
+      {/* DECISION FORM PLACED PROMINENTLY AT TOP IF DECIDABLE */}
       {decidable && (
-        <DecisionForm
-          key={revision.revisionId}
-          current={current}
-          revisionId={revision.revisionId}
-          onDecided={refreshAfterDecision}
-          onReload={reload}
-        />
+        <div className="manager-decision-hero-card">
+          <DecisionForm
+            key={revision.revisionId}
+            current={current}
+            revisionId={revision.revisionId}
+            onDecided={refreshAfterDecision}
+            onReload={reload}
+          />
+        </div>
       )}
-      <DecisionHistory id={current.orderId} />
-      <AssignmentHistory id={current.orderId} />
+
+      {/* Functional Context Actions Cluster */}
+      <div className="manager-actions-cluster actions">
+        <QuotationLink orderId={current.orderId} />
+        <SettlementPreviewLink orderId={current.orderId} />
+        <PaymentLink orderId={current.orderId} />
+        {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
+        <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
+      </div>
+
+      <CloseOrderCard
+        orderId={current.orderId}
+        orderStatus={current.orderStatus}
+        recordVersion={current.recordVersion}
+      />
+
+      {/* TWO-COLUMN MODERN DASHBOARD GRID */}
+      <div className="manager-case-grid">
+        {/* LEFT COLUMN: PRIMARY PROFILE & SNAPSHOT */}
+        <div className="manager-grid-col-primary">
+          {revision ? (
+            <SnapshotView snapshot={revision.snapshot} />
+          ) : (
+            <Notice>No submitted revision is available for this request.</Notice>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: ADMINISTRATIVE STATUS, TEAM & HISTORY */}
+        <div className="manager-grid-col-secondary">
+          <section className="card manager-info-card">
+            <h2>
+              <span>📋</span> Request Metadata
+            </h2>
+            <Details
+              rows={[
+                [
+                  'Status',
+                  <StatusBadge status={current.orderStatus}>{current.orderStatus}</StatusBadge>,
+                ],
+                [
+                  'Current decision',
+                  current.decision ? outcomeLabels[current.decision.decision] : 'Not decided',
+                ],
+                ['Revision change reason', show(revision?.changeReason)],
+              ]}
+            />
+          </section>
+
+          {['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'].includes(
+            current.orderStatus,
+          ) && <GatesSummary orderId={current.orderId} />}
+
+          {current.orderStatus === 'APPROVED' ? (
+            <TeamManager current={current} onChanged={refreshAfterTeamChange} onReload={reload} />
+          ) : (
+            <TeamView current={current} />
+          )}
+
+          <details className="card manager-info-card" open={!decidable}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+              📜 Timeline & Decision Logs
+            </summary>
+            <div style={{ marginTop: 14 }}>
+              <OrderTimeline orderId={current.orderId} />
+              <DecisionHistory id={current.orderId} />
+              <AssignmentHistory id={current.orderId} />
+            </div>
+          </details>
+        </div>
+      </div>
     </>
   );
 }

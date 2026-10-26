@@ -2,13 +2,171 @@
   opacity: 0.6;
 }
 .role-card {
-  border-top: 1px solid #edf1f6;
+  border-top: 1px solid #e2e8f0;
   padding-top: 16px;
   margin-top: 16px;
 }
 .staff-picker {
-  margin: 20px 0;
+  margin: 16px 0;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.staff-picker legend {
+  font-weight: 700;
+  color: #1e293b;
+  padding: 0 6px;
 }
 .staff-picker button[aria-pressed='true'] {
+  font-weight: 700;
+  background-color: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+/* Manager Case Redesign Layout */
+.manager-case-header-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.manager-decision-hero-card {
+  border-radius: 16px;
+  border: 2px solid #3b82f6;
+  background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
+}
+
+.manager-case-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .manager-case-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.manager-info-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.manager-info-card h2,
+.manager-info-card h3 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manager-actions-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+
+/* Manager Queue Enhancement */
+.manager-queue-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.manager-queue-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manager-queue-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.manager-queue-tab:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.manager-queue-tab.active {
+  background: #065f46;
+  border-color: #065f46;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(6, 95, 70, 0.2);
+}
+
+.manager-route-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.manager-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.manager-action-btn:hover {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
 }

@@ -36,13 +36,51 @@ export function DeploymentNotice({ retry }: { retry: () => void }) {
 }
 
 export function PhaseTabs({ phase, onChange }: { phase: Phase; onChange: (p: Phase) => void }) {
+  const phaseStepNames: Record<Phase, { step: string; vi: string }> = {
+    PRE_EXPORT: { step: 'Chặng 1', vi: 'Thủ tục Xuất cảnh' },
+    ARRIVAL: { step: 'Chặng 2', vi: 'Cửa khẩu & Nhập cảnh' },
+    QUARANTINE_RELEASE: { step: 'Chặng 3', vi: 'Hoàn tất Kiểm dịch' },
+  };
+
   return (
-    <nav className="actions compliance-tabs" aria-label="Compliance phases">
-      {phases.map((p) => (
-        <button key={p} type="button" aria-pressed={phase === p} onClick={() => onChange(p)}>
-          {phaseLabels[p]}
-        </button>
-      ))}
+    <nav className="actions compliance-tabs" aria-label="Compliance phases" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, margin: '20px 0' }}>
+      {phases.map((p) => {
+        const active = phase === p;
+        const info = phaseStepNames[p];
+        return (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={active}
+            aria-label={phaseLabels[p]}
+            onClick={() => onChange(p)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              padding: '14px 18px',
+              borderRadius: 12,
+              background: active ? '#072318' : '#ffffff',
+              color: active ? '#ffffff' : '#334155',
+              border: active ? '1.5px solid #10b981' : '1px solid #e2e8f0',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              textAlign: 'left',
+              boxShadow: active ? '0 4px 14px rgba(7, 35, 24, 0.15)' : 'none',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, color: active ? '#34d399' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {info.step}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2, color: active ? '#ffffff' : '#0f172a' }}>
+              {info.vi}
+            </div>
+            <div style={{ fontSize: 12, color: active ? '#a7f3d0' : '#64748b', marginTop: 2 }}>
+              ({phaseLabels[p]})
+            </div>
+          </button>
+        );
+      })}
     </nav>
   );
 }
@@ -65,27 +103,71 @@ export function StaleBanner({ pinned, latest }: { pinned: Pinned; latest: string
 
 export function ReadinessCard({ overview }: { overview: Overview }) {
   const r = overview.readiness;
+  if (!r) return null;
+  const isCleared = r.status === 'READY';
+
   return (
-    <section className="card" aria-label={`${phaseLabels[r.phase]} readiness`}>
-      <h2>
-        {phaseLabels[r.phase]}:{' '}
-        <StatusBadge status={r.status === 'READY' ? 'Cleared' : 'Pending'}>
-          {r.status === 'READY' ? 'Cleared' : 'Pending'}
-        </StatusBadge>
-      </h2>
-      <p className="muted">
+    <section
+      className="card"
+      aria-label={`${phaseLabels[r.phase]} readiness`}
+      style={{
+        borderRadius: 14,
+        border: isCleared ? '1px solid #a7f3d0' : '1px solid #fde68a',
+        borderLeft: isCleared ? '5px solid #10b981' : '5px solid #f59e0b',
+        background: isCleared ? '#f0fdf4' : '#fffbeb',
+        padding: '20px 24px',
+        marginBottom: 24,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>{isCleared ? '✅' : '⏳'}</span>
+          <span>{phaseLabels[r.phase]}:</span>
+          <StatusBadge status={isCleared ? 'Cleared' : 'Pending'}>
+            {isCleared ? 'Cleared' : 'Pending'}
+          </StatusBadge>
+        </h2>
+
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            padding: '3px 10px',
+            borderRadius: 9999,
+            background: isCleared ? '#ecfdf5' : '#fef3c7',
+            color: isCleared ? '#065f46' : '#92400e',
+            border: isCleared ? '1px solid #a7f3d0' : '1px solid #fde68a',
+          }}
+        >
+          {isCleared ? 'Đã đủ điều kiện qua chặng' : 'Chờ hoàn tất thẩm định'}
+        </span>
+      </div>
+
+      <p style={{ margin: '8px 0 0 0', fontSize: 13.5, color: '#475569', lineHeight: 1.5 }}>
+        {isCleared
+          ? 'Tất cả các tài liệu và điều kiện kiểm dịch của chặng này đã được chuyên viên kiểm tra và chấp thuận.'
+          : 'Chặng này đang trong quá trình tiếp nhận tài liệu và xét duyệt quy chế kiểm dịch. Vui lòng hoàn tất nộp các giấy tờ theo danh mục bên dưới.'}
+      </p>
+
+      <p className="muted" style={{ fontSize: 12, color: '#64748b', margin: '8px 0 0 0' }}>
         Revision ID {overview.revisionId}. Checked {displayDate(r.asOf)}
         {r.expiresAt && `; valid until ${displayDate(r.expiresAt)}`}. Each phase is cleared
         separately — clearing one never clears another.
       </p>
+
       {r.blockers.length > 0 && (
-        <ul aria-label="Blockers">
-          {r.blockers.map((b) => (
-            <li key={b}>
-              {blockerText(b)} <small>({b})</small>
-            </li>
-          ))}
-        </ul>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px dashed #cbd5e1' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>
+            Điều kiện cần hoàn tất trước khi phê duyệt chặng này:
+          </div>
+          <ul aria-label="Blockers" style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#78350f', lineHeight: 1.6 }}>
+            {r.blockers.map((b) => (
+              <li key={b}>
+                {blockerText(b)} <small style={{ color: '#94a3b8' }}>({b})</small>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

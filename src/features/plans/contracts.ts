@@ -300,6 +300,12 @@ export const blockerLabels: Record<string, string> = {
   INSURANCE_EVIDENCE_REQUIRED: 'Insurance evidence is missing',
   INSURANCE_COVERAGE_GAP: 'Insurance does not cover the whole planned window',
   INSURANCE_WINDOW_INVALID: 'The insurance coverage window is invalid',
+  DEPOSIT_REQUIRED_BEFORE_ROAD_ASSIGNMENT:
+    'Customer must complete the 30% deposit payment before road vehicle and driver assignment',
+  DEPOSIT_REQUIRED_BEFORE_AIR_ASSIGNMENT:
+    'Customer must accept the quote and complete the 30% deposit payment before stall or flight assignment',
+  BALANCE_REQUIRED_BEFORE_DEPARTURE:
+    'The remaining 70% balance must be paid and reconciled before departure',
 };
 export const blockerText = (code: string) => blockerLabels[code] ?? code;
 
@@ -337,4 +343,10 @@ export const errorHelp: Record<string, string> = {
   QUARANTINE_CHOICE_MISSING: 'The request has no quarantine choice to reserve.',
   INSURANCE_CHOICE_MISSING: 'The request has no insurance choice to verify.',
   HORSE_SCHEDULE_OVERLAP: 'The horse already has an active plan in this window.',
+  DEPOSIT_REQUIRED_BEFORE_ROAD_ASSIGNMENT:
+    'Chưa thể phân công Tài xế & Xe đường bộ: Khách hàng cần hoàn tất thanh toán đặt cọc 30% trước khi phân công.',
+  DEPOSIT_REQUIRED_BEFORE_AIR_ASSIGNMENT:
+    'Chưa thể phân công Chuồng bay & Chuyến bay: Khách hàng cần chấp nhận báo giá và hoàn tất đặt cọc 30% trước.',
+  BALANCE_REQUIRED_BEFORE_DEPARTURE:
+    'Khách hàng cần thanh toán 70% chi phí còn lại trước khi khởi hành.',
 };

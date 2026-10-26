@@ -82,39 +82,48 @@ export function StaffAdministrationPage() {
         description="Internal staff accounts, roles and assignment workload."
       />
       <section className="card">
-        <div className="form-grid">
-          <Field label="Filter staff role">
-            {(id) => (
-              <select
-                id={id}
-                value={role.success ? role.data : ''}
-                onChange={(e) => filter('role', e.target.value)}
-              >
-                <option value="">All roles</option>
-                {staffRoles.map((r) => (
-                  <option key={r} value={r}>
-                    {staffRoleLabels[r]}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-          <Field label="Filter account status">
-            {(id) => (
-              <select
-                id={id}
-                value={status.success ? status.data : ''}
-                onChange={(e) => filter('status', e.target.value)}
-              >
-                <option value="">All statuses</option>
-                {staffStatuses.map((s) => (
-                  <option key={s} value={s}>
-                    {staffStatusLabels[s]}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
+        <div className="staff-toolbar">
+          <div className="staff-filter-grid">
+            <Field label="Filter staff role">
+              {(id) => (
+                <select
+                  id={id}
+                  value={role.success ? role.data : ''}
+                  onChange={(e) => filter('role', e.target.value)}
+                >
+                  <option value="">All roles</option>
+                  {staffRoles.map((r) => (
+                    <option key={r} value={r}>
+                      {staffRoleLabels[r]}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <Field label="Filter account status">
+              {(id) => (
+                <select
+                  id={id}
+                  value={status.success ? status.data : ''}
+                  onChange={(e) => filter('status', e.target.value)}
+                >
+                  <option value="">All statuses</option>
+                  {staffStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {staffStatusLabels[s]}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </div>
+          {!list.error && !list.isPending && (
+            <div>
+              <Link className="button primary" to={`${STAFF_ADMIN_PATH}/new`}>
+                Create staff account
+              </Link>
+            </div>
+          )}
         </div>
         {list.isPending ? (
           <Loading />
@@ -122,11 +131,6 @@ export function StaffAdministrationPage() {
           <ReadError error={list.error} retry={() => void list.refetch()} />
         ) : (
           <>
-            <p>
-              <Link className="button primary" to={`${STAFF_ADMIN_PATH}/new`}>
-                Create staff account
-              </Link>
-            </p>
             {!list.data.items.length ? (
               <p>No staff match these filters.</p>
             ) : (
@@ -152,37 +156,61 @@ export function StaffAdministrationPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {list.data.items.map((s) => (
-                      <tr key={s.staffId}>
-                        <td>
-                          {s.staffId} / {s.userId}
-                        </td>
-                        <td>
-                          {s.fullName}
-                          <small className="staff-email">{s.email}</small>
-                        </td>
-                        <td>{staffRoleLabels[s.role]}</td>
-                        <td>
-                          <StatusBadge status={s.accountStatus}>
-                            {staffStatusLabels[s.accountStatus]}
-                          </StatusBadge>{' '}
-                          /{' '}
-                          <StatusBadge status={s.staffStatus}>
-                            {staffStatusLabels[s.staffStatus]}
-                          </StatusBadge>
-                        </td>
-                        <td>{s.employeeCode}</td>
-                        <td>{s.department ?? 'Not recorded'}</td>
-                        <td>{s.specialization ?? 'Not recorded'}</td>
-                        <td>
-                          {s.activeOrderAssignments} / {s.activeTripAssignments} /{' '}
-                          {s.activeAssignments}
-                        </td>
-                        <td>
-                          <Link to={`${STAFF_ADMIN_PATH}/${s.staffId}`}>View {s.fullName}</Link>
-                        </td>
-                      </tr>
-                    ))}
+                    {list.data.items.map((s) => {
+                      const initials = s.fullName
+                        .split(' ')
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase();
+                      const roleClass = s.role.toLowerCase();
+                      return (
+                        <tr key={s.staffId}>
+                          <td>
+                            <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}>
+                              {s.staffId} / {s.userId}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="staff-user-cell">
+                              <span className={`staff-avatar ${roleClass}`}>{initials}</span>
+                              <div className="staff-name-wrap">
+                                <strong>{s.fullName}</strong>
+                                <small className="staff-email">{s.email}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`staff-role-badge ${roleClass}`}>
+                              {staffRoleLabels[s.role]}
+                            </span>
+                          </td>
+                          <td>
+                            <StatusBadge status={s.accountStatus}>
+                              {staffStatusLabels[s.accountStatus]}
+                            </StatusBadge>{' '}
+                            /{' '}
+                            <StatusBadge status={s.staffStatus}>
+                              {staffStatusLabels[s.staffStatus]}
+                            </StatusBadge>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 600 }}>{s.employeeCode}</span>
+                          </td>
+                          <td>{s.department ?? 'Not recorded'}</td>
+                          <td>{s.specialization ?? 'Not recorded'}</td>
+                          <td>
+                            <span className="staff-workload-chip">
+                              {s.activeOrderAssignments} / {s.activeTripAssignments} /{' '}
+                              {s.activeAssignments}
+                            </span>
+                          </td>
+                          <td>
+                            <Link className="staff-view-btn" to={`${STAFF_ADMIN_PATH}/${s.staffId}`}>View {s.fullName}</Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

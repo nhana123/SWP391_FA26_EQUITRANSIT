@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { LoadedOrderFilter } from '../../components/ui/LoadedOrderFilter';
 import { CodeChip } from '../../components/ui/Primitives';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -21,30 +22,59 @@ const emptyCopy: Record<ReviewState, string> = {
   REJECTED: 'No rejected requests.',
 };
 
+const stateTabs: { state: ReviewState; icon: string; label: string }[] = [
+  { state: 'SUBMITTED', icon: '⏳', label: 'Chờ thẩm định (Awaiting)' },
+  { state: 'APPROVED', icon: '🟢', label: 'Đã phê duyệt (Approved)' },
+  { state: 'CHANGES_REQUESTED', icon: '💬', label: 'Yêu cầu sửa đổi' },
+  { state: 'REJECTED', icon: '❌', label: 'Đã từ chối' },
+];
+
 export function ManagerQueuePage() {
   const { state, page, query, setState, setPage } = useManagerQueue();
   return (
     <>
       <ManagerHeading
         title="Transport Requests"
-        description="Review submitted requests by assessment state."
+        description="Theo dõi, đánh giá và phân công điều phối cho các đơn vận chuyển ngựa đua theo từng trạng thái."
       />
       <Notice>
         Approval starts case preparation only. It does not confirm payment, documents, carrier space
         or departure.
       </Notice>
       <section className="card">
-        <Field label="Assessment state">
-          {(id) => (
-            <select id={id} value={state} onChange={(e) => setState(e.target.value as ReviewState)}>
-              {reviewStates.map((s) => (
-                <option key={s} value={s}>
-                  {reviewStateLabels[s]}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
+        <div className="manager-queue-toolbar">
+          <div className="manager-queue-tabs">
+            {stateTabs.map((tab) => (
+              <button
+                key={tab.state}
+                type="button"
+                className={`manager-queue-tab ${state === tab.state ? 'active' : ''}`}
+                onClick={() => setState(tab.state)}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ minWidth: '220px' }}>
+            <Field label="Assessment state">
+              {(id) => (
+                <select
+                  id={id}
+                  value={state}
+                  onChange={(e) => setState(e.target.value as ReviewState)}
+                >
+                  {reviewStates.map((s) => (
+                    <option key={s} value={s}>
+                      {reviewStateLabels[s]}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </div>
+        </div>
+
         {query.isPending ? (
           <Loading />
         ) : query.error ? (
@@ -73,6 +103,7 @@ export function ManagerQueuePage() {
                       <th scope="col">Route</th>
                       <th scope="col">Delivery deadline</th>
                       <th scope="col">Status</th>
+                      <th scope="col">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -82,11 +113,21 @@ export function ManagerQueuePage() {
                           <CodeChip value={c.orderNumber} to={`/manager/requests/${c.orderId}`} />
                         </td>
                         <td>
-                          {c.originCountryCode} → {c.destinationCountryCode}
+                          <span className="manager-route-badge">
+                            {c.originCountryCode} ➔ {c.destinationCountryCode}
+                          </span>
                         </td>
                         <td>{displayDate(c.deliveryDeadline)}</td>
                         <td>
                           <StatusBadge status={c.orderStatus}>{c.orderStatus}</StatusBadge>
+                        </td>
+                        <td>
+                          <Link
+                            to={`/manager/requests/${c.orderId}`}
+                            className="manager-action-btn"
+                          >
+                            Review ➔
+                          </Link>
                         </td>
                       </tr>
                     ))}

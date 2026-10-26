@@ -114,4 +114,29 @@ describe('draft and submit contracts', () => {
     form.eventStartAt = '2030-02-02T09:00:00Z';
     expect(validateDraft(form)).toHaveProperty('deliveryDeadline');
   });
+  it('serializes and restores Step 1 route selections (mode, city, airport, stall) into draft.route', () => {
+    const form = Object.assign(draftForm(), {
+      originCountryCode: 'VN',
+      destinationCountryCode: 'FR',
+      transportMode: 'AIR',
+      originAirportCode: 'han',
+      destinationAirportCode: 'cdg',
+    });
+    const draft = draftInput(form, { airStall: 'WIDE' });
+    expect(draft.route).toEqual({
+      originCountryCode: 'VN',
+      originCity: null,
+      originAirportCode: 'HAN',
+      destinationCountryCode: 'FR',
+      destinationCity: null,
+      destinationAirportCode: 'CDG',
+      transportMode: 'AIR',
+      airStallPreference: 'WIDE',
+    });
+    expect(draftForm(draft)).toMatchObject({
+      transportMode: 'AIR',
+      originAirportCode: 'HAN',
+      destinationAirportCode: 'CDG',
+    });
+  });
 });

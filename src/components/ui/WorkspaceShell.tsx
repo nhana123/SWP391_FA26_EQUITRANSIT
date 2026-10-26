@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from '../../shared/api/session';
 import { signOut } from '../../shared/api/refresh';
@@ -28,7 +28,7 @@ export function WorkspaceShell({
   aliases,
 }: {
   home: string;
-  links: { to: string; label: string }[];
+  links: { to: string; label: string; group?: string }[];
   navigationLabel: string;
   /** Path prefixes that belong to a link without being listed, e.g. a hidden route. */
   aliases?: Record<string, string>;
@@ -62,22 +62,28 @@ export function WorkspaceShell({
         <small className="portal-label">{portalNames[role]}</small>
         <span className="nav-caption">WORKSPACE</span>
         <nav aria-label={navigationLabel}>
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={links.some(
-                (other) => other.to !== link.to && other.to.startsWith(`${link.to}/`),
-              )}
-              className={({ isActive }) =>
-                isActive || link.to === aliasTarget ? 'active' : undefined
-              }
-              onClick={() => setMenu(false)}
-            >
-              <Icon name={navigationIcon(link.to)} />
-              <span>{link.label}</span>
-            </NavLink>
-          ))}
+          {links.map((link, idx) => {
+            const prevGroup = idx > 0 ? links[idx - 1].group : undefined;
+            const isNewGroup = link.group && link.group !== prevGroup;
+            return (
+              <Fragment key={link.to}>
+                {isNewGroup && <span className="nav-group-caption">{link.group}</span>}
+                <NavLink
+                  to={link.to}
+                  end={links.some(
+                    (other) => other.to !== link.to && other.to.startsWith(`${link.to}/`),
+                  )}
+                  className={({ isActive }) =>
+                    isActive || link.to === aliasTarget ? 'active' : undefined
+                  }
+                  onClick={() => setMenu(false)}
+                >
+                  <Icon name={navigationIcon(link.to)} />
+                  <span>{link.label}</span>
+                </NavLink>
+              </Fragment>
+            );
+          })}
         </nav>
         <div className="support">
           <span className="support-icon">

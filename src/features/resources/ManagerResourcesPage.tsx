@@ -226,6 +226,120 @@ function FieldInput({
         <span>{spec.label}</span>
       </label>
     );
+
+  if (spec.name === 'climateSystemType') {
+    return (
+      <Field label={spec.label} hint={spec.hint} error={error}>
+        {(id) => (
+          <div>
+            <input
+              id={id}
+              list="climate-system-suggestions"
+              maxLength={spec.maxLength}
+              value={value}
+              placeholder="VD: Dual HVAC & Forced Air hoặc Thermo King..."
+              aria-invalid={!!error}
+              onChange={(e) => onChange(e.target.value)}
+            />
+            <datalist id="climate-system-suggestions">
+              {climateSystemSuggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            <div className="field-quick-chips">
+              <span style={{ fontSize: '11px', color: '#64748b' }}>Gợi ý nhanh:</span>
+              {climateSystemSuggestions.slice(0, 3).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="field-chip-btn"
+                  onClick={() => onChange(s)}
+                >
+                  {s.split('&')[0].trim()}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Field>
+    );
+  }
+
+  if (spec.name === 'plateNumber') {
+    return (
+      <Field label={spec.label} hint={spec.hint} error={error}>
+        {(id) => (
+          <input
+            id={id}
+            maxLength={spec.maxLength}
+            value={value}
+            placeholder="VD: 29C-888.99 hoặc 51D-123.45"
+            style={{ textTransform: 'uppercase' }}
+            aria-invalid={!!error}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+          />
+        )}
+      </Field>
+    );
+  }
+
+  if (spec.name === 'horseCapacity') {
+    const num = Number(value);
+    const capacityInfo =
+      num === 2
+        ? '🚐 Xe Van 2 chỗ (Gọn nhẹ, chặng ngắn / sân bay)'
+        : num >= 3 && num <= 6
+          ? `🚚 Xe tải chuyên dụng ${num} chỗ (Tuyến liên tỉnh phổ biến)`
+          : num >= 7
+            ? `🚛 Xe rơ-moóc lớn ${num} chỗ (Tuyến đường dài xuyên biên giới)`
+            : null;
+
+    return (
+      <Field label={spec.label} hint={spec.hint} error={error}>
+        {(id) => (
+          <div>
+            <input
+              id={id}
+              maxLength={spec.maxLength}
+              inputMode="numeric"
+              value={value}
+              placeholder="VD: 2, 4, 6, 9"
+              aria-invalid={!!error}
+              onChange={(e) => onChange(e.target.value)}
+            />
+            {capacityInfo && <div className="capacity-helper-badge">{capacityInfo}</div>}
+          </div>
+        )}
+      </Field>
+    );
+  }
+
+  if (spec.name === 'vehicleCode') {
+    return (
+      <Field
+        label={spec.label}
+        hint={spec.hint || 'Để trống nếu muốn hệ thống tự động sinh theo Biển số xe'}
+        error={error}
+      >
+        {(id) => (
+          <div>
+            <input
+              id={id}
+              maxLength={spec.maxLength}
+              value={value}
+              placeholder="Tự động sinh theo biển số (VD: VEH-29C88899) — không cần nhập tay"
+              aria-invalid={!!error}
+              onChange={(e) => onChange(e.target.value)}
+            />
+            <span style={{ fontSize: '11px', color: '#059669', display: 'block', marginTop: '4px' }}>
+              ⚡ Hệ thống &amp; BE sẽ tự động tạo mã nếu ô này để trống.
+            </span>
+          </div>
+        )}
+      </Field>
+    );
+  }
+
   return (
     <Field label={spec.label} hint={spec.hint} error={error}>
       {(id) =>
@@ -343,6 +457,92 @@ function Editor({
   );
 }
 
+const secondaryFieldNames = new Set([
+  'ownerSupplierId',
+  'maintenanceFrom',
+  'maintenanceTo',
+  'documentExpiresAt',
+  'bufferMinutes',
+  'notes',
+]);
+
+const climateSystemSuggestions = [
+  'Dual HVAC & Forced Air',
+  'Thermo King Multi-Zone Controlled',
+  'Advanced Climate Controlled HVAC',
+  'Standard AC & Positive Pressure Ventilation',
+  'Carrier Transicold HorseCare System',
+];
+
+const vehiclePresets = [
+  {
+    title: 'Van 2 ngựa (Two-Horse Float)',
+    desc: 'Chặng ngắn / đưa đón sân bay (2 ngựa · Dual HVAC)',
+    values: {
+      horseCapacity: '2',
+      climateSystemType: 'Dual HVAC & Forced Air',
+      status: 'ACTIVE',
+    },
+    codePrefix: 'VAN-2H',
+  },
+  {
+    title: 'Xe tải 6 ngựa (Medium Horsebox)',
+    desc: 'Liên tỉnh & thi đấu giải (6 ngựa · Thermo King)',
+    values: {
+      horseCapacity: '6',
+      climateSystemType: 'Thermo King Multi-Zone Controlled',
+      status: 'ACTIVE',
+    },
+    codePrefix: 'TRK-6H',
+  },
+  {
+    title: 'Xe rơ-moóc 9 ngựa (Semi-Trailer)',
+    desc: 'Xuyên biên giới dài ngày (9 ngựa · Advanced Climate Controlled)',
+    values: {
+      horseCapacity: '9',
+      climateSystemType: 'Advanced Climate Controlled HVAC',
+      status: 'ACTIVE',
+    },
+    codePrefix: 'SEMI-9H',
+  },
+];
+
+const stallPresets = [
+  {
+    title: 'Shared (1.0 slot)',
+    desc: 'Tiêu chuẩn 1 ngựa (75×165cm, ≤500kg)',
+    values: {
+      capacitySlots: '1',
+      internalHeightCm: '165',
+      internalWidthCm: '75',
+      weightLimitKg: '500',
+      status: 'ACTIVE',
+    },
+  },
+  {
+    title: 'Wide (1.5 slots)',
+    desc: 'Khoang rộng thoải mái (110×175cm, ≤750kg)',
+    values: {
+      capacitySlots: '1.5',
+      internalHeightCm: '175',
+      internalWidthCm: '110',
+      weightLimitKg: '750',
+      status: 'ACTIVE',
+    },
+  },
+  {
+    title: 'Private Box (3.0 slots)',
+    desc: 'Nguyên khoang lớn VIP (230×180cm, ≤1500kg)',
+    values: {
+      capacitySlots: '3',
+      internalHeightCm: '180',
+      internalWidthCm: '230',
+      weightLimitKg: '1500',
+      status: 'ACTIVE',
+    },
+  },
+];
+
 function RecordForm({
   target,
   reviewed,
@@ -416,6 +616,23 @@ function RecordForm({
     );
   }
   const busyLabel = action === 'archive' ? 'Archiving…' : 'Saving…';
+  const handleFieldChange = (name: string, val: string) => {
+    setValues((curr) => {
+      const next: FormValues = { ...curr, [name]: val };
+      if (key === 'vehicles' && name === 'plateNumber') {
+        const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const currentCode = curr.vehicleCode ?? '';
+        // Only auto-fill vehicleCode if user has not entered anything in vehicleCode
+        if (!currentCode && clean) {
+          next.vehicleCode = `VEH-${clean}`;
+        }
+      }
+      return next;
+    });
+  };
+  const primarySpecs = fieldSpecs[key].filter((s) => !secondaryFieldNames.has(s.name));
+  const secondarySpecs = fieldSpecs[key].filter((s) => secondaryFieldNames.has(s.name));
+  const hasSecondaryError = secondarySpecs.some((s) => Boolean(fieldErrors[s.name]));
   return (
     <form
       className="card"
@@ -473,16 +690,85 @@ function RecordForm({
           {fieldErrors.form}
         </p>
       )}
+      {key === 'vehicles' && !editing && (
+        <div className="vehicle-preset-container">
+          <div className="vehicle-preset-heading">
+            <span>⚡</span>
+            <span>Mẫu quy chuẩn xe vận chuyển ngựa (Bấm để điền nhanh tải trọng &amp; điều hòa)</span>
+          </div>
+          <div className="stall-preset-grid">
+            {vehiclePresets.map((preset) => (
+              <button
+                key={preset.title}
+                type="button"
+                className="stall-preset-btn vehicle-preset-btn"
+                disabled={command.locked || locked}
+                onClick={() =>
+                  setValues((curr) => {
+                    const next: FormValues = { ...curr, ...preset.values };
+                    if (!next.vehicleCode && curr.plateNumber) {
+                      const cleanPlate = curr.plateNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                      next.vehicleCode = `${preset.codePrefix}-${cleanPlate}`;
+                    }
+                    return next;
+                  })
+                }
+              >
+                <strong>{preset.title}</strong>
+                <span>{preset.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {key === 'stalls' && !editing && (
+        <div className="stall-preset-container">
+          <div className="stall-preset-heading">
+            <span>⚡</span>
+            <span>Mẫu chuẩn IATA LAR (Bấm để điền nhanh kích thước &amp; tải trọng)</span>
+          </div>
+          <div className="stall-preset-grid">
+            {stallPresets.map((preset) => (
+              <button
+                key={preset.title}
+                type="button"
+                className="stall-preset-btn"
+                disabled={command.locked || locked}
+                onClick={() => setValues((curr) => ({ ...curr, ...preset.values }))}
+              >
+                <strong>{preset.title}</strong>
+                <span>{preset.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <fieldset className="form-grid" disabled={command.locked || locked}>
-        {fieldSpecs[key].map((spec) => (
+        {primarySpecs.map((spec) => (
           <FieldInput
             key={spec.name}
             spec={spec}
             value={values[spec.name] ?? ''}
             error={fieldErrors[spec.name]}
-            onChange={(v) => setValues((current) => ({ ...current, [spec.name]: v }))}
+            onChange={(v) => handleFieldChange(spec.name, v)}
           />
         ))}
+        {secondarySpecs.length > 0 && (
+          <details className="resource-advanced-details" open={hasSecondaryError || undefined}>
+            <summary>⚙️ Cài đặt bảo dưỡng &amp; Thông số nâng cao (Tùy chọn)</summary>
+            <div className="resource-advanced-grid">
+              {secondarySpecs.map((spec) => (
+                <FieldInput
+                  key={spec.name}
+                  spec={spec}
+                  value={values[spec.name] ?? ''}
+                  error={fieldErrors[spec.name]}
+                  onChange={(v) => handleFieldChange(spec.name, v)}
+                />
+              ))}
+            </div>
+          </details>
+        )}
       </fieldset>
       {key === 'fit-policies' && (
         <p className="muted">

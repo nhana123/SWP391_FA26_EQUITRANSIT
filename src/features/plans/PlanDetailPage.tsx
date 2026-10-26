@@ -2,10 +2,12 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
-import { idSchema } from '../../shared/api/contracts';
+import { idSchema, type BookingFlowStatus } from '../../shared/api/contracts';
 import { useSession } from '../../shared/api/session';
 import { displayDate as formatDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
+import { bookingFlowKeys } from '../transport-orders/BookingFlowDepositPanel';
+import { orderStatusApi } from '../transport-orders/status-api';
 import { plansApi } from './api';
 import { blockerText, editablePlan, type Leg, type PlanDetail } from './contracts';
 import {
@@ -22,6 +24,117 @@ import { JourneyStudio, type VehiclePicks } from './studio/JourneyStudio';
 import './plans.css';
 
 const displayDate = (value: string | null) => formatDate(value, 'Asia/Ho_Chi_Minh');
+
+function DepositAssignmentGateBanner({
+  flow,
+  role,
+  orderId,
+}: {
+  flow: BookingFlowStatus;
+  role: 'MANAGER' | 'COORDINATOR';
+  orderId: number;
+}) {
+  const isRoad = flow.transportMode === 'ROAD';
+  const quotationsLink =
+    role === 'MANAGER'
+      ? `/manager/requests/${orderId}/quotes`
+      : `/staff/cases/${orderId}/quotes`;
+
+  if (flow.isDepositSatisfied) {
+    return (
+      <section
+        className="card"
+        aria-label="Deposit and resource assignment gate"
+        style={{
+          border: '1.5px solid #10b981',
+          backgroundColor: '#ecfdf5',
+          padding: '14px 18px',
+          marginBottom: 16,
+          borderRadius: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <div>
+          <strong style={{ color: '#065f46', fontSize: 14, display: 'block' }}>
+            ✓ Khách hàng đã hoàn tất đặt cọc 30% ({flow.depositPaid} USD)
+          </strong>
+          <span style={{ color: '#047857', fontSize: 13 }}>
+            {flow.canAssignDriver
+              ? 'Cổng thanh toán đặt cọc đã mở khóa — Điều phối viên có thể phân công Tài xế, Xe đường bộ và Chuồng bay.'
+              : 'Đã nhận đủ tiền cọc 30%. Đơn cần ở trạng thái APPROVED hoặc IN_PREPARATION để bắt đầu gán tài nguyên.'}
+          </span>
+        </div>
+        <span
+          style={{
+            backgroundColor: '#059669',
+            color: '#ffffff',
+            padding: '5px 12px',
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          {flow.canAssignDriver ? 'Sẵn sàng phân công Tài xế' : 'Đã đặt cọc 30%'}
+        </span>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className="card"
+      aria-label="Deposit and resource assignment gate"
+      style={{
+        border: '1.5px solid #f59e0b',
+        backgroundColor: '#fffbeb',
+        padding: '14px 18px',
+        marginBottom: 16,
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+      }}
+    >
+      <div>
+        <strong style={{ color: '#92400e', fontSize: 14, display: 'block' }}>
+          🔒 Chưa mở khóa phân công Tài xế & Phương tiện ({flow.blockReason || 'DEPOSIT_REQUIRED'})
+        </strong>
+        <span style={{ color: '#b45309', fontSize: 13 }}>
+          {flow.blockReason === 'AWAITING_MANAGER_APPROVAL'
+            ? 'Đơn đang ở trạng thái SUBMITTED chờ Quản lý (Manager) duyệt và phân công Chuyên viên + Điều phối viên. Sau khi duyệt xong, khách hàng sẽ đặt cọc 30% để mở khóa gán tài xế.'
+            : flow.blockReason === 'AWAITING_COORDINATOR_QUOTE'
+              ? isRoad
+                ? 'Đơn đường bộ có dịch vụ/khoảng cách cần thẩm định thêm. Bạn có thể thiết kế bản nháp lịch trình nhưng cần phát hành Báo giá và đợi khách đặt cọc 30% trước khi gán tài xế.'
+                : 'Đơn hàng không đang chờ Điều phối viên lên lịch chuyến bay và phát hành Báo giá vé máy bay. Sau khi khách chấp nhận và đặt cọc 30%, chức năng phân công Tài xế & Chuồng bay sẽ mở khóa.'
+              : flow.blockReason === 'QUOTE_ACCEPTANCE_REQUIRED'
+                ? 'Báo giá đã được gửi và đang chờ Khách hàng nhấn Chấp nhận (Accept) & thanh toán đặt cọc 30%.'
+                : `Khách hàng cần hoàn tất thanh toán đặt cọc 30% (${flow.depositAmount ?? '—'} USD, đã trả ${flow.depositPaid} USD) trước khi hệ thống cho phép phân công Tài xế, Xe hoặc Chuồng bay.`}
+        </span>
+      </div>
+      {flow.blockReason === 'AWAITING_COORDINATOR_QUOTE' && (
+        <Link
+          to={quotationsLink}
+          className="button primary"
+          style={{
+            backgroundColor: '#d97706',
+            color: '#ffffff',
+            fontSize: 12.5,
+            fontWeight: 700,
+            textDecoration: 'none',
+          }}
+        >
+          Lập & Phát hành Báo giá →
+        </Link>
+      )}
+    </section>
+  );
+}
 
 function LegCard({
   plan,
@@ -108,6 +221,11 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
     staleTime: 0,
     retry: false,
   });
+  const flowQuery = useQuery({
+    queryKey: bookingFlowKeys.status(session.generation, orderId),
+    queryFn: ({ signal }) => orderStatusApi.bookingFlowStatus(orderId, signal),
+    retry: false,
+  });
   const pinned = usePinnedVersion(orderId, query.data?.recordVersion);
   if (query.isPending) return <Loading />;
   if (schemaPending(query.error)) return <DeploymentNotice retry={() => void query.refetch()} />;
@@ -130,6 +248,9 @@ function PlanWorkspace({ orderId, planId }: { orderId: number; planId: number })
           Read-only review: the assigned Coordinator designs this journey, assigns its resources and
           confirms the plan. You authorize departure once all three gates pass.
         </Notice>
+      )}
+      {flowQuery.data && (
+        <DepositAssignmentGateBanner flow={flowQuery.data} role={role} orderId={orderId} />
       )}
       <StaleBanner pinned={pinned} latest={plan.recordVersion} />
       <section className="card" aria-label="Plan summary">

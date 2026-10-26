@@ -56,7 +56,7 @@ const ownerField: FieldSpec = {
 
 export const fieldSpecs: Record<CatalogKey, FieldSpec[]> = {
   vehicles: [
-    { name: 'vehicleCode', label: 'Vehicle code', maxLength: 50 },
+    { name: 'vehicleCode', label: 'Vehicle code', hint: 'Để trống để BE tự sinh theo biển số (VD: VEH-29C88899).', maxLength: 50 },
     { name: 'plateNumber', label: 'Plate number', maxLength: 50 },
     { name: 'horseCapacity', label: 'Horse capacity', maxLength: 9 },
     { name: 'climateSystemType', label: 'Climate system', maxLength: 50 },
@@ -308,9 +308,12 @@ export function fromValues<K extends CatalogKey>(
 ): { data: CatalogWrite[K] | null; errors: FieldErrors } {
   const r = new Reader(values);
   let data: unknown;
-  if (key === 'vehicles')
+  if (key === 'vehicles') {
+    const rawPlate = r.raw('plateNumber').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const explicitCode = r.text('vehicleCode', 50, false);
+    const vehicleCode = explicitCode || (rawPlate ? `VEH-${rawPlate}` : null);
     data = {
-      vehicleCode: r.text('vehicleCode', 50),
+      vehicleCode,
       plateNumber: r.text('plateNumber', 50),
       horseCapacity: r.int('horseCapacity', 1, 2_147_483_647),
       climateSystemType: r.text('climateSystemType', 50),
@@ -318,6 +321,7 @@ export function fromValues<K extends CatalogKey>(
       ownerSupplierId: r.id('ownerSupplierId'),
       window: r.window(),
     };
+  }
   else if (key === 'stalls')
     data = {
       stallCode: r.text('stallCode', 50),

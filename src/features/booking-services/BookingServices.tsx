@@ -43,6 +43,43 @@ const sectionViews: Record<SectionCode, ComponentType<SectionProps>> = {
   ADDITIONAL_CHARGES: AdditionalChargesSection,
 };
 
+function cardDetail(code: SectionCode, prefs: Preferences): string | null {
+  switch (code) {
+    case 'TRANSPORTATION':
+      if (prefs.roadArrangement === 'EQUITRANSIT') return 'Gói EquiTransit tiêu chuẩn';
+      if (prefs.roadArrangement === 'CUSTOMER') return 'Tự sắp xếp xe';
+      return null;
+    case 'AIR_STALL':
+      if (prefs.airStall === 'SHARED_ONE') return 'Shared stall (1 slot)';
+      if (prefs.airStall === 'WIDE') return 'Wide stall (1.5 slots)';
+      if (prefs.airStall === 'PRIVATE') return 'Private stall (3 slots)';
+      return null;
+    case 'HORSE_CARE': {
+      const parts: string[] = [];
+      if (prefs.enhancedCare) parts.push('Chăm sóc nâng cao');
+      if (prefs.groomingDays) parts.push(`${prefs.groomingDays} ngày groom`);
+      if (prefs.boardingNights) parts.push(`${prefs.boardingNights} đêm chuồng`);
+      return parts.length > 0 ? parts.join(' · ') : 'Chăm sóc cơ bản';
+    }
+    case 'VETERINARY':
+      if (prefs.veterinaryArrangement === 'EQUITRANSIT') return 'Gói kiểm dịch EquiTransit';
+      if (prefs.veterinaryArrangement === 'CUSTOMER') return 'Tự sắp xếp bác sĩ';
+      return null;
+    case 'QUARANTINE':
+      if (prefs.quarantinePackage === 'STANDARD') return 'Cách ly tiêu chuẩn';
+      if (prefs.quarantinePackage === 'ENHANCED') return 'Cách ly nâng cao';
+      if (prefs.quarantinePackage === 'NONE') return 'Không yêu cầu cách ly';
+      return null;
+    case 'INSURANCE':
+      if (prefs.insurance === 'MORTALITY') return 'Bảo hiểm sinh mạng';
+      if (prefs.insurance === 'COMBINED') return 'Bảo hiểm kết hợp';
+      if (prefs.insurance === 'NONE') return 'Không mua bảo hiểm';
+      return null;
+    default:
+      return null;
+  }
+}
+
 export const samePreferences = (a: Preferences, b: Preferences) =>
   JSON.stringify(a) === JSON.stringify(b);
 
@@ -271,6 +308,7 @@ function BookingEditor({
                   ADDITIONAL_CHARGES: false,
                 }[code]
               }
+              detail={cardDetail(code, prefs)}
               onOpen={() => setOpen(open === code ? null : code)}
             />
           ))}

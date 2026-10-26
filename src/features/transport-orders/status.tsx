@@ -19,9 +19,9 @@ import { CustomerLegalChecklist } from '../compliance/CustomerChecklist';
 import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
 import { SettlementPreviewLink } from '../settlement/navigation';
-import { OrderWorkflowBanner } from '../workflow/OrderWorkflowBanner';
 
 import { PaymentLink } from '../payments/pages';
+import { BookingFlowDepositPanel } from './BookingFlowDepositPanel';
 import { orderStatusApi } from './status-api';
 import { orderStatusLabels, type CustomerAssessment } from './status-contracts';
 import './status.css';
@@ -56,6 +56,18 @@ export function RequestsPage() {
     queryFn: ({ signal }) => orderStatusApi.list(page, signal),
     placeholderData: keepPreviousData,
   });
+
+  const items = query.data?.items ?? [];
+  const totalCount = query.data?.totalElements ?? items.length;
+  const draftCount = items.filter((o) => o.orderStatus === 'DRAFT').length;
+  const inTransitCount = items.filter((o) => o.orderStatus === 'IN_TRANSIT').length;
+  const activeCount = items.filter(
+    (o) =>
+      !['DELIVERED', 'COMPLETED', 'CLOSED', 'REJECTED', 'CANCELLED', 'CANCELED', 'DRAFT'].includes(
+        o.orderStatus,
+      ),
+  ).length;
+
   return (
     <>
       <PageHeading title="Transport Requests" description="Your drafts and submitted requests.">
@@ -63,6 +75,47 @@ export function RequestsPage() {
           New Request
         </Link>
       </PageHeading>
+
+      {query.data && query.data.items.length > 0 && (
+        <div className="requests-kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-header">
+              <div className="kpi-icon-wrap">📋</div>
+              <span className="kpi-tag">Tất cả</span>
+            </div>
+            <div className="kpi-number">{totalCount}</div>
+            <div className="kpi-label">Tổng yêu cầu vận chuyển</div>
+          </div>
+
+          <div className="kpi-card warning">
+            <div className="kpi-header">
+              <div className="kpi-icon-wrap">📝</div>
+              <span className="kpi-tag">Cần hoàn tất</span>
+            </div>
+            <div className="kpi-number">{draftCount}</div>
+            <div className="kpi-label">Đơn nháp (Drafts)</div>
+          </div>
+
+          <div className="kpi-card info">
+            <div className="kpi-header">
+              <div className="kpi-icon-wrap">⏳</div>
+              <span className="kpi-tag">Đang xử lý</span>
+            </div>
+            <div className="kpi-number">{activeCount}</div>
+            <div className="kpi-label">Thẩm định & Chuẩn bị</div>
+          </div>
+
+          <div className="kpi-card success">
+            <div className="kpi-header">
+              <div className="kpi-icon-wrap">✈️</div>
+              <span className="kpi-tag">Hành trình</span>
+            </div>
+            <div className="kpi-number">{inTransitCount}</div>
+            <div className="kpi-label">Đang trên chuyến bay</div>
+          </div>
+        </div>
+      )}
+
       <section className="card">
         {query.isPending ? (
           <Loading />
@@ -80,7 +133,7 @@ export function RequestsPage() {
         ) : (
           <LoadedOrderFilter items={query.data.items}>
             {(filtered) => (
-              <div className="table-scroll" aria-busy={query.isPlaceholderData}>
+              <div className="table-geometric-wrapper table-scroll" aria-busy={query.isPlaceholderData}>
                 <table aria-label={`Your transport requests: ${query.data.totalElements} in total`}>
                   <thead>
                     <tr>
@@ -88,25 +141,72 @@ export function RequestsPage() {
                       <th scope="col">Route</th>
                       <th scope="col">Delivery deadline</th>
                       <th scope="col">Status</th>
+                      <th scope="col" style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((o) => (
                       <tr key={o.orderId}>
                         <td>
-                          <CodeChip value={o.orderNumber} to={`/customer/requests/${o.orderId}`} />
+                          <div className="request-id-cell">
+                            <CodeChip value={o.orderNumber} to={`/customer/requests/${o.orderId}`} />
+                            <span className="request-meta-sub">Mã #{o.orderId}</span>
+                          </div>
                         </td>
-                        <td>{route(o)}</td>
                         <td>
-                          {displayDate(
-                            o.draft.deliveryDeadline,
-                            o.draft.destinationTimezone || undefined,
-                          )}
+                          <div
+                            className={`route-geometric-tag ${
+                              !o.draft.originCountryCode && !o.draft.destinationCountryCode
+                                ? 'unrecorded'
+                                : ''
+                            }`}
+                          >
+                            <span className="route-mode-icon">
+                              {!o.draft.originCountryCode && !o.draft.destinationCountryCode
+                                ? '⚠️'
+                                : o.draft.route?.transportMode === 'ROAD'
+                                  ? '🚛'
+                                  : '✈️'}
+                            </span>
+                            <span className="route-text">{route(o)}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div
+                            className={`deadline-geometric-tag ${
+                              !o.draft.deliveryDeadline ? 'unrecorded' : ''
+                            }`}
+                          >
+                            {o.draft.deliveryDeadline && <span className="deadline-icon">🕒</span>}
+                            <span className="deadline-text">
+                              {displayDate(
+                                o.draft.deliveryDeadline,
+                                o.draft.destinationTimezone || undefined,
+                              )}
+                            </span>
+                          </div>
                         </td>
                         <td>
                           <StatusBadge status={o.orderStatus}>
                             {orderStatusLabels[o.orderStatus]}
                           </StatusBadge>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {o.orderStatus === 'DRAFT' ? (
+                            <Link
+                              to={`/customer/requests/${o.orderId}`}
+                              className="action-pill-btn draft"
+                            >
+                              <span>✏️</span> Tiếp tục soạn
+                            </Link>
+                          ) : (
+                            <Link
+                              to={`/customer/requests/${o.orderId}`}
+                              className="action-pill-btn view"
+                            >
+                              <span>👁️</span> Chi tiết
+                            </Link>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -221,10 +321,11 @@ export function RequestDetailPage() {
   if (!valid) return <Notice>This request is unavailable.</Notice>;
   if (query.isPending) return <Loading />;
   if (query.error) return <ErrorNotice error={query.error} />;
+  const isDraft = query.data.orderStatus === 'DRAFT';
   return (
     <>
-      <OrderWorkflowBanner status={query.data.orderStatus} role="CUSTOMER" />
       <OrderLifecycle status={query.data.orderStatus} />
+      {!isDraft && <BookingFlowDepositPanel order={query.data} />}
       <AssessmentPanel order={query.data} />
       <CustomerLegalChecklist orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
       <div className="actions">

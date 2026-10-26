@@ -1,0 +1,404 @@
+import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CodeChip, EmptyState } from '../../components/ui/Primitives';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { flag } from '../../shared/api/lookups';
+import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
+import {
+  coordinatorApi,
+  type CoordinatorLocation,
+  type CoordinatorLocationRequest,
+} from './api';
+
+export function CoordinatorHubsPage() {
+  const queryClient = useQueryClient();
+  const [filterCountry, setFilterCountry] = useState<string>('ALL');
+  const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const query = useQuery({
+    queryKey: ['coordinator', 'hubs'],
+    queryFn: ({ signal }) => coordinatorApi.listLocations('HUB', undefined, signal),
+  });
+
+  const hubs = (query.data ?? []).filter((h) => {
+    if (filterCountry !== 'ALL' && h.countryCode !== filterCountry) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchName = h.locationName.toLowerCase().includes(q);
+      const matchCode = (h.locationCode ?? '').toLowerCase().includes(q);
+      const matchAddress = (h.address ?? '').toLowerCase().includes(q);
+      return matchName || matchCode || matchAddress;
+    }
+    return true;
+  });
+
+  // Unique country codes from data
+  const countries = Array.from(new Set((query.data ?? []).map((h) => h.countryCode))).sort();
+
+  return (
+    <>
+      <header className="page-heading">
+        <div>
+          <small className="eyebrow">TERMINALS & INFRASTRUCTURE · MANAGER</small>
+          <h1>Company Hubs & Quarantine Barns</h1>
+          <p>
+            Official operational headquarters, quarantine staging stables, and domestic feeder rates ($/km).
+          </p>
+        </div>
+        <button
+          type="button"
+          className="button primary"
+          onClick={() => setIsModalOpen(true)}
+        >
+          + Add Company Hub
+        </button>
+      </header>
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="search"
+            placeholder="Search by hub name, code, or address..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, minWidth: 260, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--line)' }}
+          />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`button ${filterCountry === 'ALL' ? 'primary' : 'secondary'}`}
+              style={{ padding: '6px 12px', fontSize: 13 }}
+              onClick={() => setFilterCountry('ALL')}
+            >
+              All Countries ({query.data?.length ?? 0})
+            </button>
+            {countries.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`button ${filterCountry === c ? 'primary' : 'secondary'}`}
+                style={{ padding: '6px 12px', fontSize: 13 }}
+                onClick={() => setFilterCountry(c)}
+              >
+                {flag(c)} {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {query.isPending ? (
+        <Loading />
+      ) : query.error ? (
+        <ErrorNotice error={query.error}>
+          <button type="button" onClick={() => void query.refetch()}>
+            Retry
+          </button>
+        </ErrorNotice>
+      ) : hubs.length === 0 ? (
+        <EmptyState
+          title="No company hubs found"
+          description="Register a primary terminal or adjust your country filter."
+        />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
+          {hubs.map((hub) => (
+            <HubCard
+              key={hub.locationId}
+              hub={hub}
+              onDeactivated={() =>
+                void queryClient.invalidateQueries({ queryKey: ['coordinator', 'hubs'] })
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <CreateHubModal
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            void queryClient.invalidateQueries({ queryKey: ['coordinator', 'hubs'] });
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function HubCard({
+  hub,
+  onDeactivated,
+}: {
+  hub: CoordinatorLocation;
+  onDeactivated: () => void;
+}) {
+  const deactivateMutation = useMutation({
+    mutationFn: () => coordinatorApi.deleteLocation(hub.locationId),
+    onSuccess: () => onDeactivated(),
+  });
+
+  return (
+    <article
+      className="card"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        borderLeft: hub.isPrimaryHub ? '4px solid var(--brand)' : '4px solid #94a3b8',
+        padding: 18,
+      }}
+    >
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 20 }}>{flag(hub.countryCode)}</span>
+            <CodeChip value={hub.locationCode ?? `HUB-${hub.countryCode}`} />
+            {hub.isPrimaryHub && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                PRIMARY TERMINAL
+              </span>
+            )}
+          </div>
+          <StatusBadge status="COMPLIANT" />
+        </div>
+
+        <h3 style={{ margin: '8px 0 4px', fontSize: 16, fontWeight: 700 }}>{hub.locationName}</h3>
+
+        <p style={{ margin: '6px 0', fontSize: 13, color: '#475569', lineHeight: 1.4 }}>
+          📍 {hub.address || 'Address on file'}
+        </p>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 8,
+            padding: '8px 12px',
+            background: '#f8fafc',
+            borderRadius: 6,
+            fontSize: 12,
+            marginTop: 12,
+          }}
+        >
+          <div>
+            <span style={{ color: '#64748b', display: 'block' }}>GPS Coordinates:</span>
+            <strong>
+              {hub.latitude != null && hub.longitude != null
+                ? `${hub.latitude.toFixed(4)}°, ${hub.longitude.toFixed(4)}°`
+                : 'Pending GPS'}
+            </strong>
+          </div>
+          <div>
+            <span style={{ color: '#64748b', display: 'block' }}>Domestic Transfer Policy:</span>
+            <strong style={{ color: '#0f766e' }}>
+              ≤100 km FREE · &gt;100 km: $2.00 / km
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <button
+          type="button"
+          className="button secondary"
+          style={{ padding: '4px 10px', fontSize: 12 }}
+          disabled={deactivateMutation.isPending}
+          onClick={() => deactivateMutation.mutate()}
+        >
+          {deactivateMutation.isPending ? 'Deactivating...' : 'Deactivate Hub'}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [country, setCountry] = useState('VN');
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [rate, setRate] = useState('2.00');
+  const [isPrimary, setIsPrimary] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (body: CoordinatorLocationRequest) => coordinatorApi.createLocation(body),
+    onSuccess: () => onSuccess(),
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Failed to register hub');
+    },
+  });
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const body: CoordinatorLocationRequest = {
+      country: country.toUpperCase(),
+      code: code.trim() || `HUB-${country.toUpperCase()}`,
+      name: name.trim(),
+      locationType: 'HUB',
+      address: address.trim() || null,
+      latitude: latitude ? Number(latitude) : null,
+      longitude: longitude ? Number(longitude) : null,
+      domesticRatePerKm: Number(rate) || 1.2,
+      isPrimaryHub: isPrimary,
+      isActive: true,
+    };
+
+    mutation.mutate(body);
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        padding: 16,
+      }}
+    >
+      <div
+        className="card"
+        style={{
+          width: '100%',
+          maxWidth: 580,
+          background: 'white',
+          borderRadius: 12,
+          padding: 24,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 18 }}>Register Company Hub / Stable</h2>
+          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer' }}>
+            ✕
+          </button>
+        </div>
+
+        {error && <Notice>{error}</Notice>}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <label style={{ width: 140, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+              Country Code *
+              <input
+                required
+                maxLength={2}
+                placeholder="VN"
+                value={country}
+                onChange={(e) => setCountry(e.target.value.toUpperCase())}
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+              />
+            </label>
+            <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+              Hub Identifier Code
+              <input
+                placeholder="HUB-VN-SGN"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+              />
+            </label>
+          </div>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+            Hub Name *
+            <input
+              required
+              placeholder="e.g. Trụ sở EquiTransit TP.HCM (Củ Chi Quarantine Stable)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+            />
+          </label>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+            Physical Address *
+            <input
+              required
+              placeholder="e.g. Ấp Bến Đình, Nhuận Đức, Củ Chi, TP. Hồ Chí Minh"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+            />
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+              Latitude
+              <input
+                type="number"
+                step="any"
+                placeholder="11.0825"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+              Longitude
+              <input
+                type="number"
+                step="any"
+                placeholder="106.5186"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+              Domestic Rate ($/km)
+              <input
+                type="number"
+                step="any"
+                required
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
+              />
+            </label>
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={isPrimary}
+              onChange={(e) => setIsPrimary(e.target.checked)}
+            />
+            <strong>Set as Primary National Terminal</strong> (Used for automatic 3-leg distance calculation)
+          </label>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <button type="button" className="button secondary" onClick={onClose} disabled={mutation.isPending}>
+              Cancel
+            </button>
+            <button type="submit" className="button primary" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Registering...' : 'Save Company Hub'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
