@@ -1,3 +1,313 @@
+/* Modern & Intuitive Service Pricing Styles */
+
+.pricing-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pricing-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pricing-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+.pricing-kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.pricing-kpi-card.all .pricing-kpi-icon {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.pricing-kpi-card.published .pricing-kpi-icon {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.pricing-kpi-card.missing .pricing-kpi-icon {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.pricing-kpi-card.included .pricing-kpi-icon {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.pricing-kpi-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-kpi-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.pricing-kpi-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Filter Bar */
+.pricing-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.pricing-search-box {
+  position: relative;
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+
+.pricing-search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 13.5px;
+  background: #ffffff;
+  outline: none;
+}
+
+.pricing-search-box input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
+}
+
+.pricing-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  font-size: 14px;
+}
+
+.pricing-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pricing-cat-tab {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pricing-cat-tab:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.pricing-cat-tab.active {
+  background: #065f46;
+  border-color: #065f46;
+  color: #ffffff;
+}
+
+/* Service Products Table Enhancements */
+.pricing-product-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pricing-product-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pricing-product-info strong {
+  display: block;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.pricing-product-code {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #64748b;
+}
+
+.pricing-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pricing-mode-badge.rate {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.pricing-mode-badge.evidence {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pricing-mode-badge.included {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.pricing-price-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-price-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.pricing-price-val.missing {
+  color: #d97706;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pricing-price-val.included {
+  color: #7c3aed;
+  font-size: 13.5px;
+}
+
+.pricing-unit-sub {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.pricing-version-pill {
+  display: inline-block;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* Action Buttons */
+.pricing-btn-publish {
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pricing-btn-publish:hover {
+  background: #047857;
+}
+
+.pricing-btn-replace {
+  background: #ffffff;
+  color: #0284c7;
+  border: 1px solid #7dd3fc;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pricing-btn-replace:hover {
+  background: #f0f9ff;
+  border-color: #0284c7;
+}
+
+/* Price History Collapsible */
+.pricing-history-details {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+  margin-top: 24px;
+}
+
+.pricing-history-summary {
+  padding: 16px 20px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+}
+
+.pricing-history-details[open] .pricing-history-summary {
+  border-bottom-color: #e2e8f0;
+}
+
+.pricing-history-body {
+  padding: 16px 20px;
+}
+
 .badge.warn {
   background: #fff3df;
   color: #8a5a00;

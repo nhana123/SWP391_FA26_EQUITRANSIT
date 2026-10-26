@@ -1,0 +1,295 @@
+/* EquiTransit Luxury 2-Column Review Step Styles */
+
+.review-split-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+@media (max-width: 980px) {
+  .review-split-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Review Details */
+.review-column-details {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.review-card-section {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  padding: 20px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.review-card-section:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07);
+}
+
+.review-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.review-card-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.review-card-header-title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.review-card-header-icon {
+  font-size: 20px;
+}
+
+.review-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .review-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.review-item-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.review-item-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.review-service-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.review-service-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-service-choice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f5132;
+  background: #ecfdf5;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+/* Right Column: Sticky Cost Card */
+.review-column-summary {
+  position: sticky;
+  top: 24px;
+}
+
+.review-cost-box {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(15, 81, 50, 0.08);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-cost-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.review-cost-top h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f5132;
+}
+
+.review-cost-top-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #ecfdf5;
+  color: #059669;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+.review-cost-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.review-cost-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+}
+
+.review-cost-desc {
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-cost-val {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.review-cost-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 12px 0 16px 0;
+}
+
+.review-cost-total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-top: 6px;
+}
+
+.review-cost-total-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.review-cost-total-amount {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f5132;
+  letter-spacing: -0.5px;
+}
+
+.review-cost-currency {
+  font-size: 14px;
+  font-weight: 600;
+  color: #059669;
+  margin-left: 4px;
+}
+
+.review-cost-perks {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-cost-perk {
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-cost-perk svg,
+.review-cost-perk span.check {
+  color: #059669;
+  font-weight: 700;
+}
+
+.review-submit-button {
+  width: 100% !important;
+  padding: 14px 20px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  background-color: #0f5132 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(15, 81, 50, 0.3) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.review-submit-button:hover:not(:disabled) {
+  background-color: #0c4128 !important;
+  box-shadow: 0 6px 18px rgba(15, 81, 50, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.review-submit-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+.review-security-note {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.4;
+}

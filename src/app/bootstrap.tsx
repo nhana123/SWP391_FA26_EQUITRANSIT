@@ -9,6 +9,7 @@ import './styles.css';
 import './heritage.css';
 import './forms.css';
 import '../features/booking-services/pricing.css';
+import '../features/landing/landing.css';
 export async function mount() {
   // A reload keeps a signed-in tab signed in: the access token is renewed from
   // the HttpOnly refresh cookie before any route decides to send the user to login.

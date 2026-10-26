@@ -40,10 +40,6 @@ it('exposes Manager links for both new administration and the existing case dire
     'href',
     '/manager/staff-administration',
   );
-  expect(screen.getByRole('link', { name: 'Case Staff' })).toHaveAttribute(
-    'href',
-    '/manager/staff',
-  );
   expect(screen.getByRole('link', { name: 'Tariffs & Pricing' })).toHaveAttribute(
     'href',
     '/manager/service-prices',

@@ -61,5 +61,7 @@ export function navigationIcon(path: string): IconName {
   if (/resources/.test(path)) return 'truck';
   if (/audit/.test(path)) return 'file';
   if (/tasks|driver/.test(path)) return 'check';
+  if (/routes/.test(path)) return 'globe';
+  if (/hubs|locations/.test(path)) return 'pin';
   return 'orders';
 }

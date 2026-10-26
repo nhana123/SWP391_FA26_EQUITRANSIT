@@ -2,6 +2,8 @@ import type {
   HealthDeclaration,
   Horse,
   OrderDraft,
+  RouteMatchRequest,
+  RouteTransportMode,
   ServicePreferences,
 } from '../../shared/api/contracts';
 import { apiPatterns } from '../../shared/api/patterns';
@@ -63,17 +65,33 @@ export type HealthKey =
   | 'vaccinationRecordReference'
   | 'healthNotes'
   | 'declaredAccurate';
+export type RouteFormKey =
+  | 'transportMode'
+  | 'originCity'
+  | 'originAirportCode'
+  | 'destinationCity'
+  | 'destinationAirportCode'
+  | 'originHubId'
+  | 'destinationHubId';
 export type DraftForm = Record<
-  JourneyKey | HealthKey | 'horseId' | 'importType' | 'transitAirports',
+  JourneyKey | HealthKey | RouteFormKey | 'horseId' | 'importType' | 'transitAirports',
   string
 >;
 export function draftForm(draft?: OrderDraft): DraftForm {
   const h = draft?.healthDeclaration;
+  const r = draft?.route;
   return Object.fromEntries([
     ...journeyFields.map((f) => [f.key, draft?.[f.key] || '']),
     ['horseId', draft?.horseId ? String(draft.horseId) : ''],
     ['importType', draft?.importType || ''],
     ['transitAirports', draft?.transitAirports?.join(', ') || ''],
+    ['transportMode', r?.transportMode || ''],
+    ['originCity', r?.originCity || ''],
+    ['originAirportCode', r?.originAirportCode || ''],
+    ['destinationCity', r?.destinationCity || ''],
+    ['destinationAirportCode', r?.destinationAirportCode || ''],
+    ['originHubId', r?.originHubId ? String(r.originHubId) : ''],
+    ['destinationHubId', r?.destinationHubId ? String(r.destinationHubId) : ''],
     ['influenzaVaccinated', h?.influenzaVaccinated == null ? '' : String(h.influenzaVaccinated)],
     ['lastInfluenzaVaccinationDate', h?.lastInfluenzaVaccinationDate || ''],
     ['vaccinationRecordReference', h?.vaccinationRecordReference || ''],
@@ -93,15 +111,65 @@ function healthInput(form: DraftForm): HealthDeclaration | null {
   };
   return Object.values(value).every((v) => v === null) ? null : value;
 }
+function routeInput(
+  form: DraftForm,
+  originCountryCode: string | null,
+  destinationCountryCode: string | null,
+  services: ServicePreferences | null,
+): RouteMatchRequest | undefined {
+  const hasRouteDetails = Boolean(
+    form.transportMode.trim() ||
+      form.originCity.trim() ||
+      form.originAirportCode.trim() ||
+      form.destinationCity.trim() ||
+      form.destinationAirportCode.trim() ||
+      form.originHubId.trim() ||
+      form.destinationHubId.trim(),
+  );
+  if (
+    !hasRouteDetails ||
+    !originCountryCode ||
+    !destinationCountryCode ||
+    !/^[A-Z]{2}$/.test(originCountryCode) ||
+    !/^[A-Z]{2}$/.test(destinationCountryCode)
+  ) {
+    return undefined;
+  }
+  const mode = optional(form.transportMode)?.toUpperCase() as RouteTransportMode | null;
+  const originHubNum = Number(form.originHubId);
+  const destHubNum = Number(form.destinationHubId);
+  return {
+    originCountryCode,
+    originCity: optional(form.originCity),
+    originAirportCode:
+      mode === 'ROAD' ? null : optional(form.originAirportCode)?.toUpperCase() || null,
+    destinationCountryCode,
+    destinationCity: optional(form.destinationCity),
+    destinationAirportCode:
+      mode === 'ROAD' ? null : optional(form.destinationAirportCode)?.toUpperCase() || null,
+    transportMode: mode,
+    airStallPreference: services?.airStall || null,
+    ...(optional(form.originAddress) ? { pickupAddress: optional(form.originAddress) } : {}),
+    ...(optional(form.destinationAddress)
+      ? { deliveryAddress: optional(form.destinationAddress) }
+      : {}),
+    ...(Number.isInteger(originHubNum) && originHubNum > 0 ? { originHubId: originHubNum } : {}),
+    ...(Number.isInteger(destHubNum) && destHubNum > 0 ? { destinationHubId: destHubNum } : {}),
+  };
+}
 // Services belong to the shared full replacement request. Never rebuild them from visible controls.
 export function draftInput(form: DraftForm, services: ServicePreferences | null): OrderDraft {
   const values = Object.fromEntries(
     journeyFields.map((f) => [f.key, optional(form[f.key])]),
   ) as Record<JourneyKey, string | null>;
+  const originCountryCode = values.originCountryCode?.toUpperCase() || null;
+  const destinationCountryCode = values.destinationCountryCode?.toUpperCase() || null;
+  const route = routeInput(form, originCountryCode, destinationCountryCode, services);
   return {
+    ...(route ? { route } : {}),
     ...values,
-    originCountryCode: values.originCountryCode?.toUpperCase() || null,
-    destinationCountryCode: values.destinationCountryCode?.toUpperCase() || null,
+    originCountryCode,
+    destinationCountryCode,
     horseId: form.horseId ? Number(form.horseId) : null,
     importType: optional(form.importType) as OrderDraft['importType'],
     transitAirports: form.transitAirports.trim()

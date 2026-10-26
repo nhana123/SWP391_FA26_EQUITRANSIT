@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ApiError, request } from '../../shared/api/client';
 import { idSchema } from '../../shared/api/contracts';
+import { documentTemplateSchema } from '../../shared/api/lookups';
 import {
   assessmentSchema,
   documentSchema,
@@ -98,4 +99,15 @@ export const complianceApi = {
     post(`${base(orderId)}/clearances`, body),
   revoke: (orderId: number, documentVersionId: number, body: Command<RevokeInput>) =>
     post(`${base(orderId)}/documents/${id(documentVersionId)}/revocations`, body),
+  attachTemplateFile: (typeCode: string, templateFileKey: string) =>
+    request(
+      `/api/compliance/document-templates/${encodeURIComponent(typeCode)}/file`,
+      documentTemplateSchema,
+      {
+        method: 'PUT',
+        body: { templateFileKey },
+      },
+    ),
+  templates: (signal?: AbortSignal) =>
+    request('/api/lookups/document-templates', z.array(documentTemplateSchema), { signal }),
 };

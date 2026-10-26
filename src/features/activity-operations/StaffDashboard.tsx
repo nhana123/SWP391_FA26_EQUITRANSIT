@@ -42,8 +42,8 @@ const taskLinks: Partial<Record<Role, string>> = {
 
 /** Overview for Manager, Specialist, Coordinator and Driver from /api/dashboard. */
 export function StaffDashboardPage() {
-  const paging = useActivityPage();
   const session = useSession();
+  const paging = useActivityPage();
   const query = useActivityQuery(
     ['staff-dashboard', paging.page],
     (signal) => operationsApi.dashboard(session?.role ?? '', paging.page, signal),
@@ -76,6 +76,38 @@ export function StaffDashboardPage() {
         {scopes[session.role]} Counts show request statuses only; they are not a staff schedule or
         availability.
       </p>
+      {session.role === 'MANAGER' && (
+        <nav className="manager-quick-actions-grid" aria-label="Management quick links">
+          <Link to="/manager/requests" className="manager-quick-card">
+            <span className="quick-card-icon">📋</span>
+            <div>
+              <strong>Assess Requests</strong>
+              <p>Review submitted requests, evaluate route feasibility, and approve</p>
+            </div>
+          </Link>
+          <Link to="/manager/service-prices" className="manager-quick-card">
+            <span className="quick-card-icon">🏷️</span>
+            <div>
+              <strong>Tariffs & Pricing</strong>
+              <p>Configure transport rates, base tariffs, and mileage catalogs</p>
+            </div>
+          </Link>
+          <Link to="/manager/resources" className="manager-quick-card">
+            <span className="quick-card-icon">🚛</span>
+            <div>
+              <strong>Fleet & Resources</strong>
+              <p>Manage specialized horse vans, trailers, and transport assets</p>
+            </div>
+          </Link>
+          <Link to="/manager/reports/financial" className="manager-quick-card">
+            <span className="quick-card-icon">📊</span>
+            <div>
+              <strong>Financial Report</strong>
+              <p>Review quotations, bank reconciliations, and expense budgets</p>
+            </div>
+          </Link>
+        </nav>
+      )}
       <ActivityReadState
         pending={query.isPending}
         error={query.error}

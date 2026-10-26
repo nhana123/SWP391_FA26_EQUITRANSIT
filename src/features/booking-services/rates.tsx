@@ -52,7 +52,8 @@ export function rateText(rate: ServiceRate | undefined, status: RatesState['stat
   if (rate.pricingMode === 'INCLUDED') return 'Included';
   if (rate.unitRate === null)
     return rate.pricingMode === 'EVIDENCE' ? 'Awaiting pricing/assessment' : 'Awaiting pricing';
-  const base = `${rate.unitRate} ${rate.currency} ${unitLabel(rate.unit)}`;
+  const unit = rate.product === 'AIR_STALL' ? 'per slot' : unitLabel(rate.unit);
+  const base = `${rate.unitRate} ${rate.currency} ${unit}`;
   if (rate.pricingMode === 'EVIDENCE') return `${base} · final amount needs assessment`;
   if (rate.pricingMode === 'EVENT') return `${base} · only if it happens`;
   return base;
@@ -78,7 +79,8 @@ function amount(rate: ServiceRate) {
       value: rate.pricingMode === 'EVIDENCE' ? 'Awaiting pricing/assessment' : 'Awaiting pricing',
       unit: '',
     };
-  return { value: rate.unitRate, unit: `${rate.currency} ${unitLabel(rate.unit)}` };
+  const unit = rate.product === 'AIR_STALL' ? 'per slot' : unitLabel(rate.unit);
+  return { value: rate.unitRate, unit: `${rate.currency} ${unit}` };
 }
 const modeNotes: Partial<Record<ServiceRate['pricingMode'], string>> = {
   EVIDENCE: 'Final amount needs assessment',
@@ -118,7 +120,7 @@ export function SectionRates({
                   {a.unit && <small>{a.unit}</small>}
                 </span>
                 {modeNotes[r.pricingMode] && (
-                  <span className="rate-card-note">{modeNotes[r.pricingMode]}</span>
+                  <span className={`rate-card-note note-${r.pricingMode.toLowerCase()}`}>{modeNotes[r.pricingMode]}</span>
                 )}
               </li>
             );

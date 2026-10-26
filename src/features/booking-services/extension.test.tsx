@@ -293,9 +293,9 @@ describe('F05 extension #74', () => {
     ]);
     const user = await openAir();
     const privateChoice = screen.getByLabelText(/Private stall/).closest('label')!;
-    expect(within(privateChoice).queryByText('325.10 USD per shipment')).toBeNull();
+    expect(within(privateChoice).queryByText('325.10 USD per slot')).toBeNull();
     await user.click(screen.getByLabelText(/Private stall/));
-    expect(await within(privateChoice).findByText('325.10 USD per shipment')).toBeInTheDocument();
+    expect(await within(privateChoice).findByText('325.10 USD per slot')).toBeInTheDocument();
     expect(screen.queryByText(/charged as slots/)).toBeNull();
   });
   it.each([403, 404])('hides inaccessible service data after preview %s', async (status) => {

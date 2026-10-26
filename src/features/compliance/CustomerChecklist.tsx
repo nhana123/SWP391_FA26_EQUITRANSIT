@@ -40,6 +40,18 @@ const readable = (code: string) =>
   code.charAt(0) + code.slice(1).toLowerCase().replaceAll('_', ' ');
 
 /** Six months ahead, as a calendar date in UTC+07:00; the user can change it. */
+export function parseTemplateAttachment(instructions: string | null | undefined): { fileName: string; fileKey: string } | null {
+  if (!instructions) return null;
+  const match = instructions.match(/\[MẪU_ĐÍNH_KÈM:\s*([^|]+)\s*\|\s*KEY:([0-9a-fA-F-]+)\]/);
+  if (!match) return null;
+  return { fileName: match[1].trim(), fileKey: match[2].trim() };
+}
+
+export function displayInstructions(instructions: string | null | undefined): string | null {
+  if (!instructions) return null;
+  return instructions.replace(/\[MẪU_ĐÍNH_KÈM:[^\]]+\]/, '').trim() || null;
+}
+
 export function suggestedExpiry(now = Date.now(), months = 6) {
   const date = new Date(now + 7 * 3_600_000);
   date.setUTCMonth(date.getUTCMonth() + months);
@@ -252,6 +264,24 @@ export function PhaseList({
   onOpen: (id: number | null) => void;
 }) {
   const [form, setForm] = useState<string | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+
+  async function downloadTemplateFile(fileKey: string, fileName: string) {
+    try {
+      setDownloadingKey(fileKey);
+      const blob = await filesApi.read(fileKey);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName.toLowerCase().endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download template:', err);
+    } finally {
+      setDownloadingKey(null);
+    }
+  }
   return (
     <>
       {form && <StandardFormTemplate typeCode={form} onClose={() => setForm(null)} />}
@@ -261,6 +291,8 @@ export function PhaseList({
       >
         {overview.requirements.map((r) => {
           const step = customerStep(r);
+          const attachedTemplate = parseTemplateAttachment(r.instructions);
+          const cleanInstructions = displayInstructions(r.instructions);
           const actionable =
             (step === 'ACTION' || step === 'RESUBMIT') && r.status !== 'SUPERSEDED';
           return (
@@ -269,7 +301,22 @@ export function PhaseList({
                 <strong>{readable(r.documentType)}</strong>
                 <StatusBadge status={steps[step].badge}>{steps[step].label}</StatusBadge>
               </div>
-              {r.instructions && <p className="muted">{r.instructions}</p>}
+              {cleanInstructions && <p className="muted">{cleanInstructions}</p>}
+              {attachedTemplate && (
+                <div style={{ margin: '4px 0 8px' }}>
+                  <button
+                    type="button"
+                    className="template-open template-attached-download"
+                    disabled={downloadingKey === attachedTemplate.fileKey}
+                    onClick={() => void downloadTemplateFile(attachedTemplate.fileKey, attachedTemplate.fileName)}
+                    aria-label={`Download sample form ${attachedTemplate.fileName}`}
+                  >
+                    {downloadingKey === attachedTemplate.fileKey
+                      ? 'Đang tải...'
+                      : `⬇️ Tải mẫu đơn đính kèm (${attachedTemplate.fileName})`}
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 className="template-open"

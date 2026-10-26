@@ -7,6 +7,7 @@ import './assessment.css';
 const links = [
   { to: '/manager/dashboard', label: 'Overview & Approvals' },
   { to: '/manager/requests', label: 'Requests Management' },
+  { to: '/manager/hubs', label: 'Company Hubs' },
   { to: '/manager/resources', label: 'Fleet & Resources' },
   { to: '/manager/service-prices', label: 'Tariffs & Pricing' },
   { to: '/manager/staff-administration', label: 'Staff Management' },

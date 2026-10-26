@@ -158,6 +158,8 @@ export function VeterinarySection(props: SectionProps) {
   const options = (['EQUITRANSIT', 'CUSTOMER'] as const).filter((o) =>
     offered(props, 'VETERINARY').includes(o),
   );
+
+
   return (
     <>
       <p className="muted">
@@ -187,7 +189,7 @@ export function VeterinarySection(props: SectionProps) {
       )}
       <SectionRates
         section="VETERINARY"
-        selected={prefs.veterinaryArrangement === 'EQUITRANSIT'}
+        selected={prefs.veterinaryArrangement !== 'CUSTOMER'}
         title="Current veterinary unit rates (required counts are set by assessment)"
       />
     </>

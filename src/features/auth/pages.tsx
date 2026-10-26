@@ -20,16 +20,26 @@ function AuthCard({
   title,
   subtitle,
   children,
+  actionLink,
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
+  actionLink?: { to: string; label: string } | null;
 }) {
   return (
     <section className="auth-card">
       <div className="auth-title">
         <h1>{title}</h1>
-        <Link to="/login">Back to Login</Link>
+        {actionLink === undefined ? (
+          <Link to="/login" className="auth-action-link">
+            Back to Login
+          </Link>
+        ) : actionLink ? (
+          <Link to={actionLink.to} className="auth-action-link">
+            {actionLink.label}
+          </Link>
+        ) : null}
       </div>
       <p>{subtitle}</p>
       {children}
@@ -227,17 +237,58 @@ export function LoginPage() {
     });
   }
   return (
-    <div className="login-layout">
-      <div className="login-intro">
-        <small className="eyebrow">WELCOME TO EQUITRANSIT</small>
-        <h1>
-          Every journey starts
-          <br />
-          with thoughtful care.
-        </h1>
-        <p>One place for your horses and transport requests.</p>
-      </div>
-      <AuthCard title="Welcome back" subtitle="Sign in to your EquiTransit account.">
+    <div className="login-page-container" style={{ backgroundImage: "url('/images/landing/hero/hero-bg.jpg')" }}>
+      <div className="login-layout">
+        <div className="login-intro">
+          <small className="eyebrow">
+            WELCOME TO EQUITRANSIT
+          </small>
+          <h1>
+            Every journey starts
+            <br />
+            with thoughtful care.
+          </h1>
+          <p className="lead">
+            Hệ thống quản lý &amp; điều phối vận tải ngựa đua quốc tế, đảm bảo an sinh động vật và
+            chuẩn hóa chứng từ kiểm dịch.
+          </p>
+
+          <div className="login-benefits">
+            <div className="login-benefit-item">
+              <div className="login-benefit-dot" />
+              <div>
+                <strong>Chuẩn An Sinh Động Vật FEI &amp; IATA LAR</strong>
+                <p>
+                  Chuồng bay áp suất, kiểm soát thông khí 18°C và quy chế chăm sóc thú y chuyên biệt.
+                </p>
+              </div>
+            </div>
+            <div className="login-benefit-item">
+              <div className="login-benefit-dot" />
+              <div>
+                <strong>Check-in Chặng Lộ Trình &amp; Bàn Giao Điện Tử</strong>
+                <p>
+                  Cập nhật tiến độ từng mốc hành trình, ký nhận bàn giao minh bạch giữa chủ ngựa và tài xế.
+                </p>
+              </div>
+            </div>
+            <div className="login-benefit-item">
+              <div className="login-benefit-dot" />
+              <div>
+                <strong>Thẩm Định Giấy Tờ &amp; Báo Giá Khách Quan</strong>
+                <p>
+                  Kiểm duyệt chứng thư Coggins, giấy phép nhập cảnh và biểu phí chuẩn xác từ CSDL.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <AuthCard
+          title="Welcome back"
+          subtitle="Sign in to your EquiTransit account."
+          actionLink={{ to: '/register', label: 'Create an account →' }}
+        >
         <form onSubmit={submit}>
           <ErrorNotice error={action.error} />
           <EmailField value={email} onChange={setEmail} />
@@ -263,6 +314,7 @@ export function LoginPage() {
         </div>
         <p className="muted">Staff use the same login. Permissions determine access.</p>
       </AuthCard>
+      </div>
     </div>
   );
 }

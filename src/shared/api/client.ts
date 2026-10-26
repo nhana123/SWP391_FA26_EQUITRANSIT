@@ -22,7 +22,7 @@ const safeErrorSchema = z.object({
   fields: z.record(z.string(), z.string()).optional(),
 });
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
   public?: boolean;

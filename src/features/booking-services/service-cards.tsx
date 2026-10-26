@@ -25,17 +25,19 @@ export function ServiceCard({
   open,
   onOpen,
   selected = false,
+  detail,
 }: {
   code: SectionCode;
   title: string;
   open: boolean;
   onOpen: () => void;
   selected?: boolean;
+  detail?: string | null;
 }) {
   return (
     <button
       type="button"
-      className="service-card"
+      className={`service-card ${selected ? 'is-selected' : ''}`}
       // The accessible name stays the section title; the rest is a preview.
       aria-label={title}
       aria-haspopup="dialog"
@@ -46,10 +48,17 @@ export function ServiceCard({
         <Icon name={serviceSections[code].icon} size={23} />
       </span>
       <span className="service-card-title">{shortTitles[code]}</span>
+      {selected && detail ? (
+        <span className="service-card-selected-pkg">
+          <span className="pkg-badge">
+            <Icon name="check" size={13} /> {detail}
+          </span>
+        </span>
+      ) : null}
       <span className="service-card-action">
         {selected ? (
           <span className="service-chosen">
-            <Icon name="check" size={13} /> Choice set
+            <Icon name="check" size={13} /> {detail ? 'Thay đổi' : 'Choice set'}
           </span>
         ) : code === 'ADDITIONAL_CHARGES' ? (
           'View charges'

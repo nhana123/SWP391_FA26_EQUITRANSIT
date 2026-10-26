@@ -1,5 +1,12 @@
+import { LandingHeader } from '../features/landing/components/LandingHeader';
+import { LandingFooter } from '../features/landing/components/LandingFooter';
+import { HomePage } from '../features/landing/pages/HomePage';
+import { TransportPage } from '../features/landing/pages/TransportPage';
+import { PricingPage } from '../features/landing/pages/PricingPage';
+import { HowItWorksPage } from '../features/landing/pages/HowItWorksPage';
+import { AccountRedirect } from '../features/landing/pages/AccountRedirect';
 import { useEffect } from 'react';
-import { Brand, WorkspaceShell } from '../components/ui/WorkspaceShell';
+import { WorkspaceShell } from '../components/ui/WorkspaceShell';
 import { createBrowserRouter, Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   AccountPage,
@@ -44,7 +51,7 @@ import { ExecutionPage } from '../features/execution/ExecutionPage';
 import { CustomerCompliancePage } from '../features/compliance/CustomerCompliancePage';
 import { SpecialistCompliancePage } from '../features/compliance/SpecialistCompliancePage';
 import { CustomerDashboardPage } from '../features/activity-customer/dashboard';
-import { NotificationBell, NotificationsPage } from '../features/activity-customer/notifications';
+import { NotificationsPage } from '../features/activity-customer/notifications';
 import { EmailPreferencesPage } from '../features/activity-customer/preferences';
 import { ManagerAuditPage, ManagerFinancialPage } from '../features/activity-reports/pages';
 import {
@@ -52,100 +59,30 @@ import {
   ManagerSettlementPage,
   StaffActualCostsPage,
 } from '../features/settlement/pages';
+import { CoordinatorRoutesPage } from '../features/coordinator/CoordinatorRoutesPage';
+import { CoordinatorHubsPage } from '../features/coordinator/CoordinatorHubsPage';
 import { signOut } from '../shared/api/refresh';
 import { useSession } from '../shared/api/session';
 import { clearCapturedToken } from '../shared/lib/token';
 import { Notice } from '../shared/ui/common';
 import type { Role } from '../shared/api/contracts';
 
-// Signed-in users stay in their workspace; /staff redirects non-customers.
-function workspaceHome(role: Role) {
-  return role === 'CUSTOMER' ? '/customer/horses' : '/staff';
-}
+
 function PublicLayout() {
-  const session = useSession();
   return (
     <>
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <header className="public-header">
-        <Brand />
-        <nav aria-label="Main navigation">
-          <Link to="/">Home</Link>
-          {session ? (
-            <>
-              <NotificationBell />
-              <Link className="button primary" to={workspaceHome(session.role)}>
-                My Workspace
-              </Link>
-              <button type="button" onClick={() => void signOut()}>
-                Log Out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Login</Link>
-              <Link className="button primary" to="/register">
-                Sign Up
-              </Link>
-            </>
-          )}
-        </nav>
-      </header>
-      <main id="main" className="public-main">
+      <LandingHeader />
+      <main id="main" className="landing-main">
         <Outlet />
       </main>
+      <LandingFooter />
     </>
   );
 }
-function Home() {
-  return (
-    <>
-      <section className="hero">
-        <div>
-          <small className="eyebrow">CROSS-BORDER EQUINE LOGISTICS</small>
-          <h1>
-            Their next chapter.
-            <br />A journey you can trust.
-          </h1>
-          <p>
-            International horse transport with coordinated road and air travel, route-specific
-            documents and a clear quotation.
-          </p>
-          <Link className="button primary" to="/customer/requests/new">
-            Request Transport
-          </Link>
-          <p className="muted">A tailored quotation. No instant flight-price promises.</p>
-        </div>
-        <div className="journey-card">
-          <small>FROM STABLE TO STABLE</small>
-          <h2>One coordinated journey</h2>
-          <p>Stable → Airport → Destination</p>
-          <p>Road + Air · Care along the way</p>
-        </div>
-      </section>
-      <section className="home-section">
-        <h2>Care throughout the journey</h2>
-        <div className="three-cards">
-          {[
-            [
-              'Coordinated transport',
-              'Pickup, air transport and onward delivery planned together.',
-            ],
-            ['Documents for your route', 'A Specialist reviews what your journey needs.'],
-            ['Clear, tailored quotations', 'Review services and costs before accepting.'],
-          ].map(([title, text]) => (
-            <article key={title} className="card">
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    </>
-  );
-}
+
 export function RoleGate({ roles }: { roles: Role[] }) {
   const session = useSession();
   const location = useLocation();
@@ -221,7 +158,11 @@ export const router = createBrowserRouter([
       {
         element: <PublicLayout />,
         children: [
-          { path: '/', element: <Home /> },
+          { path: '/', element: <HomePage /> },
+          { path: '/transport', element: <TransportPage /> },
+          { path: '/pricing', element: <PricingPage /> },
+          { path: '/how-it-works', element: <HowItWorksPage /> },
+          { path: '/account', element: <AccountRedirect /> },
           { path: '/login', element: <LoginPage /> },
           { path: '/register', element: <RegisterPage /> },
           { path: '/verify-email', element: <VerifyPage /> },
@@ -295,6 +236,7 @@ export const router = createBrowserRouter([
               { path: 'staff-administration/new', element: <CreateStaffPage /> },
               { path: 'staff-administration/:staffId', element: <StaffAdministrationDetailPage /> },
               { path: 'service-prices', element: <ManagerPricesPage /> },
+              { path: 'hubs', element: <CoordinatorHubsPage /> },
               { path: 'resources', element: <ManagerResourcesPage /> },
               { path: 'reports/financial', element: <ManagerFinancialPage /> },
               { path: 'audit-events', element: <ManagerAuditPage /> },
@@ -335,6 +277,17 @@ export const router = createBrowserRouter([
               {
                 element: <RoleGate roles={['SPECIALIST']} />,
                 children: [{ path: ':id/compliance', element: <SpecialistCompliancePage /> }],
+              },
+            ],
+          },
+          {
+            element: <RoleGate roles={['COORDINATOR']} />,
+            children: [
+              {
+                element: <AssignedCasesLayout />,
+                children: [
+                  { path: '/coordinator/routes', element: <CoordinatorRoutesPage /> },
+                ],
               },
             ],
           },

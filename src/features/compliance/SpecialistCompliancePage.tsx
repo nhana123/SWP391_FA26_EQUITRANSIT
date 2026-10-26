@@ -26,6 +26,7 @@ import {
 } from './contracts';
 import { usePhase } from './CustomerCompliancePage';
 import { SendDocumentForm } from './CustomerChecklist';
+import { RequestFormTemplateCard } from './RequestFormTemplateCard';
 import { acceptedTypes, fileProblem, readFile } from './files';
 import {
   CommandForm,
@@ -1117,6 +1118,11 @@ function RequirementStack({
   const blockers = overview.readiness.blockers;
   return (
     <>
+      <RequestFormTemplateCard
+        orderId={orderId}
+        pinned={pinned}
+        phase={phase}
+      />
       {blockers.includes('RULE_ASSESSMENT_PENDING') ? (
         <p className="muted">
           Record the route checklist in step 1 first: its rules decide which documents this phase

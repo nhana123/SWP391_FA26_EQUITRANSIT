@@ -6,8 +6,8 @@ import { roleSchema, type LoginResponse, type Role } from './contracts';
  * "refreshable": the BE also set an HttpOnly refresh cookie (never readable
  * here), so the session renews itself shortly before expiry and is restored
  * after a page reload through POST /api/auth/refresh (see ./refresh).
- * Only this tab's role is kept in sessionStorage, as a non-secret hint that
- * this tab was signed in and which role it expects back.
+ * Only this tab's role is kept in sessionStorage/localStorage, as a non-secret hint that
+ * this browser was signed in and which role it expects back.
  */
 type Session = LoginResponse & { generation: string; expiresAt: number; refreshable: boolean };
 let current: Session | null = null;
@@ -28,9 +28,21 @@ try {
 } catch {
   // Storage may be blocked; nothing was stored then either.
 }
+
+// Ensure localStorage has the roleHint if already signed in in this tab
+try {
+  const existingRole = sessionStorage.getItem(ROLE_KEY);
+  if (existingRole && !localStorage.getItem(ROLE_KEY)) {
+    localStorage.setItem(ROLE_KEY, existingRole);
+  }
+} catch {
+  // Storage may be blocked
+}
+
 export function roleHint(): Role | null {
   try {
-    const parsed = roleSchema.safeParse(sessionStorage.getItem(ROLE_KEY));
+    const raw = sessionStorage.getItem(ROLE_KEY) || localStorage.getItem(ROLE_KEY);
+    const parsed = roleSchema.safeParse(raw);
     return parsed.success ? parsed.data : null;
   } catch {
     return null;
@@ -38,8 +50,13 @@ export function roleHint(): Role | null {
 }
 function storeRole(role: Role | null) {
   try {
-    if (role) sessionStorage.setItem(ROLE_KEY, role);
-    else sessionStorage.removeItem(ROLE_KEY);
+    if (role) {
+      sessionStorage.setItem(ROLE_KEY, role);
+      localStorage.setItem(ROLE_KEY, role);
+    } else {
+      sessionStorage.removeItem(ROLE_KEY);
+      localStorage.removeItem(ROLE_KEY);
+    }
   } catch {
     // Blocked storage: a reload simply asks the user to sign in again.
   }

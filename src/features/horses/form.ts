@@ -1,6 +1,24 @@
 import type { Horse, HorseInput } from '../../shared/api/contracts';
 import { optional, validOffsetDate, type FieldErrors } from '../../shared/lib/validation';
 import { apiPatterns } from '../../shared/api/patterns';
+
+export const POPULAR_BREEDS = [
+  { value: 'Thoroughbred', label: 'Thoroughbred (Thuần chủng Anh)' },
+  { value: 'Arabian', label: 'Arabian (Ngựa Ả Rập)' },
+  { value: 'Quarter Horse', label: 'Quarter Horse' },
+  { value: 'Warmblood', label: 'Warmblood' },
+  { value: 'Standardbred', label: 'Standardbred' },
+  { value: 'Appaloosa', label: 'Appaloosa' },
+  { value: 'Andalusian', label: 'Andalusian' },
+  { value: 'Morgan', label: 'Morgan' },
+] as const;
+
+export const HORSE_GENDERS = [
+  { value: 'STALLION', label: 'Stallion (Ngựa đực giống)' },
+  { value: 'MARE', label: 'Mare (Ngựa cái)' },
+  { value: 'GELDING', label: 'Gelding (Ngựa thiến)' },
+] as const;
+
 export const horseFields = [
   { key: 'name', label: 'Horse name', max: 150 },
   { key: 'dateOfBirth', label: 'Date of birth', type: 'date' },
@@ -43,16 +61,25 @@ export const horseFields = [
     multiline: true,
   },
 ] as const;
+
 export type HorseForm = Record<keyof HorseInput, string>;
+
 export function horseForm(horse?: Horse): HorseForm {
   return Object.fromEntries([
     ...horseFields.map((f) => [f.key, horse?.[f.key] == null ? '' : String(horse[f.key])]),
     ['sexCode', horse?.sexCode || ''],
   ]) as HorseForm;
 }
-export function validateHorse(form: HorseForm): FieldErrors {
+
+export function validateHorse(form: HorseForm, requireMeasurements = false): FieldErrors {
   const errors: FieldErrors = {};
   if (!form.name.trim()) errors.name = 'Enter a horse name.';
+  if (requireMeasurements) {
+    if (!form.weightKg?.trim())
+      errors.weightKg = 'Enter horse weight (kg). Required for air stall sizing & booking.';
+    if (!form.heightCm?.trim())
+      errors.heightCm = 'Enter horse height (cm). Required for air stall sizing & booking.';
+  }
   for (const f of horseFields) {
     const value = form[f.key];
     if ('max' in f && value.length > f.max) errors[f.key] = `Use at most ${f.max} characters.`;
@@ -76,6 +103,7 @@ export function validateHorse(form: HorseForm): FieldErrors {
     errors.measuredAt = 'Choose a date and time that is not in the future.';
   return errors;
 }
+
 export function horseInput(form: HorseForm): HorseInput {
   return {
     name: form.name.trim(),

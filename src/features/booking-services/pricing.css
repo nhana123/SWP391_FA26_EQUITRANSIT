@@ -351,3 +351,317 @@
     padding: 22px;
   }
 }
+
+
+/* ==========================================================================
+   ENHANCED FOCAL PRICING & LUXURY COLORED CARDS FOR SERVICES
+   ========================================================================== */
+
+/* Main Service Cards (outer grid) */
+.content .service-selection .service-card {
+  position: relative !important;
+  min-height: 190px !important;
+  padding: 26px !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfa 100%) !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+}
+
+.content .service-selection .service-card:hover {
+  border-color: #059669 !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 28px rgba(5, 150, 105, 0.14) !important;
+}
+
+.content .service-card-title {
+  font-family: inherit !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.3 !important;
+}
+
+.content .service-card-action {
+  margin-top: 18px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid #f1f5f9 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #0f5132 !important;
+}
+
+.service-chosen {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  padding: 4px 12px !important;
+  border-radius: 999px !important;
+  border: 1px solid #a7f3d0 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Service Dialog styling */
+.service-backdrop {
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.service-dialog {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35) !important;
+  overflow: hidden !important;
+}
+
+.service-dialog-head {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 24px 32px !important;
+}
+
+.service-dialog-head h3 {
+  font-family: inherit !important;
+  color: #0f172a !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Choice Cards (inside dialog): Grid & Focal Pricing */
+.content .service-dialog .choice-row,
+.care-package,
+.content .service-dialog .stall-choice {
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  padding: 24px 20px !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+}
+
+.content .service-dialog .choice-row:hover,
+.care-package:hover,
+.content .service-dialog .stall-choice:hover {
+  border-color: #3b82f6 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12) !important;
+}
+
+/* Selected state: Glowing Emerald Frame */
+.content .service-dialog .choice-row:has(input:checked),
+.care-package:has(.package-heading input:checked),
+.content .service-dialog .stall-choice:has(input:checked) {
+  border: 2.5px solid #059669 !important;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%) !important;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2), 0 12px 28px rgba(5, 150, 105, 0.16) !important;
+}
+
+/* Titles inside Choice Cards */
+.content .service-dialog .choice-name,
+.package-heading strong,
+.stall-choice > span > strong {
+  font-family: inherit !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  line-height: 1.3 !important;
+  text-align: center !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* FOCAL PRICING TAGS IN THE CENTER: Large, bold, eye-catching */
+.service-dialog .rate-tag,
+.service-dialog .choice-row > .rate-tag,
+.care-package > .rate-tag,
+.stall-choice .rate-tag {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  color: #047857 !important;
+  margin: 14px auto 10px !important;
+  padding: 8px 18px !important;
+  background: #ffffff !important;
+  border: 1.5px solid #a7f3d0 !important;
+  border-radius: 12px !important;
+  width: fit-content !important;
+  min-width: 140px !important;
+  box-shadow: 0 2px 8px rgba(4, 120, 87, 0.08) !important;
+  letter-spacing: -0.02em !important;
+  text-align: center !important;
+}
+
+.content .service-dialog .choice-row:has(input:checked) .rate-tag,
+.content .service-dialog .stall-choice:has(input:checked) .rate-tag,
+.care-package:has(input:checked) .rate-tag {
+  background: #047857 !important;
+  color: #ffffff !important;
+  border-color: #047857 !important;
+  box-shadow: 0 4px 14px rgba(4, 120, 87, 0.25) !important;
+}
+
+/* WIDE STALL RECOMMENDED HIGHLIGHT */
+.content .service-dialog .stall-choice:has(input[value='WIDE']) {
+  border-color: #f59e0b !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 50%, #ffffff 100%) !important;
+}
+
+.content .service-dialog .stall-choice:has(input[value='WIDE']:checked) {
+  border: 2.5px solid #d97706 !important;
+  background: linear-gradient(180deg, #fef3c7 0%, #ecfdf5 100%) !important;
+}
+
+/* GRAND TOTAL PRICING BANNER (Central Focal Point) */
+.charge-totals {
+  background: linear-gradient(135deg, #0f5132 0%, #164e32 100%) !important;
+  color: #ffffff !important;
+  border-radius: 20px !important;
+  padding: 30px 36px !important;
+  border: 1px solid #2d6a4f !important;
+  box-shadow: 0 12px 36px rgba(15, 81, 50, 0.25) !important;
+  text-align: center !important;
+  margin: 32px 0 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+}
+
+.charge-totals dt {
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: #fde68a !important;
+  font-weight: 800 !important;
+  margin-bottom: 4px !important;
+}
+
+.charge-totals dd {
+  font-size: 38px !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  letter-spacing: -0.02em !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Confirm Bar Buttons */
+.confirm-bar {
+  margin-top: 24px !important;
+  padding-top: 20px !important;
+  border-top: 1.5px solid #e2e8f0 !important;
+}
+
+.confirm-bar button.primary {
+  background: #0f5132 !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  padding: 12px 28px !important;
+  box-shadow: 0 4px 14px rgba(15, 81, 50, 0.25) !important;
+  transition: all 0.15s ease !important;
+}
+
+.confirm-bar button.primary:hover:not(:disabled) {
+  background: #15803d !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(15, 81, 50, 0.35) !important;
+}
+
+/* Mandatory EquiTransit packages: Hide all self-arranged customer options */
+.choice-row:has(input[value='CUSTOMER']),
+.service-dialog:has(input[value='CUSTOMER']) .choice-row:has(input[value='CUSTOMER']) {
+  display: none !important;
+}
+
+/* Center the mandatory EquiTransit card in Transportation & Veterinary */
+.content .service-dialog .service-choice-grid:has(input[value='CUSTOMER']) {
+  grid-template-columns: minmax(0, 460px) !important;
+  justify-content: center !important;
+}
+
+/* In Veterinary dialog: hide the redundant choice box so only the unit rates table is displayed */
+.content .service-dialog .service-choice-grid:has(input[name='veterinaryArrangement']) {
+  display: none !important;
+}
+
+
+/* In Transportation & Veterinary: when clicked/checked, hide 'Arranged by EquiTransit' so the price is the sole centerpiece */
+.content .service-dialog .service-choice-grid:has(input[value='CUSTOMER']) .choice-row:has(input:checked) .choice-name {
+  display: none !important;
+}
+
+.content .service-dialog .service-choice-grid:has(input[value='CUSTOMER']) .choice-row:has(input:checked) .rate-tag {
+  font-size: 26px !important;
+  padding: 12px 32px !important;
+  margin: 12px auto !important;
+  box-shadow: 0 4px 16px rgba(4, 120, 87, 0.28) !important;
+}
+
+/* Air Stall: Hide "No air stall preference yet" */
+.stall-packages > .horse-choice:not(.stall-choice) {
+  display: none !important;
+}
+
+/* Air Stall: Luxury centered prominent price tag */
+.stall-choice:has(input:checked) .rate-tag {
+  display: inline-block !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #0f5132 0%, #15803d 100%) !important;
+  padding: 10px 28px !important;
+  border-radius: 999px !important;
+  margin: 12px auto !important;
+  box-shadow: 0 4px 16px rgba(15, 81, 50, 0.35) !important;
+  letter-spacing: -0.3px !important;
+  text-align: center !important;
+}
+
+/* Service cards: Selected package badge */
+.content .service-card.is-selected {
+  border-color: #059669 !important;
+  background: #f0fdf4 !important;
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.15) !important;
+}
+
+.service-card-selected-pkg {
+  display: block;
+  margin: 10px 0 6px 0;
+}
+
+.service-card-selected-pkg .pkg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #047857;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(4, 120, 87, 0.25);
+  line-height: 1.3;
+}
+
+
+
+
+

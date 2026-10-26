@@ -1,4 +1,5 @@
 import { request } from '../../shared/api/client';
+import { bookingFlowStatusSchema } from '../../shared/api/contracts';
 import { customerAssessmentSchema, orderPageSchema } from './status-contracts';
 
 export const ORDER_PAGE_SIZE = 20;
@@ -16,4 +17,6 @@ export const orderStatusApi = {
     ),
   assessment: (id: number, signal?: AbortSignal) =>
     request(`/api/transport-orders/${id}/assessment`, customerAssessmentSchema, { signal }),
+  bookingFlowStatus: (id: number, signal?: AbortSignal) =>
+    request(`/api/transport-orders/${id}/booking-flow-status`, bookingFlowStatusSchema, { signal }),
 };

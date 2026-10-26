@@ -198,6 +198,15 @@ input[type='radio'] {
   color: #89988f;
   padding: 0 14px;
 }
+.nav-group-caption {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #7b8e83;
+  padding: 14px 14px 4px;
+  text-transform: uppercase;
+  display: block;
+}
 .sidebar nav {
   gap: 5px;
   margin: 12px 0 26px;

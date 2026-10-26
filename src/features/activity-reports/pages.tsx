@@ -37,6 +37,14 @@ const moneyMetrics = [
     'Recorded USD costs for current plans only; excludes historical or unlinked plans.',
   ],
 ] as const satisfies readonly [keyof FinancialReport, string, string][];
+const cardClassMap: Record<string, string> = {
+  quotedValue: 'financial-card financial-card--blue',
+  reportedTransfers: 'financial-card financial-card--amber',
+  netBankReceipts: 'financial-card financial-card--emerald',
+  netAllocated: 'financial-card financial-card--teal',
+  actualCost: 'financial-card financial-card--slate',
+};
+
 export function ManagerFinancialPage() {
   const query = useActivityQuery(['financial'], (signal) => managerActivityApi.financial(signal), [
     'MANAGER',
@@ -45,10 +53,12 @@ export function ManagerFinancialPage() {
   return (
     <>
       <ActivityHeading title="Financial report" />
-      <p>
-        Quotation value, unverified claims, received cash, allocations and costs are separate
-        measures. This report does not authorize closure or recognize revenue.
-      </p>
+      <div className="financial-report-banner">
+        <span>🛡️</span>
+        <div>
+          <strong>Financial Segregation:</strong> Quotation value, unverified claims, received cash, allocations and costs are separate measures. This report does not authorize closure or recognize revenue.
+        </div>
+      </div>
       <ActivityReadState
         pending={query.isPending}
         error={query.error}
@@ -59,7 +69,7 @@ export function ManagerFinancialPage() {
           <h2>Financial overview</h2>
           <dl className="activity-metrics">
             {moneyMetrics.map(([key, label, help]) => (
-              <div key={key}>
+              <div key={key} className={cardClassMap[key] || 'financial-card'} data-metric={key}>
                 <dt>{label}</dt>
                 <dd>
                   {query.data![key]} {query.data!.currency}
@@ -67,12 +77,12 @@ export function ManagerFinancialPage() {
                 <small>{help}</small>
               </div>
             ))}
-            <div>
+            <div className="financial-card financial-card--indigo" data-metric="operationallyCompletedOrders">
               <dt>Operationally completed orders</dt>
               <dd>{query.data.operationallyCompletedOrders}</dd>
               <small>Persisted delivered, completed or closed states.</small>
             </div>
-            <div>
+            <div className="financial-card financial-card--emerald" data-metric="closedOrders">
               <dt>Financially closed orders</dt>
               <dd>{query.data.closedOrders}</dd>
               <small>
@@ -80,9 +90,11 @@ export function ManagerFinancialPage() {
               </small>
             </div>
           </dl>
-          <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>
-            Refresh financial report
-          </button>
+          <div className="financial-actions-bar">
+            <button type="button" className="button secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>
+              Refresh financial report
+            </button>
+          </div>
         </section>
       )}
     </>

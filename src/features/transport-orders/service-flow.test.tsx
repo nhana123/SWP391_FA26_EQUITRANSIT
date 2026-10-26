@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.mocked(bookingApi.get).mockResolvedValue(testDisclosure());
 });
 
-it('saves a new request explicitly, keeps the service step after navigation, and loads real service sections', async () => {
+it('locks future steps on the stepper, guides the user step-by-step with auto-save, and loads real service sections', async () => {
   const user = userEvent.setup();
   render(
     <QueryClientProvider client={queryClient}>
@@ -58,17 +58,21 @@ it('saves a new request explicitly, keeps the service step after navigation, and
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  await user.click(screen.getByRole('button', { name: '3. Service preferences' }));
-  expect(screen.getByRole('button', { name: 'Choose a horse' })).toBeInTheDocument();
-  expect(
-    screen.getByRole('list', { name: 'Service areas available after saving' }).children,
-  ).toHaveLength(7);
+  // Future steps are locked during booking
+  expect(screen.getByRole('button', { name: '3. Service preferences' })).toBeDisabled();
   expect(ordersApi.create).not.toHaveBeenCalled();
   expect(bookingApi.get).not.toHaveBeenCalled();
-  await user.click(screen.getByRole('button', { name: 'Choose a horse' }));
+
+  // Advance to step 1 (Horse) via explicit green CTA button
+  await user.click(screen.getByRole('button', { name: 'Tiếp tục sang bước Chọn ngựa →' }));
+  expect(screen.getByRole('button', { name: '2. Horse' })).toHaveAttribute('aria-current', 'step');
+
+  // Select horse
   await user.click(await screen.findByRole('radio', { name: /Selected horse/ }));
-  await user.click(screen.getByRole('button', { name: '3. Service preferences' }));
-  await user.click(screen.getByRole('button', { name: 'Save draft & load services' }));
+
+  // Advance to step 2 (Services) via explicit green CTA button -> auto-saves draft!
+  await user.click(await screen.findByRole('button', { name: /Tiếp tục sang bước Dịch vụ/ }));
+
   expect(await screen.findByRole('button', { name: 'Transportation' })).toBeInTheDocument();
   expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(7);
   expect(ordersApi.create).toHaveBeenCalledOnce();

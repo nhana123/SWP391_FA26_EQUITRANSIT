@@ -90,7 +90,104 @@ export const healthDeclarationSchema = z.object({
   declaredAccurate: z.boolean().nullable().optional(),
 });
 export type HealthDeclaration = z.infer<typeof healthDeclarationSchema>;
+export const routeTransportModeSchema = z.enum(['ROAD', 'AIR', 'MULTIMODAL']);
+export type RouteTransportMode = z.infer<typeof routeTransportModeSchema>;
+export const routeCountrySchema = z.object({
+  countryCode: z.string(),
+  countryName: z.string(),
+  supportsRoad: z.boolean(),
+  supportsAir: z.boolean(),
+});
+export type RouteCountry = z.infer<typeof routeCountrySchema>;
+export const routeLocationSchema = z.object({
+  locationId: z.number().int(),
+  countryCode: z.string(),
+  locationType: z.enum(['CITY', 'AIRPORT', 'HUB']),
+  locationName: z.string(),
+  locationCode: z.string().nullable(),
+  address: z.string().nullable().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  isPrimaryHub: z.boolean().optional(),
+  domesticRatePerKm: z.number().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+export type RouteLocation = z.infer<typeof routeLocationSchema>;
+export const hubDistanceOptionSchema = z.object({
+  locationId: z.number().int(),
+  locationName: z.string(),
+  locationCode: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  isPrimaryHub: z.boolean().optional(),
+  distanceKm: z.number().nullable().optional(),
+  domesticCost: z.number().nullable().optional(),
+  isRecommendedNearest: z.boolean().optional(),
+});
+export type HubDistanceOption = z.infer<typeof hubDistanceOptionSchema>;
+export const addressSuggestionSchema = z.object({
+  displayName: z.string(),
+  formattedAddress: z.string(),
+  latitude: z.number(),
+  longitude: z.number(),
+  countryCode: z.string(),
+  city: z.string().nullable().optional(),
+  district: z.string().nullable().optional(),
+  road: z.string().nullable().optional(),
+});
+export type AddressSuggestion = z.infer<typeof addressSuggestionSchema>;
+export const addressValidationResponseSchema = z.object({
+  isValid: z.boolean(),
+  matchedAddress: addressSuggestionSchema.nullable().optional(),
+  message: z.string(),
+});
+export type AddressValidationResponse = z.infer<typeof addressValidationResponseSchema>;
+export const routeMatchRequestSchema = z.object({
+  originCountryCode: z.string(),
+  originCity: z.string().nullable().optional(),
+  originAirportCode: z.string().nullable().optional(),
+  destinationCountryCode: z.string(),
+  destinationCity: z.string().nullable().optional(),
+  destinationAirportCode: z.string().nullable().optional(),
+  transportMode: routeTransportModeSchema.nullable().optional(),
+  airStallPreference: z.enum(['SHARED_ONE', 'WIDE', 'PRIVATE']).nullable().optional(),
+  pickupAddress: z.string().nullable().optional(),
+  deliveryAddress: z.string().nullable().optional(),
+  originHubId: idSchema.nullable().optional(),
+  destinationHubId: idSchema.nullable().optional(),
+});
+export type RouteMatchRequest = z.infer<typeof routeMatchRequestSchema>;
+export const routeMatchResponseSchema = z.object({
+  matched: z.boolean(),
+  templateId: idSchema.nullable(),
+  transportMode: routeTransportModeSchema.nullable(),
+  routeSummary: z.string().nullable(),
+  estimatedRoadKm: z.number().nullable(),
+  estimatedAirKm: z.number().nullable(),
+  estimatedHours: z.number().nullable(),
+  estimatedRoadCost: z.number().nullable(),
+  estimatedAirCost: z.number().nullable(),
+  totalEstimatedCost: z.number().nullable(),
+  requiresCustomCoordinatorPlan: z.boolean(),
+  message: z.string(),
+  originHubName: z.string().nullable().optional(),
+  originHubAddress: z.string().nullable().optional(),
+  destinationHubName: z.string().nullable().optional(),
+  destinationHubAddress: z.string().nullable().optional(),
+  firstMileRoadKm: z.number().nullable().optional(),
+  mainLegRoadKm: z.number().nullable().optional(),
+  lastMileRoadKm: z.number().nullable().optional(),
+  firstMileCost: z.number().nullable().optional(),
+  lastMileCost: z.number().nullable().optional(),
+  originHubOptions: z.array(hubDistanceOptionSchema).optional(),
+  destinationHubOptions: z.array(hubDistanceOptionSchema).optional(),
+  originHubId: idSchema.nullable().optional(),
+  destinationHubId: idSchema.nullable().optional(),
+});
+export type RouteMatchResponse = z.infer<typeof routeMatchResponseSchema>;
 export const draftSchema = z.object({
+  route: routeMatchRequestSchema.nullable().optional(),
   horseId: idSchema.nullable(),
   originCountryCode: nullableText,
   destinationCountryCode: nullableText,
@@ -138,3 +235,35 @@ export const horsePageSchema = z.object({
   totalPages: z.number().int().nonnegative(),
 });
 export const submitReceiptSchema = z.object({ revisionId: idSchema }).passthrough();
+
+export const bookingFlowBlockReasons = [
+  'AWAITING_MANAGER_APPROVAL',
+  'AWAITING_COORDINATOR_QUOTE',
+  'QUOTE_ACCEPTANCE_REQUIRED',
+  'DEPOSIT_SCHEDULE_REQUIRED',
+  'DEPOSIT_REQUIRED',
+  'REFUND_PENDING',
+  'ORDER_NOT_ASSIGNABLE',
+] as const;
+
+export const bookingFlowBlockReasonSchema = z.string().nullable();
+export type BookingFlowBlockReason =
+  | (typeof bookingFlowBlockReasons)[number]
+  | (string & {})
+  | null;
+
+export const bookingFlowStatusSchema = z.object({
+  orderId: idSchema,
+  transportMode: routeTransportModeSchema.nullable().optional().default(null),
+  orderStatus: orderStatusSchema,
+  hasAcceptedQuote: z.boolean(),
+  quoteTotal: z.union([z.string(), z.number()]).transform((v) => String(v)).nullable().optional().default(null),
+  depositRequired: z.boolean(),
+  depositAmount: z.union([z.string(), z.number()]).transform((v) => String(v)).nullable().optional().default(null),
+  depositPaid: z.union([z.string(), z.number()]).transform((v) => String(v)),
+  isDepositSatisfied: z.boolean(),
+  canAssignDriver: z.boolean(),
+  blockReason: bookingFlowBlockReasonSchema,
+});
+export type BookingFlowStatus = z.infer<typeof bookingFlowStatusSchema>;
+

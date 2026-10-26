@@ -9,6 +9,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/client';
 import { useSession } from '../../shared/api/session';
 import { displayDate } from '../../shared/lib/validation';
+import { flag } from '../../shared/api/lookups';
 import { ErrorNotice, Loading, Notice, Pagination } from '../../shared/ui/common';
 import { Details, show, SnapshotView } from '../assessment/case';
 import type { ManagerCase } from '../assessment/contracts';
@@ -79,7 +80,16 @@ export function AssignedCasesLayout() {
     <WorkspaceShell
       home="/staff/cases"
       navigationLabel="Staff navigation"
-      links={[staffDashboardLink, { to: '/staff/cases', label: 'My Cases' }, staffTaskLink]}
+      links={[
+        { to: '/staff/cases', label: 'My Cases' },
+        { to: '/staff/tasks', label: 'My Tasks' },
+        { to: '/coordinator/routes', label: 'Predefined Routes' },
+      ]}
+      aliases={{
+        '/staff/dashboard': '/staff/cases',
+        '/coordinator/hubs': '/staff/cases',
+        '/coordinator/resources': '/staff/cases',
+      }}
     />
   );
 }
@@ -94,12 +104,63 @@ function CaseListPage() {
   const [params, setParams] = useSearchParams();
   const page = parsePage(params.get('page'));
   const query = useAssignedCases(page);
+  const items = query.data?.items ?? [];
+
+  const prepCount = items.filter((c) =>
+    ['APPROVED', 'IN_PREPARATION'].includes(c.orderStatus),
+  ).length;
+  const transitCount = items.filter((c) => c.orderStatus === 'IN_TRANSIT').length;
+  const completedCount = items.filter((c) =>
+    ['DELIVERED', 'CLOSED'].includes(c.orderStatus),
+  ).length;
+
   return (
     <>
       <StaffHeading
         title="My Cases"
-        description="Approved requests currently assigned to you for preparation."
+        description="Review customer transport orders assigned to you to schedule departures, configure route legs, and issue formal quotations."
       />
+
+      {query.data && (
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 16,
+            marginBottom: 20,
+          }}
+        >
+          <div className="card" style={{ padding: '16px 20px', borderLeft: '4px solid #0f5132' }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>TOTAL ASSIGNED</span>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#0f5132', marginTop: 4 }}>
+              {query.data.totalElements}
+            </div>
+            <small style={{ color: '#94a3b8' }}>All active cases</small>
+          </div>
+          <div className="card" style={{ padding: '16px 20px', borderLeft: '4px solid #eab308' }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>NEEDS PLAN & QUOTE</span>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#ca8a04', marginTop: 4 }}>
+              {prepCount}
+            </div>
+            <small style={{ color: '#94a3b8' }}>Preparation & confirmed</small>
+          </div>
+          <div className="card" style={{ padding: '16px 20px', borderLeft: '4px solid #6366f1' }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>IN TRANSIT</span>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#4f46e5', marginTop: 4 }}>
+              {transitCount}
+            </div>
+            <small style={{ color: '#94a3b8' }}>On cross-border journey</small>
+          </div>
+          <div className="card" style={{ padding: '16px 20px', borderLeft: '4px solid #10b981' }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>COMPLETED</span>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#059669', marginTop: 4 }}>
+              {completedCount}
+            </div>
+            <small style={{ color: '#94a3b8' }}>Handover & closed</small>
+          </div>
+        </section>
+      )}
+
       <section className="card">
         {query.isPending ? (
           <Loading />
@@ -111,8 +172,8 @@ function CaseListPage() {
           </ErrorNotice>
         ) : !query.data.items.length ? (
           <div className="empty">
-            <h2>No assigned cases</h2>
-            <p>Cases appear here when a Manager assigns you to an approved request.</p>
+            <h2>No assigned transport requests</h2>
+            <p>Cases appear here when customer requests are approved and assigned for coordination.</p>
           </div>
         ) : (
           <LoadedOrderFilter items={query.data.items}>
@@ -121,10 +182,11 @@ function CaseListPage() {
                 <table aria-label={`Assigned cases: ${query.data.totalElements} in total`}>
                   <thead>
                     <tr>
-                      <th scope="col">Request</th>
-                      <th scope="col">Route</th>
-                      <th scope="col">Delivery deadline</th>
+                      <th scope="col">Request Code</th>
+                      <th scope="col">Corridor Route</th>
+                      <th scope="col">Delivery Deadline</th>
                       <th scope="col">Status</th>
+                      <th scope="col" style={{ textAlign: 'right' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -134,11 +196,26 @@ function CaseListPage() {
                           <CodeChip value={c.orderNumber} to={`/staff/cases/${c.orderId}`} />
                         </td>
                         <td>
-                          {c.originCountryCode} → {c.destinationCountryCode}
+                          <strong>
+                            {flag(c.originCountryCode)} {c.originCountryCode}
+                          </strong>
+                          <span style={{ margin: '0 6px', color: '#94a3b8' }}>➔</span>
+                          <strong>
+                            {flag(c.destinationCountryCode)} {c.destinationCountryCode}
+                          </strong>
                         </td>
                         <td>{displayDate(c.deliveryDeadline)}</td>
                         <td>
                           <StatusBadge status={c.orderStatus}>{c.orderStatus}</StatusBadge>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <Link
+                            to={`/staff/cases/${c.orderId}`}
+                            className="button secondary"
+                            style={{ fontSize: 12, padding: '4px 10px', textDecoration: 'none' }}
+                          >
+                            Schedule & Plan Itinerary ➔
+                          </Link>
                         </td>
                       </tr>
                     ))}
