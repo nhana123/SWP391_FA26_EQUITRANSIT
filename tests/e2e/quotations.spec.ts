@@ -46,6 +46,8 @@ for (const role of ['CUSTOMER', 'MANAGER'] as const) {
             json: { ...empty, items: [order], totalElements: 1, totalPages: 1 },
           });
         else if (path === '/api/transport-orders/9') await route.fulfill({ json: order });
+        else if (role === 'CUSTOMER' && path === '/api/transport-orders/9/services/rates')
+          await route.fulfill({ json: [] });
         else if (path === '/api/transport-orders/9/quotes') await route.fulfill({ json: pageOf() });
         else if (path === '/api/transport-orders/9/quotes/31')
           await route.fulfill({
