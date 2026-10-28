@@ -1,15 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ManagerCasePage } from './case';
 import { assessmentApi } from './api';
-import { decisionCommand, validateDecision } from './decision';
+import { DecisionForm, decisionCommand, validateDecision } from './decision';
 import type { AssessmentReceipt, CaseStaff, ManagerCase } from './contracts';
+import { useManagerCase, assessmentKeys } from './hooks';
+import { useSession } from '../../shared/api/session';
+import { useState } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { queryClient } from '../../shared/api/query';
 import { startSession } from '../../shared/api/session';
+
+vi.mock('../quotations/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../quotations/hooks')>()),
+  useQuotations: () => ({ data: { items: [] }, isPending: false }),
+  useQuotation: () => ({ data: null, isPending: false }),
+}));
 
 vi.mock('./api', () => ({
   QUEUE_PAGE_SIZE: 20,
@@ -89,12 +98,37 @@ beforeEach(() => {
     }),
   );
 });
-function mount() {
+function DecisionHarness() {
+  const session = useSession()!;
+  const query = useManagerCase(7);
+  const [done, setDone] = useState(false);
+  if (!query.data?.revision) return null;
+  return (
+    <>
+      {done && <p>Decision recorded</p>}
+      <DecisionForm
+        current={query.data}
+        revisionId={query.data.revision.revisionId}
+        onDecided={async () => {
+          setDone(true);
+          await queryClient.invalidateQueries({ queryKey: assessmentKeys.all(session.generation) });
+        }}
+        onReload={() => {
+          void query.refetch();
+        }}
+      />
+    </>
+  );
+}
+function mount(decisionOnly = false) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/manager/requests/7']}>
         <Routes>
-          <Route path="/manager/requests/:id" element={<ManagerCasePage />} />
+          <Route
+            path="/manager/requests/:id"
+            element={decisionOnly ? <DecisionHarness /> : <ManagerCasePage />}
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -104,14 +138,43 @@ function mount() {
 describe('manager case', () => {
   it('renders the captured snapshot, not live horse data', async () => {
     mount();
-    expect(await screen.findByText('Snapshot Horse')).toBeInTheDocument();
-    expect(screen.getByText('VN → SG')).toBeInTheDocument();
-    expect(screen.getByText('AIR_STALL')).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: /Xem chi tiết hành trình/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getAllByText(/Snapshot Horse/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Journey (as submitted)')).not.toBeInTheDocument();
+  });
+
+  it('opens the restored approval popup and submits the selected team', async () => {
+    vi.mocked(assessmentApi.decide).mockResolvedValue(receipt);
+    mount();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Duyệt & Phân công/ }));
+    await screen.findByRole('option', { name: /Test COORDINATOR 41/ });
+    await user.selectOptions(screen.getByLabelText(/Điều phối viên/), '41');
+    await user.selectOptions(screen.getByLabelText(/Chuyên viên thú y & pháp lý/), '31');
+    await user.click(screen.getByRole('button', { name: /Xác nhận Duyệt & Phân công/ }));
+    await waitFor(() =>
+      expect(assessmentApi.decide).toHaveBeenCalledWith(
+        7,
+        expect.objectContaining({
+          decision: 'APPROVED',
+          specialistId: 31,
+          coordinatorId: 41,
+          revisionId: 70,
+          recordVersion: '00000000000000a1',
+          operationId: expect.any(String),
+        }),
+      ),
+    );
+    expect(
+      await screen.findByText(/Đã duyệt đơn và phân công nhân sự thành công/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('approves with StaffIDs, exact revision/version and no reason', async () => {
     vi.mocked(assessmentApi.decide).mockResolvedValue(receipt);
-    mount();
+    mount(true);
     const user = userEvent.setup();
     await user.click(await screen.findByLabelText('Approve and assign team'));
     await user.click(await screen.findByRole('button', { name: /Select Test SPECIALIST 31/ }));
@@ -136,7 +199,7 @@ describe('manager case', () => {
 
   it('requires a customer reason and sends no assignment fields on rejection', async () => {
     vi.mocked(assessmentApi.decide).mockResolvedValue({ ...receipt, orderStatus: 'REJECTED' });
-    mount();
+    mount(true);
     const user = userEvent.setup();
     await user.click(await screen.findByLabelText('Reject request'));
     await user.click(screen.getByRole('button', { name: 'Record decision' }));
@@ -163,7 +226,7 @@ describe('manager case', () => {
     vi.mocked(assessmentApi.decide)
       .mockRejectedValueOnce(new ApiError(0, 'Interrupted'))
       .mockResolvedValueOnce({ ...receipt, orderStatus: 'CHANGES_REQUESTED' });
-    mount();
+    mount(true);
     const user = userEvent.setup();
     await user.click(await screen.findByLabelText('Request changes from customer'));
     await user.type(screen.getByLabelText('Reason shown to the customer'), 'Confirm date');
@@ -184,7 +247,7 @@ describe('manager case', () => {
         'ORDER_VERSION_CONFLICT',
       ),
     );
-    mount();
+    mount(true);
     const user = userEvent.setup();
     await user.click(await screen.findByLabelText('Request changes from customer'));
     await user.type(screen.getByLabelText('Reason shown to the customer'), 'Confirm date');
@@ -215,8 +278,8 @@ describe('manager case', () => {
       }),
     );
     mount();
-    const team = (await screen.findByRole('heading', { name: 'Case team' })).closest('section')!;
-    expect(within(team).getByText(/Staff ID 31/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Đổi nhân sự/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Duyệt & Phân công/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Record decision' })).not.toBeInTheDocument();
   });
 });
