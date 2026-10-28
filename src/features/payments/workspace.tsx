@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { displayDate } from '../../shared/lib/validation';
 import type { Overview, ProofReceipt, Receipt } from './contracts';
 import { PaymentActionForm, type ActionSpec } from './ActionForm';
@@ -7,6 +8,9 @@ import { PaymentLedger } from './Ledger';
 import { reportAction, refundAction } from './customer-actions';
 import type { EvidenceOption } from './Proof';
 import { vnpayApi } from './vnpay-api';
+import { ordersApi } from '../transport-orders/api';
+import { useSession } from '../../shared/api/session';
+import { queryKeys } from '../../shared/api/query';
 
 export type WorkspaceProps = {
   orderId: number;
@@ -77,9 +81,18 @@ export function CustomerPayments(props: WorkspaceProps) {
   const [params] = useSearchParams();
   const [panel, setPanel] = useState<'report' | 'refund' | null>(null);
   const [notice, setNotice] = useState('');
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [vnpayLoading, setVnpayLoading] = useState(false);
   const [vnpayError, setVnpayError] = useState<string | null>(null);
+  const [vnpayUrl, setVnpayUrl] = useState<string | null>(null);
+
+  const session = useSession();
+  const orderQuery = useQuery({
+    queryKey: session ? queryKeys.order(session.generation, orderId) : ['order', orderId],
+    queryFn: ({ signal }) => ordersApi.get(orderId, signal),
+    enabled: !!orderId,
+    retry: false,
+  });
+  const order = orderQuery.data;
 
   const vnpStatus = params.get('vnp_status');
   const vnpResponseCode = params.get('vnp_ResponseCode');
@@ -104,14 +117,6 @@ export function CustomerPayments(props: WorkspaceProps) {
     setNotice(
       `Action recorded, reference ${receipt.entityId}. The current payment ledger is shown below.`,
     );
-  }
-
-  function handleCopy(text: string, key: string) {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).catch(() => {});
-    }
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2500);
   }
 
   const depositObligation =
@@ -153,6 +158,23 @@ export function CustomerPayments(props: WorkspaceProps) {
       setVnpayLoading(false);
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSettled && depositAmountNum > 0) {
+      vnpayApi
+        .checkout(orderId, depositAmountNum, 'DEPOSIT')
+        .then((res) => {
+          if (!cancelled && res.paymentUrl) {
+            setVnpayUrl(res.paymentUrl);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, depositAmountNum, isSettled]);
 
   return (
     <>
@@ -261,92 +283,192 @@ export function CustomerPayments(props: WorkspaceProps) {
           </div>
         </div>
 
-        {/* VNPAY Sandbox Instant Payment Box */}
-        {!isSettled && (
-          <div className="vnpay-checkout-card">
-            <div className="vnpay-card-header">
-              <div className="vnpay-badge-group">
-                <span className="vnpay-logo-badge">VNPAY-QR / ATM</span>
-                <span className="vnpay-sandbox-pill">🧪 Môi trường Sandbox Test</span>
-              </div>
-              <h4>Cổng Thanh toán Trực tuyến VNPAY</h4>
-              <p className="vnpay-desc">
-                Thanh toán tức thì bằng thẻ ATM nội địa (NCB, Vietcombank, Techcombank...), quét mã VNPAY-QR hoặc thẻ quốc tế. Giao dịch được xác thực tự động trong vài giây.
-              </p>
-            </div>
-
-            <div className="vnpay-amount-box">
-              <div className="vnpay-amount-row">
-                <span className="vnpay-label">Số tiền cọc cần thanh toán:</span>
-                <span className="vnpay-val-usd">{depositAmountNum} {currency}</span>
-              </div>
-              <div className="vnpay-amount-row vnpay-vnd-row">
-                <span className="vnpay-label">Quy đổi tương đương (tỷ giá 25.400 VND/USD):</span>
-                <strong className="vnpay-val-vnd">{amountVnd.toLocaleString('vi-VN')} VND</strong>
+        {/* ============================================================ */}
+        {/* 4. KẾT QUẢ TÍNH TOÁN HÀNH TRÌNH & BÁO GIÁ DỰ KIẾN (TICKET) */}
+        {/* ============================================================ */}
+        <div className="quotation-ticket-card" data-testid="payment-quotation-ticket">
+          {/* Ticket Header */}
+          <div className="ticket-header">
+            <div className="ticket-header-main">
+              <span className="ticket-mode-badge">
+                {order?.draft.route?.transportMode === 'ROAD' ? '🚛' : '✈️'}
+              </span>
+              <div>
+                <div className="ticket-kicker">
+                  {order?.draft.route?.transportMode === 'ROAD'
+                    ? 'ĐOÀN XE ĐỆM KHÍ NÉN LIÊN VẬN · BÁO GIÁ CHÍNH THỨC'
+                    : 'CHUYÊN CƠ QUỐC TẾ IATA LAR · BÁO GIÁ CHÍNH THỨC'}
+                </div>
+                <h4 className="ticket-title">
+                  Đơn Báo giá Vận chuyển &amp; Đặt cọc Đơn hàng #{order?.orderNumber || orderId}
+                </h4>
               </div>
             </div>
 
-            {vnpayError && (
-              <div className="vnpay-inline-error">
-                <span>⚠️ {vnpayError}</span>
-              </div>
-            )}
-
-            <div className="vnpay-action-row">
-              <button
-                type="button"
-                className="button primary vnpay-cta-btn"
-                onClick={handleVNPayCheckout}
-                disabled={vnpayLoading || isSettled}
-              >
-                {vnpayLoading ? (
-                  <span>⏳ Đang kết nối tới VNPAY...</span>
-                ) : (
-                  <span>💳 Thanh toán Cọc ngay qua VNPAY ({amountVnd.toLocaleString('vi-VN')} đ) →</span>
-                )}
-              </button>
-            </div>
-
-            {/* Test NCB Card Quick Helper for Sandbox */}
-            <div className="vnpay-testcard-helper">
-              <div className="testcard-header">
-                <strong>💳 Thẻ ATM Test VNPAY Sandbox (Ngân hàng NCB)</strong>
-                <span className="testcard-note">Sử dụng để thanh toán thử nghiệm:</span>
-              </div>
-              <div className="testcard-grid">
-                <div className="testcard-item">
-                  <span className="tc-label">Ngân hàng:</span>
-                  <span className="tc-value">NCB</span>
-                </div>
-                <div className="testcard-item tc-highlight">
-                  <span className="tc-label">Số thẻ test:</span>
-                  <div className="tc-copy-group">
-                    <code className="tc-code">9704198526191432198</code>
-                    <button
-                      type="button"
-                      className="button copy-btn small"
-                      onClick={() => handleCopy('9704198526191432198', 'card')}
-                    >
-                      {copiedKey === 'card' ? '✓ Đã chép' : '📋 Chép thẻ'}
-                    </button>
-                  </div>
-                </div>
-                <div className="testcard-item">
-                  <span className="tc-label">Tên chủ thẻ:</span>
-                  <span className="tc-value">NGUYEN VAN A</span>
-                </div>
-                <div className="testcard-item">
-                  <span className="tc-label">Ngày phát hành:</span>
-                  <span className="tc-value">07/15</span>
-                </div>
-                <div className="testcard-item">
-                  <span className="tc-label">Mật khẩu OTP:</span>
-                  <span className="tc-value tc-otp">123456</span>
-                </div>
-              </div>
+            <div className="ticket-header-status">
+              <span className="ticket-pill-hours">
+                ⏱️ Tuyến vận chuyển quốc tế
+              </span>
+              <span className={`ticket-pill-status ${isSettled ? 'success' : 'pending'}`}>
+                {isSettled ? '✓ Đã hoàn tất đặt cọc 30%' : '⏳ Chờ thanh toán cọc 30%'}
+              </span>
             </div>
           </div>
-        )}
+
+          {/* Ticket Body */}
+          <div className="ticket-body">
+            <div className="ticket-route-meta">
+              <div className="ticket-meta-col">
+                <span className="meta-label">Ngựa vận chuyển:</span>
+                <strong className="meta-val">
+                  🐴 {order?.draft.horseId ? `Mã ngựa #${order.draft.horseId}` : 'Ngựa thuần chủng đăng ký'}
+                </strong>
+                <span className="meta-sub">
+                  Đã kiểm tra hồ sơ lâm sàng &amp; kiểm dịch
+                </span>
+              </div>
+
+              <div className="ticket-meta-col">
+                <span className="meta-label">Tuyến đường vận chuyển:</span>
+                <strong className="meta-val">
+                  📍 {order?.draft.route?.originCity || order?.draft.originCountryCode || 'Điểm xuất phát'} ➔{' '}
+                  {order?.draft.route?.destinationCity || order?.draft.destinationCountryCode || 'Điểm đến'}
+                </strong>
+                <span className="meta-sub">
+                  Phương thức: {order?.draft.route?.transportMode === 'ROAD' ? 'Đoàn xe đệm khí nén liên vận' : 'Chuyên cơ quốc tế IATA LAR'}
+                </span>
+              </div>
+
+              <div className="ticket-meta-col">
+                <span className="meta-label">Tiêu chuẩn chăm sóc:</span>
+                <strong className="meta-val">
+                  🛡️ Tiêu chuẩn FEI &amp; Thú y Quốc tế
+                </strong>
+                <span className="meta-sub">Giám sát sức khỏe và dinh dưỡng 24/7</span>
+              </div>
+            </div>
+
+            {/* 3-Leg Journey Flow */}
+            <div className="ticket-journey-flow">
+              <div className="journey-leg-card">
+                <div className="journey-leg-top">
+                  <span className="leg-label">Chặng 1 · Đón tận nơi</span>
+                  <span className="leg-tag free">Đã bao gồm</span>
+                </div>
+                <div className="leg-km">Đón tại chuồng xuất phát</div>
+                <div className="leg-sub">Trang trại ➔ Trụ sở EquiTransit</div>
+              </div>
+
+              <div className="journey-leg-card main-leg">
+                <div className="journey-leg-top">
+                  <span className="leg-label">Chặng 2 · Tuyến Quốc tế</span>
+                  <span className="leg-tag primary">
+                    {order?.draft.route?.transportMode === 'ROAD' ? 'Đường bộ' : 'Đường bay'}
+                  </span>
+                </div>
+                <div className="leg-km">Vận chuyển chuyên dụng</div>
+                <div className="leg-sub">Trụ sở xuất phát ➔ Trụ sở tiếp nhận</div>
+              </div>
+
+              <div className="journey-leg-card">
+                <div className="journey-leg-top">
+                  <span className="leg-label">Chặng 3 · Giao đích</span>
+                  <span className="leg-tag free">Đã bao gồm</span>
+                </div>
+                <div className="leg-km">Bàn giao tại chuồng đích</div>
+                <div className="leg-sub">Trụ sở đích ➔ Điểm giao an toàn</div>
+              </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            <div className="ticket-pricing-grid">
+              <div className="pricing-meta">
+                <div className="pricing-line">
+                  <span>Tổng giá trị đơn báo giá trọn gói:</span>
+                  <strong>
+                    ${(depositObligation ? (Number(depositObligation.amountDue) / 0.3) : (depositAmountNum / 0.3)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                  </strong>
+                </div>
+                <div className="pricing-line highlight">
+                  <span className="deposit-title">Khoản cọc giữ chỗ quy định (30%):</span>
+                  <span className="deposit-usd">${depositAmountNum.toLocaleString('en-US', { minimumFractionDigits: 2 })} {currency}</span>
+                </div>
+                <div className="pricing-line vnd">
+                  <span>Quy đổi tương đương (Tỷ giá 25.400 VND/USD):</span>
+                  <strong className="deposit-vnd">{amountVnd.toLocaleString('vi-VN')} VND</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* VNPAY QR Code & Scan-to-Pay Payment Section */}
+            {!isSettled ? (
+              <div className="ticket-vnpay-payment-wrap">
+                <div className="qr-payment-block">
+                  <div className="qr-card">
+                    {vnpayUrl ? (
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(vnpayUrl)}`}
+                        alt="Mã QR thanh toán cọc VNPAY"
+                        className="vnpay-qr-code-img"
+                        width={180}
+                        height={180}
+                      />
+                    ) : (
+                      <div className="qr-loading-box">
+                        <span className="qr-loader-spin">⏳</span>
+                        <span>Đang khởi tạo mã QR VNPAY...</span>
+                      </div>
+                    )}
+                    <span className="qr-scan-badge">VNPAY-QR</span>
+                  </div>
+
+                  <div className="qr-guide-col">
+                    <div className="qr-guide-header">
+                      <span className="vnpay-pill">Cổng thanh toán VNPAY</span>
+                      <h5>Quét mã QR để chuyển tiền cọc tức thì</h5>
+                    </div>
+                    <p className="qr-guide-text">
+                      Quý khách mở <strong>ứng dụng Ngân hàng</strong> (Vietcombank, Techcombank, MBBank, BIDV, Agribank, ACB...) hoặc <strong>Ví VNPAY</strong>, chọn tính năng <strong>Quét mã QR</strong> để thanh toán số tiền <strong>{amountVnd.toLocaleString('vi-VN')} đ</strong>.
+                    </p>
+
+                    <div className="qr-actions-row">
+                      <button
+                        type="button"
+                        className="button primary vnpay-cta-btn"
+                        onClick={handleVNPayCheckout}
+                        disabled={vnpayLoading}
+                      >
+                        {vnpayLoading ? (
+                          <span>⏳ Đang kết nối tới VNPAY...</span>
+                        ) : (
+                          <span>💳 Hoặc bấm vào đây để thanh toán qua VNPAY ({amountVnd.toLocaleString('vi-VN')} đ) →</span>
+                        )}
+                      </button>
+                    </div>
+
+                    {vnpayError && (
+                      <div className="vnpay-inline-error">
+                        <span>⚠️ {vnpayError}</span>
+                      </div>
+                    )}
+
+                    <div className="vnpay-security-note">
+                      <span>🔒 Xác thực giao dịch tự động trong 3 giây · Bảo mật tiêu chuẩn quốc tế PCI-DSS</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="ticket-settled-celebration">
+                <span className="celebration-icon">🎉</span>
+                <div>
+                  <strong>Tiền cọc 30% đã được ghi nhận thành công!</strong>
+                  <p>Hệ thống đã nhận đủ số tiền cọc cho đơn hàng #{orderId}. Chuyên viên và Điều phối viên đang tiến hành chuẩn bị lộ trình.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Action Toolbar */}
         <div className="payment-action-toolbar">
