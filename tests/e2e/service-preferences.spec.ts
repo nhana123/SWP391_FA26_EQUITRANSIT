@@ -185,6 +185,7 @@ for (const role of ['MANAGER'] as const) {
     await expect(page).toHaveURL(new RegExp(`${base}$`));
     if (role === 'MANAGER') await page.getByLabel('Assessment state').selectOption('APPROVED');
     await page.getByRole('link', { name: 'TEST-9', exact: true }).click();
+    await page.getByText('Quotations & operations', { exact: true }).click();
     await page.getByRole('link', { name: 'Prepare quotation', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${base}/9/quotes/prepare$`));
     const form = page.getByRole('form', { name: 'Record supplier offer' });

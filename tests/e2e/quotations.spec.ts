@@ -88,6 +88,8 @@ for (const role of ['CUSTOMER', 'MANAGER'] as const) {
       await page.getByRole('link', { name: 'Requests', exact: true }).click();
     }
     await page.getByRole('link', { name: 'TEST-9', exact: true }).click();
+    if (role === 'MANAGER')
+      await page.getByText('Quotations & operations', { exact: true }).click();
     await page.getByRole('link', { name: 'Quotations', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Quotations', exact: true })).toBeVisible();
     await expect(page.getByText('Page 1 of 1')).toBeVisible();
