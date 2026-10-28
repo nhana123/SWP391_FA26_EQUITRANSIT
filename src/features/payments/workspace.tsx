@@ -133,7 +133,6 @@ export function CustomerPayments(props: WorkspaceProps) {
   const amountVnd = Math.round(depositAmountNum * 25400);
 
   const pendingReports = data.reports.filter((r) => r.status === 'SUBMITTED');
-  const transferCode = `EQUITRANSIT ${orderId} COC`;
 
   async function handleVNPayCheckout() {
     if (isSettled || vnpayLoading) return;
@@ -216,15 +215,14 @@ export function CustomerPayments(props: WorkspaceProps) {
             </p>
           ) : pendingReports.length > 0 ? (
             <p>
-              <strong>Biên lai chuyển khoản đang được kế toán kiểm tra:</strong> Quý khách đã gửi
-              thông tin chuyển khoản. Hệ thống đang tiến hành đối soát với ngân hàng Vietcombank. Quý
+              <strong>Biên lai thanh toán đang được xử lý:</strong> Quý khách đã gửi
+              thông tin. Hệ thống đang tiến hành đối soát. Quý
               khách không cần gửi trùng lặp.
             </p>
           ) : (
             <p>
-              <strong>Yêu cầu thanh toán tiền cọc 30%:</strong> Quý khách vui lòng chuyển khoản đúng
-              số tiền <strong>{remainingDue} {currency}</strong> với nội dung chuyển khoản được cấp
-              dưới đây để hoàn tất thủ tục đặt chỗ.
+              <strong>Yêu cầu thanh toán tiền cọc 30%:</strong> Quý khách vui lòng thanh toán
+              khoản cọc <strong>{remainingDue} {currency}</strong> qua cổng thanh toán VNPAY dưới đây để hoàn tất thủ tục đặt chỗ.
             </p>
           )}
         </div>
@@ -350,98 +348,12 @@ export function CustomerPayments(props: WorkspaceProps) {
           </div>
         )}
 
-        {/* Official Bank Account Details */}
-        <div className="bank-account-box">
-          <div className="bank-box-header">
-            <div>
-              <span className="bank-tag">Tài khoản Ngân hàng Doanh nghiệp Chính thức</span>
-              <h4>Thông tin Chuyển khoản Vietcombank</h4>
-            </div>
-            <span className="bank-verified-badge">✔ Verified Treasury</span>
-          </div>
-
-          <div className="bank-grid">
-            <div className="bank-row">
-              <span className="bank-col-label">Ngân hàng thụ hưởng:</span>
-              <div className="bank-col-value">
-                <strong>Ngân hàng TMCP Ngoại Thương Việt Nam (Vietcombank)</strong>
-                <span className="bank-sub">Chi nhánh TP. Hồ Chí Minh - Swift Code: BFTVVNVX</span>
-              </div>
-            </div>
-
-            <div className="bank-row highlight-box">
-              <span className="bank-col-label">Số tài khoản:</span>
-              <div className="bank-col-value with-action">
-                <span className="bank-acc-num">1048 8992 2888</span>
-                <button
-                  type="button"
-                  className="button copy-btn"
-                  onClick={() => handleCopy('104889922888', 'acc')}
-                >
-                  {copiedKey === 'acc' ? '✓ Đã chép' : '📋 Sao chép STK'}
-                </button>
-              </div>
-            </div>
-
-            <div className="bank-row">
-              <span className="bank-col-label">Chủ tài khoản:</span>
-              <div className="bank-col-value">
-                <strong className="beneficiary-name">CÔNG TY CỔ PHẦN EQUITRANSIT VIỆT NAM</strong>
-              </div>
-            </div>
-
-            <div className="bank-row highlight-box">
-              <span className="bank-col-label">Nội dung chuyển khoản:</span>
-              <div className="bank-col-value with-action">
-                <code className="transfer-syntax">{transferCode}</code>
-                <button
-                  type="button"
-                  className="button copy-btn"
-                  onClick={() => handleCopy(transferCode, 'syntax')}
-                >
-                  {copiedKey === 'syntax' ? '✓ Đã chép' : '📋 Sao chép Cú pháp'}
-                </button>
-              </div>
-              <small className="syntax-hint">
-                * Vui lòng nhập chính xác cú pháp <strong>{transferCode}</strong> để bộ phận kế toán
-                tự động nhận diện đơn hàng của quý khách.
-              </small>
-            </div>
-          </div>
-
-          {/* Quick Steps Guide */}
-          <div className="transfer-quick-guide">
-            <div className="guide-step">
-              <span className="guide-num">1</span>
-              <div>
-                <strong>Chuyển khoản</strong>
-                <p>Mở app ngân hàng, quét QR hoặc chuyển đúng STK và cú pháp trên.</p>
-              </div>
-            </div>
-            <div className="guide-step">
-              <span className="guide-num">2</span>
-              <div>
-                <strong>Lưu biên lai</strong>
-                <p>Chụp ảnh màn hình giao dịch hoặc file UNC ngân hàng (PNG, JPG).</p>
-              </div>
-            </div>
-            <div className="guide-step">
-              <span className="guide-num">3</span>
-              <div>
-                <strong>Nộp chứng từ</strong>
-                <p>Bấm nút <strong>Report a bank transfer</strong> dưới đây để tải ảnh lên.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Action Toolbar */}
         <div className="payment-action-toolbar">
           <div className="toolbar-desc">
-            <h4>Hành động thanh toán</h4>
+            <h4>Hành động bổ sung / Quản lý tài chính</h4>
             <p>
-              Sau khi chuyển khoản, quý khách hãy nộp biên lai để hệ thống ghi nhận. Quý khách cũng
-              có thể yêu cầu hoàn trả nếu hủy dịch vụ theo điều khoản.
+              Đối soát chứng từ thanh toán hoặc yêu cầu hoàn trả cọc nếu hủy dịch vụ theo điều khoản hợp đồng.
             </p>
           </div>
           <div className="actions">
