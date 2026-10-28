@@ -183,6 +183,7 @@ test('Manager navigates from a case to payments and explicitly allocates verifie
   await expect(page).toHaveURL(/\/manager\/requests$/);
   await page.getByLabel('Assessment state').selectOption('APPROVED');
   await page.getByRole('link', { name: 'TEST-11', exact: true }).click();
+  await page.getByText('Quotations & operations', { exact: true }).click();
   await page.getByRole('link', { name: 'Payments', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Create payment request' })).toBeDisabled();
   await page.getByLabel('Known bank receipt').selectOption('601');

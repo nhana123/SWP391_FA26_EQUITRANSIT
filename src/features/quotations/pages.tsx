@@ -187,6 +187,27 @@ const lineLabels = {
 // Read-only and reusable by preparation/publication/customer-response issues.
 export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
   const now = useQuotationClock([quotation.quote]);
+  const params = useParams();
+  const orderId = Number(params.id);
+  const session = useSession();
+  const isAccepted = quotation.quote.status === 'ACCEPTED';
+  const isCustomer = session?.role === 'CUSTOMER';
+
+  const depositStage = quotation.paymentSchedule.find((s) =>
+    s.paymentStage.toUpperCase().includes('DEPOSIT'),
+  );
+  const totalNum =
+    quotation.quote.total !== null ? Number(quotation.quote.total) : null;
+  const depositAmount =
+    depositStage?.amountDue ??
+    (totalNum !== null && !Number.isNaN(totalNum)
+      ? (totalNum * 0.3).toFixed(2)
+      : '30% of Total');
+  const remainingAmount =
+    totalNum !== null && !Number.isNaN(totalNum)
+      ? (totalNum * 0.7).toFixed(2)
+      : '70% of Total';
+
   return (
     <>
       <Notice>
@@ -195,6 +216,90 @@ export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
           ? ' Acceptance records a commercial commitment. It does not confirm payment, flight space or departure.'
           : ' Viewing this quotation does not confirm payment, flight space or departure.'}
       </Notice>
+      {isAccepted && isCustomer && (
+        <section className="card quotation-deposit-hero" aria-label="Deposit payment required">
+          <div className="deposit-hero-header">
+            <div className="deposit-hero-badge">
+              <span className="badge-pulse" />
+              <span>Bước tiếp theo / Next step: Thanh toán đặt cọc 30%</span>
+            </div>
+            <span className="deposit-status-tag">Quotation Accepted</span>
+          </div>
+
+          <div className="deposit-hero-body">
+            <div className="deposit-hero-desc">
+              <h3>Báo giá đã được chấp thuận thành công!</h3>
+              <p>
+                Để đảm bảo lịch trình vận chuyển, giữ chỗ khoang máy bay/xe chuyên dụng và kích hoạt đội ngũ điều phối trạm (Hub Coordinator), quý khách vui lòng hoàn tất đặt cọc <strong>30%</strong> giá trị đơn hàng.
+              </p>
+              <div className="deposit-calc-grid">
+                <div className="calc-item">
+                  <span className="calc-label">Tổng giá trị báo giá</span>
+                  <span className="calc-value">{decimal(quotation.quote.total)} {quotation.currency}</span>
+                </div>
+                <div className="calc-arrow">&rarr;</div>
+                <div className="calc-item highlight">
+                  <span className="calc-label">Tiền cọc cần thanh toán (30%)</span>
+                  <span className="calc-value highlight">{depositAmount} {quotation.currency}</span>
+                </div>
+                <div className="calc-arrow">&rarr;</div>
+                <div className="calc-item">
+                  <span className="calc-label">Thanh toán sau (70%)</span>
+                  <span className="calc-value">{remainingAmount} {quotation.currency}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="deposit-hero-cta">
+              <Link
+                to={`/customer/requests/${orderId}/payments`}
+                className="button primary deposit-link-cta"
+                role="link"
+              >
+                <span>💳 Thanh toán Tiền cọc ngay (30%)</span>
+                <span className="arrow-icon">&rarr;</span>
+              </Link>
+              <span className="deposit-cta-sub">
+                Hỗ trợ chuyển khoản ngân hàng & đối soát trực tuyến
+              </span>
+            </div>
+          </div>
+
+          <div className="deposit-workflow-steps">
+            <div className="wf-step completed">
+              <div className="wf-num">&#10003;</div>
+              <div className="wf-info">
+                <strong>1. Duyệt báo giá</strong>
+                <small>Đã hoàn thành</small>
+              </div>
+            </div>
+            <div className="wf-connector active" />
+            <div className="wf-step active">
+              <div className="wf-num">2</div>
+              <div className="wf-info">
+                <strong>2. Thanh toán cọc 30%</strong>
+                <small>Chờ thanh toán</small>
+              </div>
+            </div>
+            <div className="wf-connector" />
+            <div className="wf-step pending">
+              <div className="wf-num">3</div>
+              <div className="wf-info">
+                <strong>3. Điều phối Hub & Xe</strong>
+                <small>Sau khi cọc thành công</small>
+              </div>
+            </div>
+            <div className="wf-connector" />
+            <div className="wf-step pending">
+              <div className="wf-num">4</div>
+              <div className="wf-info">
+                <strong>4. Quyết toán 70% còn lại</strong>
+                <small>Khi hoàn tất chặng</small>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
       <section className="card">
         <h2>Quotation summary</h2>
         <dl className="details">
@@ -257,8 +362,8 @@ export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
                 {quotation.items.map((line, index) => (
                   <tr key={`${line.code}-${index}`}>
                     <td>
-                      {line.description}
-                      <small className="muted">{line.code}</small>
+                      <div className="service-title-text">{line.description}</div>
+                      <span className="service-code-pill">{line.code}</span>
                     </td>
                     <td>{line.costGroup}</td>
                     <td>{line.unit}</td>
@@ -301,14 +406,26 @@ export function QuotationDetail({ quotation }: { quotation: QuoteResponse }) {
                 </tr>
               </thead>
               <tbody>
-                {quotation.paymentSchedule.map((stage) => (
-                  <tr key={stage.sequenceNo}>
-                    <td>{stage.sequenceNo}</td>
-                    <td>{stage.paymentStage}</td>
-                    <td>{stage.amountDue}</td>
-                    <td>{displayDate(stage.dueAt)}</td>
-                  </tr>
-                ))}
+                {quotation.paymentSchedule.map((stage) => {
+                  const isDeposit = stage.paymentStage.toUpperCase().includes('DEPOSIT');
+                  return (
+                    <tr
+                      key={stage.sequenceNo}
+                      className={isDeposit ? 'schedule-deposit-row' : ''}
+                    >
+                      <td>{stage.sequenceNo}</td>
+                      <td>
+                        <span className={isDeposit ? 'stage-deposit-pill' : ''}>
+                          {stage.paymentStage}
+                        </span>
+                      </td>
+                      <td>
+                        {isDeposit ? <strong>{stage.amountDue}</strong> : stage.amountDue}
+                      </td>
+                      <td>{displayDate(stage.dueAt)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

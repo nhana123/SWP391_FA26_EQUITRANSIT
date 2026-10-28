@@ -565,13 +565,15 @@ export function ManagerCasePage() {
       )}
 
       {/* POPUP MODAL CHO PHÂN CÔNG NHÂN SỰ */}
-      <AssignTeamModal
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        current={current}
-        onAssigned={handleAssignDone}
-        onReload={reload}
-      />
+      {isAssignModalOpen && (
+        <AssignTeamModal
+          isOpen={isAssignModalOpen}
+          onClose={() => setIsAssignModalOpen(false)}
+          current={current}
+          onAssigned={handleAssignDone}
+          onReload={reload}
+        />
+      )}
     </>
   );
 }

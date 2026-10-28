@@ -22,3 +22,392 @@
 .bank-receipt p {
   overflow-wrap: anywhere;
 }
+
+/* Customer Deposit Portal */
+.customer-deposit-portal {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.deposit-portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.portal-title-block h3 {
+  font-size: 1.35rem;
+  color: #0f172a;
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.portal-kicker {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #059669;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.portal-status-pill span {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status-settled {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.status-reviewing {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-awaiting {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+/* Status Callout Banner */
+.deposit-status-callout {
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.deposit-status-callout.warning {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  color: #92400e;
+}
+
+.deposit-status-callout.info {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  color: #1e40af;
+}
+
+.deposit-status-callout.success {
+  background: #f0fdf4;
+  border-left: 4px solid #10b981;
+  color: #065f46;
+}
+
+.deposit-status-callout p {
+  margin: 0;
+}
+
+/* Deposit Stats Grid */
+.deposit-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+}
+
+.stat-val {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.stat-val.primary {
+  color: #0284c7;
+}
+
+.stat-val.success {
+  color: #059669;
+}
+
+.stat-val.highlight {
+  color: #ea580c;
+}
+
+.stat-val.date {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.stat-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* Official Bank Box */
+.bank-account-box {
+  background: linear-gradient(145deg, #f0fdf4 0%, #ffffff 100%);
+  border: 2px solid #86efac;
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.06);
+}
+
+.bank-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed #86efac;
+}
+
+.bank-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #047857;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bank-box-header h4 {
+  font-size: 1.2rem;
+  color: #064e3b;
+  margin: 2px 0 0;
+  font-weight: 700;
+}
+
+.bank-verified-badge {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bank-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.bank-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.bank-row.highlight-box {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+}
+
+.bank-col-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.bank-col-value {
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.bank-col-value.with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bank-sub {
+  display: block;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.bank-acc-num {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #065f46;
+}
+
+.beneficiary-name {
+  color: #064e3b;
+  letter-spacing: 0.02em;
+}
+
+.transfer-syntax {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #fca5a5;
+}
+
+.copy-btn {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 32px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.copy-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.syntax-hint {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: #991b1b;
+  margin-top: 6px;
+}
+
+/* Quick Steps */
+.transfer-quick-guide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #bbf7d0;
+}
+
+.guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.guide-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #059669;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.guide-step strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #065f46;
+  margin-bottom: 2px;
+}
+
+.guide-step p {
+  font-size: 0.8rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Payment Action Toolbar */
+.payment-action-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #f8fafc;
+  padding: 18px 20px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.toolbar-desc h4 {
+  font-size: 1.05rem;
+  color: #1e293b;
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.toolbar-desc p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  max-width: 560px;
+}
+
+@media (max-width: 768px) {
+  .deposit-portal-header {
+    flex-direction: column;
+  }
+  .bank-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .bank-col-value.with-action {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .payment-action-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
