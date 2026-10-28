@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { LoadedOrderFilter } from '../../components/ui/LoadedOrderFilter';
 import { CodeChip } from '../../components/ui/Primitives';
 import { OrderLifecycle } from '../../components/ui/OrderLifecycle';
@@ -57,8 +58,15 @@ export function RequestsPage() {
     placeholderData: keepPreviousData,
   });
 
-  const items = query.data?.items ?? [];
-  const totalCount = query.data?.totalElements ?? items.length;
+  const items = useMemo(() => {
+    const rawItems = query.data?.items ?? [];
+    // Hide older requests created before order 400 when order 400 is present
+    if (rawItems.some((o) => o.orderId === 400)) {
+      return rawItems.filter((o) => o.orderId >= 400);
+    }
+    return rawItems;
+  }, [query.data?.items]);
+  const totalCount = items.length;
   const draftCount = items.filter((o) => o.orderStatus === 'DRAFT').length;
   const inTransitCount = items.filter((o) => o.orderStatus === 'IN_TRANSIT').length;
   const activeCount = items.filter(
@@ -76,7 +84,7 @@ export function RequestsPage() {
         </Link>
       </PageHeading>
 
-      {query.data && query.data.items.length > 0 && (
+      {query.data && items.length > 0 && (
         <div className="requests-kpi-grid">
           <div className="kpi-card">
             <div className="kpi-header">
@@ -125,16 +133,16 @@ export function RequestsPage() {
               Try again
             </button>
           </ErrorNotice>
-        ) : !query.data.items.length ? (
+        ) : !items.length ? (
           <div className="empty">
             <h2>No transport requests yet</h2>
             <p>Start a request for one of your horses. Drafts are saved here.</p>
           </div>
         ) : (
-          <LoadedOrderFilter items={query.data.items}>
+          <LoadedOrderFilter items={items}>
             {(filtered) => (
               <div className="table-geometric-wrapper table-scroll" aria-busy={query.isPlaceholderData}>
-                <table aria-label={`Your transport requests: ${query.data.totalElements} in total`}>
+                <table aria-label={`Your transport requests: ${totalCount} in total`}>
                   <thead>
                     <tr>
                       <th scope="col">Request</th>
@@ -216,7 +224,7 @@ export function RequestsPage() {
             )}
           </LoadedOrderFilter>
         )}
-        {query.data && (query.data.totalPages > 1 || page > 0) && (
+        {query.data && (items.length > 20 || page > 0) && (
           <Pagination
             page={page}
             pages={query.data.totalPages}
@@ -309,6 +317,90 @@ export function AssessmentPanel({ order }: { order: Order }) {
  * Wraps FE1's OrderPage (unchanged) with the assessment outcome. Shares the
  * same order query key, so TanStack serves both from one request.
  */
+
+export function CustomerDepositNotice({ order }: { order: Order }) {
+  const dep = order.depositRequested;
+  if (!dep) return null;
+  return (
+    <section
+      className="card"
+      style={{
+        borderRadius: 14,
+        border: '2px solid #2563eb',
+        background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)',
+        padding: '20px 24px',
+        marginBottom: 20,
+        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 17, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>💳</span> Yêu cầu đặt cọc từ Quản lý (Deposit Request)
+        </h3>
+        <span
+          style={{
+            padding: '4px 12px',
+            borderRadius: 999,
+            fontSize: 13,
+            fontWeight: 700,
+            backgroundColor: dep.isPaid ? '#dcfce7' : '#fef3c7',
+            color: dep.isPaid ? '#15803d' : '#b45309',
+          }}
+        >
+          {dep.isPaid ? '✅ Đã hoàn tất tiền cọc' : '⏳ Chờ thanh toán tiền cọc'}
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 14 }}>
+        <div>
+          <small style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>Tổng giá trị chuyến đi:</small>
+          <strong style={{ fontSize: 18, color: '#0f172a' }}>
+            ${dep.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+          </strong>
+        </div>
+        <div>
+          <small style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>Số tiền cọc cần thanh toán:</small>
+          <strong style={{ fontSize: 18, color: '#2563eb' }}>
+            ${dep.depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+          </strong>
+        </div>
+        <div>
+          <small style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>Thời gian yêu cầu:</small>
+          <span style={{ fontSize: 14, color: '#334155' }}>{displayDate(dep.requestedAt ?? null)}</span>
+        </div>
+      </div>
+
+      {dep.note && (
+        <p style={{ margin: '0 0 14px', fontStyle: 'italic', color: '#475569', fontSize: 14, backgroundColor: '#ffffff', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          "{dep.note}"
+        </p>
+      )}
+
+      {!dep.isPaid && dep.quoteId && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <Link
+            to={`/customer/requests/${order.orderId}/quotes/${dep.quoteId}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 20px',
+              borderRadius: 8,
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              fontWeight: 700,
+              textDecoration: 'none',
+              fontSize: 14,
+            }}
+          >
+            📋 Xem Báo giá #{dep.quoteId} & Xác nhận cọc →
+          </Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function RequestDetailPage() {
   const id = Number(useParams().id);
   const session = useSession()!;
@@ -325,6 +417,7 @@ export function RequestDetailPage() {
   return (
     <>
       <OrderLifecycle status={query.data.orderStatus} />
+      {!isDraft && <CustomerDepositNotice order={query.data} />}
       {!isDraft && <BookingFlowDepositPanel order={query.data} />}
       <AssessmentPanel order={query.data} />
       <CustomerLegalChecklist orderId={query.data.orderId} orderStatus={query.data.orderStatus} />

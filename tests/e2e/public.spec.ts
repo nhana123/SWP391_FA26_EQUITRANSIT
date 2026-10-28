@@ -46,9 +46,9 @@ test('registration and token links work without making a false booking', async (
   await page.getByLabel('Confirm password').fill('TestPassword123!');
   await page.getByRole('button', { name: 'Create Account' }).click();
   await expect(page.getByRole('heading', { name: 'Verify your email' })).toBeVisible();
-  const requests: string[] = [];
+  const requests: unknown[] = [];
   page.on('request', (r) => {
-    if (r.url().includes('/api/auth/verify-email')) requests.push(r.url());
+    if (r.url().includes('/api/auth/verify-email')) requests.push(r.postDataJSON());
   });
   await page.route('**/api/auth/verify-email', (route) =>
     route.fulfill({
@@ -60,9 +60,9 @@ test('registration and token links work without making a false booking', async (
   await page.goto('/verify-email?token=test-token');
   await expect(page).toHaveURL(/\/verify-email$/);
   expect(requests).toHaveLength(0);
-  await page.getByRole('button', { name: 'Verify Email' }).click();
+  await page.getByRole('button', { name: 'Verify now', exact: true }).click();
   await expect(page.getByText('Email verified.')).toBeVisible();
-  expect(requests).toHaveLength(1);
+  expect(requests).toEqual([{ token: 'test-token' }]);
 });
 test('mobile registration remains usable and protected routes require login', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

@@ -9,12 +9,20 @@ export class ApiError extends Error {
     message: string,
     public code?: string,
     public fields: Record<string, string> = {},
+    public retryAfterSeconds?: number,
   ) {
     super(message);
   }
   get uncertain() {
     return this.status === 0 || this.status >= 500;
   }
+}
+function retryDelay(value: string | null): number {
+  if (!value) return 60;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds);
+  const deadline = Date.parse(value);
+  return Number.isFinite(deadline) ? Math.max(1, Math.ceil((deadline - Date.now()) / 1000)) : 60;
 }
 const safeErrorSchema = z.object({
   message: z.string().optional(),
@@ -114,6 +122,7 @@ async function attempt<T>(
             : messages[response.status] || 'The request could not be completed.',
         parsed.success ? parsed.data.code : undefined,
         parsed.success && !options.public ? parsed.data.fields : {},
+        response.status === 429 ? retryDelay(response.headers.get('Retry-After')) : undefined,
       );
     }
     const parsed = schema.safeParse(data);

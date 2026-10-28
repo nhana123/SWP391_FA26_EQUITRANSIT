@@ -74,6 +74,20 @@ describe('requests list', () => {
     expect(orderStatusApi.assessment).not.toHaveBeenCalled();
   });
 
+  it('hides older requests created before order 400 when order 400 is present', async () => {
+    vi.mocked(orderStatusApi.list).mockResolvedValue(
+      pageOf([
+        order(400, { orderNumber: 'TR-278caaff1e1241dc8ee35f49' }),
+        order(399),
+        order(1),
+      ]),
+    );
+    mount(<RequestsPage />);
+    expect(await screen.findByRole('link', { name: 'TR-278caaff1e1241dc8ee35f49' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'ET-TEST-399' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'ET-TEST-1' })).not.toBeInTheDocument();
+  });
+
   it('shows an empty state', async () => {
     vi.mocked(orderStatusApi.list).mockResolvedValue(pageOf([]));
     mount(<RequestsPage />);
