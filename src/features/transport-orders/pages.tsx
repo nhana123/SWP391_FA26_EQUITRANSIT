@@ -591,6 +591,8 @@ function StepOneRouteAndMode({
   });
     // Customer only sees countries with active EquiTransit Hubs served by /api/lookups/countries
   const countries: RouteCountry[] = countriesQuery.data || CATALOG_COUNTRIES;
+  const originKeyBuf = useRef('');
+  const destKeyBuf = useRef('');
 
   const originCode = form.originCountryCode.trim().toUpperCase();
   const destCode = form.destinationCountryCode.trim().toUpperCase();
@@ -1290,29 +1292,38 @@ function StepOneRouteAndMode({
               error={fieldError('originCountryCode')}
             >
               {(id) => (
-                <>
-                  <input
-                    id={id}
-                    aria-label="Pickup country (ISO code)"
-                    list="origin-countries-datalist"
-                    maxLength={2}
-                    style={{ textTransform: 'uppercase' }}
-                    value={originCode}
-                    placeholder="VD: VN"
-                    aria-invalid={!!fieldError('originCountryCode')}
-                    aria-describedby={
-                      fieldError('originCountryCode') ? `${id}-error` : undefined
+                <select
+                  id={id}
+                  aria-label="Pickup country (ISO code)"
+                  value={originCode}
+                  aria-invalid={!!fieldError('originCountryCode')}
+                  aria-describedby={
+                    fieldError('originCountryCode') ? `${id}-error` : undefined
+                  }
+                  onChange={(e) => handleOriginCountryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key && e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+                      originKeyBuf.current = (originKeyBuf.current + e.key.toUpperCase()).slice(-2);
+                      const match = countries.find(
+                        (c) =>
+                          c.countryCode === originKeyBuf.current ||
+                          c.countryCode === e.key.toUpperCase() ||
+                          c.countryCode.startsWith(originKeyBuf.current) ||
+                          c.countryCode.startsWith(e.key.toUpperCase()),
+                      );
+                      if (match) {
+                        handleOriginCountryChange(match.countryCode);
+                      }
                     }
-                    onChange={(e) => handleOriginCountryChange(e.target.value)}
-                  />
-                  <datalist id="origin-countries-datalist">
-                    {countries.map((c) => (
-                      <option key={c.countryCode} value={c.countryCode}>
-                        {c.countryName} ({c.countryCode})
-                      </option>
-                    ))}
-                  </datalist>
-                </>
+                  }}
+                >
+                  <option value="">-- Chọn quốc gia xuất phát --</option>
+                  {countries.map((c) => (
+                    <option key={c.countryCode} value={c.countryCode}>
+                      {c.countryName} ({c.countryCode})
+                    </option>
+                  ))}
+                </select>
               )}
             </Field>
 
@@ -1684,31 +1695,41 @@ function StepOneRouteAndMode({
               error={fieldError('destinationCountryCode')}
             >
               {(id) => (
-                <>
-                  <input
-                    id={id}
-                    aria-label="Destination country (ISO code)"
-                    list="dest-countries-datalist"
-                    maxLength={2}
-                    style={{ textTransform: 'uppercase' }}
-                    value={destCode}
-                    placeholder="VD: GB"
-                    aria-invalid={!!fieldError('destinationCountryCode')}
-                    aria-describedby={
-                      fieldError('destinationCountryCode') ? `${id}-error` : undefined
+                <select
+                  id={id}
+                  aria-label="Destination country (ISO code)"
+                  value={destCode}
+                  aria-invalid={!!fieldError('destinationCountryCode')}
+                  aria-describedby={
+                    fieldError('destinationCountryCode') ? `${id}-error` : undefined
+                  }
+                  onChange={(e) => handleDestCountryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key && e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+                      destKeyBuf.current = (destKeyBuf.current + e.key.toUpperCase()).slice(-2);
+                      const destCandidates = countries.filter((c) => c.countryCode !== originCode);
+                      const match = destCandidates.find(
+                        (c) =>
+                          c.countryCode === destKeyBuf.current ||
+                          c.countryCode === e.key.toUpperCase() ||
+                          c.countryCode.startsWith(destKeyBuf.current) ||
+                          c.countryCode.startsWith(e.key.toUpperCase()),
+                      );
+                      if (match) {
+                        handleDestCountryChange(match.countryCode);
+                      }
                     }
-                    onChange={(e) => handleDestCountryChange(e.target.value)}
-                  />
-                  <datalist id="dest-countries-datalist">
-                    {countries
-                      .filter((c) => c.countryCode !== originCode)
-                      .map((c) => (
-                        <option key={c.countryCode} value={c.countryCode}>
-                          {c.countryName} ({c.countryCode})
-                        </option>
-                      ))}
-                  </datalist>
-                </>
+                  }}
+                >
+                  <option value="">-- Chọn quốc gia đến --</option>
+                  {countries
+                    .filter((c) => c.countryCode !== originCode)
+                    .map((c) => (
+                      <option key={c.countryCode} value={c.countryCode}>
+                        {c.countryName} ({c.countryCode})
+                      </option>
+                    ))}
+                </select>
               )}
             </Field>
 
