@@ -2,6 +2,8 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { authApi } from './api';
+import { ApiError } from '../../shared/api/client';
+import { EmailVerification } from './verification';
 import { clearSession, startSession, useSession } from '../../shared/api/session';
 import { queryKeys } from '../../shared/api/query';
 import { ErrorNotice, Field, Loading, Notice, PageHeading } from '../../shared/ui/common';
@@ -150,13 +152,25 @@ export function RegisterPage() {
       });
       setPassword('');
       setConfirm('');
-      navigate('/verification-sent', { replace: true });
+      navigate('/verification-sent', { replace: true, state: { email: email.trim(), sent: true } });
     });
   }
   return (
     <AuthCard title="Sign Up" subtitle="Create your personal Customer account.">
       <form onSubmit={submit}>
-        <ErrorNotice error={action.error} />
+        {!(
+          action.error instanceof ApiError && action.error.code === 'EMAIL_VERIFICATION_REQUIRED'
+        ) && <ErrorNotice error={action.error} />}
+        {action.error instanceof ApiError && action.error.code === 'EMAIL_VERIFICATION_REQUIRED' ? (
+          <Notice>
+            Your account is not activated yet.{' '}
+            <Link className="button" to="/resend-verification" state={{ email: email.trim() }}>
+              Resend verification email
+            </Link>
+          </Notice>
+        ) : action.error instanceof ApiError && action.error.status === 409 ? (
+          <Link to="/login">This email is already registered. Sign in</Link>
+        ) : null}
         <div className="form-grid">
           <Field label="Full name" error={errors.fullName}>
             {(id) => (
@@ -237,12 +251,13 @@ export function LoginPage() {
     });
   }
   return (
-    <div className="login-page-container" style={{ backgroundImage: "url('/images/landing/hero/hero-bg.jpg')" }}>
+    <div
+      className="login-page-container"
+      style={{ backgroundImage: "url('/images/landing/hero/hero-bg.jpg')" }}
+    >
       <div className="login-layout">
         <div className="login-intro">
-          <small className="eyebrow">
-            WELCOME TO EQUITRANSIT
-          </small>
+          <small className="eyebrow">WELCOME TO EQUITRANSIT</small>
           <h1>
             Every journey starts
             <br />
@@ -259,7 +274,8 @@ export function LoginPage() {
               <div>
                 <strong>Chuẩn An Sinh Động Vật FEI &amp; IATA LAR</strong>
                 <p>
-                  Chuồng bay áp suất, kiểm soát thông khí 18°C và quy chế chăm sóc thú y chuyên biệt.
+                  Chuồng bay áp suất, kiểm soát thông khí 18°C và quy chế chăm sóc thú y chuyên
+                  biệt.
                 </p>
               </div>
             </div>
@@ -268,7 +284,8 @@ export function LoginPage() {
               <div>
                 <strong>Check-in Chặng Lộ Trình &amp; Bàn Giao Điện Tử</strong>
                 <p>
-                  Cập nhật tiến độ từng mốc hành trình, ký nhận bàn giao minh bạch giữa chủ ngựa và tài xế.
+                  Cập nhật tiến độ từng mốc hành trình, ký nhận bàn giao minh bạch giữa chủ ngựa và
+                  tài xế.
                 </p>
               </div>
             </div>
@@ -289,36 +306,68 @@ export function LoginPage() {
           subtitle="Sign in to your EquiTransit account."
           actionLink={{ to: '/register', label: 'Create an account →' }}
         >
-        <form onSubmit={submit}>
-          <ErrorNotice error={action.error} />
-          <EmailField value={email} onChange={setEmail} />
-          <Field label="Password">
-            {(id) => (
-              <input
-                id={id}
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+          <form onSubmit={submit}>
+            {action.error instanceof ApiError && action.error.code === 'LOGIN_FAILED' ? (
+              <div className="notice error" role="alert">
+                Sai mật khẩu, vui lòng nhập lại.
+              </div>
+            ) : (
+              !(
+                action.error instanceof ApiError &&
+                action.error.code === 'EMAIL_VERIFICATION_REQUIRED'
+              ) && <ErrorNotice error={action.error} />
             )}
-          </Field>
-          <button className="primary wide" disabled={action.pending}>
-            {action.pending ? 'Signing in…' : 'Log In'}
-          </button>
-        </form>
-        <div className="actions">
-          <Link to="/forgot-password">Forgot password?</Link>
-          <Link to="/register">Create account</Link>
-        </div>
-        <p className="muted">Staff use the same login. Permissions determine access.</p>
-      </AuthCard>
+            {action.error instanceof ApiError &&
+              action.error.code === 'EMAIL_VERIFICATION_REQUIRED' && (
+                <Notice>
+                  Your account is not activated yet.{' '}
+                  <Link
+                    className="button"
+                    to="/resend-verification"
+                    state={{ email: email.trim() }}
+                  >
+                    Resend verification email
+                  </Link>
+                </Notice>
+              )}
+            <EmailField value={email} onChange={setEmail} />
+            <Field label="Password">
+              {(id) => (
+                <input
+                  id={id}
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              )}
+            </Field>
+            <button className="primary wide" disabled={action.pending}>
+              {action.pending ? 'Signing in…' : 'Log In'}
+            </button>
+          </form>
+          <div className="actions">
+            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/verify-email" state={{ email: email.trim() }}>
+              Verify email / Resend link
+            </Link>
+            <Link to="/register">Create account</Link>
+          </div>
+          <p className="muted">Staff use the same login. Permissions determine access.</p>
+        </AuthCard>
       </div>
     </div>
   );
 }
-export function EmailRequestPage({
+export function EmailRequestPage(props: { action?: 'forgot-password' | 'resend-verification' }) {
+  return props.action === 'resend-verification' ? (
+    <EmailVerification />
+  ) : (
+    <RecoveryEmailPage action="forgot-password" />
+  );
+}
+function RecoveryEmailPage({
   action: emailAction = 'forgot-password',
 }: {
   action?: 'forgot-password' | 'resend-verification';
@@ -355,55 +404,10 @@ export function EmailRequestPage({
   );
 }
 export function VerificationSentPage() {
-  return (
-    <AuthCard
-      title="Verify your email"
-      subtitle="Your account was created. Verify your email before signing in."
-    >
-      <Notice>
-        Follow the verification link in your email. In backend local mode, email is written to the
-        development outbox.
-      </Notice>
-      <Link className="button" to="/resend-verification">
-        Request a new verification link
-      </Link>
-    </AuthCard>
-  );
+  return <EmailVerification />;
 }
 export function VerifyPage() {
-  const [token, setToken] = useState(() => getCapturedToken('/verify-email'));
-  const [verified, setVerified] = useState(false);
-  const action = useAction();
-  return (
-    <AuthCard title="Email Verification" subtitle="Confirm your email using the link you received.">
-      <ErrorNotice error={action.error} />
-      {verified ? (
-        <Notice>
-          Email verified. You can now <Link to="/login">sign in</Link>.
-        </Notice>
-      ) : token ? (
-        <button
-          className="primary"
-          disabled={action.pending}
-          onClick={() =>
-            void action.run(async () => {
-              await authApi.verify(token);
-              clearCapturedToken();
-              setToken(null);
-              setVerified(true);
-            })
-          }
-        >
-          {action.pending ? 'Verifying…' : 'Verify Email'}
-        </button>
-      ) : (
-        <Notice>No verification token is available. Request a new link.</Notice>
-      )}
-      <p>
-        <Link to="/resend-verification">Request a new link</Link>
-      </p>
-    </AuthCard>
-  );
+  return <EmailVerification />;
 }
 export function ResetPage() {
   const [token, setToken] = useState(() => getCapturedToken('/reset-password'));

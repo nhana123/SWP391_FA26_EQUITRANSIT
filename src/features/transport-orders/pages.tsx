@@ -16,6 +16,8 @@ import type {
   ServicePreferences,
 } from '../../shared/api/contracts';
 import { ordersApi, type SubmitCommand } from './api';
+import { useServiceRates } from '../booking-services/rates';
+import type { ServiceProduct, ServiceRate } from '../service-pricing/contracts';
 import './review.css';
 import {
   CATALOG_COUNTRIES,
@@ -3016,6 +3018,13 @@ export type ServicesSlotProps = {
   preferences: ServicePreferences | null;
   onSaved: (order: Order) => void;
 };
+function getProductRate(rates: ServiceRate[] | undefined, product: ServiceProduct, fallback: number): number {
+  const item = rates?.find((r) => r.product === product);
+  if (!item || item.unitRate == null) return fallback;
+  const parsed = Number(item.unitRate);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export function OrderEditor({
   order,
   servicesSlot,
@@ -3065,6 +3074,81 @@ export function OrderEditor({
   const submitCommand = useRef<SubmitCommand | null>(null);
   const [frozenSubmit, setFrozenSubmit] = useState(false);
   const [refreshPending, setRefreshPending] = useState(false);
+  const ratesQuery = useServiceRates(current?.orderId ?? 0);
+  const rates = ratesQuery.data;
+
+  const originCode = form.originCountryCode.trim().toUpperCase();
+  const destCode = form.destinationCountryCode.trim().toUpperCase();
+  const activeMode: RouteTransportMode = form.transportMode === 'AIR' ? 'AIR' : 'ROAD';
+  const debouncedPickupAddr =
+    originAddressValidation.status === 'verified'
+      ? originAddressValidation.verifiedAddress || form.originAddress.trim()
+      : '';
+  const debouncedDeliveryAddr =
+    destAddressValidation.status === 'verified'
+      ? destAddressValidation.verifiedAddress || form.destinationAddress.trim()
+      : '';
+
+  const canMatch =
+    /^[A-Z]{2}$/.test(originCode) &&
+    /^[A-Z]{2}$/.test(destCode) &&
+    originCode !== destCode;
+
+  const airStall = services?.airStall || 'SHARED_ONE';
+  const selectedOriginHubId = Number(form.originHubId);
+  const selectedDestHubId = Number(form.destinationHubId);
+
+  const matchQuery = useQuery({
+    queryKey: [
+      'routes',
+      'match',
+      originCode,
+      destCode,
+      activeMode,
+      form.originCity.trim(),
+      activeMode === 'AIR' ? form.originAirportCode.trim().toUpperCase() : '',
+      form.destinationCity.trim(),
+      activeMode === 'AIR' ? form.destinationAirportCode.trim().toUpperCase() : '',
+      debouncedPickupAddr,
+      debouncedDeliveryAddr,
+      Number.isInteger(selectedOriginHubId) && selectedOriginHubId > 0 ? selectedOriginHubId : null,
+      Number.isInteger(selectedDestHubId) && selectedDestHubId > 0 ? selectedDestHubId : null,
+      airStall,
+    ] as const,
+    queryFn: ({ signal }) =>
+      routesApi.match(
+        {
+          originCountryCode: originCode,
+          originCity: form.originCity.trim() ? form.originCity.trim() : null,
+          originAirportCode:
+            activeMode === 'AIR' && /^[A-Za-z]{3}$/.test(form.originAirportCode.trim())
+              ? form.originAirportCode.trim().toUpperCase()
+              : null,
+          destinationCountryCode: destCode,
+          destinationCity: form.destinationCity.trim()
+            ? form.destinationCity.trim()
+            : null,
+          destinationAirportCode:
+            activeMode === 'AIR' && /^[A-Za-z]{3}$/.test(form.destinationAirportCode.trim())
+              ? form.destinationAirportCode.trim().toUpperCase()
+              : null,
+          transportMode: activeMode,
+          airStallPreference: airStall,
+          ...(debouncedPickupAddr ? { pickupAddress: debouncedPickupAddr } : {}),
+          ...(debouncedDeliveryAddr ? { deliveryAddress: debouncedDeliveryAddr } : {}),
+          ...(Number.isInteger(selectedOriginHubId) && selectedOriginHubId > 0
+            ? { originHubId: selectedOriginHubId }
+            : {}),
+          ...(Number.isInteger(selectedDestHubId) && selectedDestHubId > 0
+            ? { destinationHubId: selectedDestHubId }
+            : {}),
+        },
+        signal,
+      ),
+    enabled: canMatch,
+    retry: false,
+  });
+  const routeMatch = matchQuery.data;
   const action = useAction();
   const session = useSession()!;
   const navigate = useNavigate();
@@ -3906,11 +3990,13 @@ export function OrderEditor({
                       <span>✈️</span> Chuồng máy bay (Air Stall)
                     </span>
                     <span className="review-service-choice">
-                      {services?.airStall === 'PRIVATE'
-                        ? 'Private Stall (3 slots)'
-                        : services?.airStall === 'WIDE'
-                          ? 'Wide Stall (1.5 slots)'
-                          : 'Shared Stall (1 slot)'}
+                      {form.transportMode === 'ROAD'
+                        ? 'Không áp dụng (Vận chuyển đường bộ)'
+                        : services?.airStall === 'PRIVATE'
+                          ? 'Private Stall (3 slots)'
+                          : services?.airStall === 'WIDE'
+                            ? 'Wide Stall (1.5 slots)'
+                            : 'Shared Stall (1 slot)'}
                     </span>
                   </div>
 
@@ -3930,9 +4016,11 @@ export function OrderEditor({
                       <span>🩺</span> Kiểm dịch & Thú y (Veterinary)
                     </span>
                     <span className="review-service-choice">
-                      {services?.veterinaryArrangement === 'CUSTOMER'
-                        ? 'Tự sắp xếp bác sĩ thú y'
-                        : 'Gói kiểm dịch & cấp chứng chỉ EquiTransit'}
+                      {services?.veterinaryArrangement === 'EQUITRANSIT'
+                        ? 'Gói kiểm dịch & cấp chứng chỉ EquiTransit'
+                        : services?.veterinaryArrangement === 'CUSTOMER'
+                          ? 'Tự sắp xếp bác sĩ thú y'
+                          : 'Không yêu cầu / Chưa chọn'}
                     </span>
                   </div>
 
@@ -3943,7 +4031,9 @@ export function OrderEditor({
                     <span className="review-service-choice">
                       {services?.quarantinePackage === 'ENHANCED'
                         ? 'Cách ly nâng cao (Enhanced)'
-                        : 'Cách ly tiêu chuẩn (Standard)'}
+                        : services?.quarantinePackage === 'STANDARD'
+                          ? 'Cách ly tiêu chuẩn (Standard)'
+                          : 'Không yêu cầu cách ly'}
                     </span>
                   </div>
 
@@ -3980,28 +4070,68 @@ export function OrderEditor({
             <div className="review-column-summary">
               {(() => {
                 const isRoadMode = form.transportMode === 'ROAD';
+                const isCrossBorder =
+                  Boolean(form.originCountryCode && form.destinationCountryCode) &&
+                  form.originCountryCode !== form.destinationCountryCode;
+
+                // 1. Cước vận chuyển đường bộ: Lấy trực tiếp từ routeMatch (kết quả BE tính theo km thực tế)
+                const roadCost =
+                  services?.roadArrangement === 'CUSTOMER'
+                    ? 0
+                    : Number(routeMatch?.totalEstimatedCost) > 0
+                      ? Number(routeMatch?.totalEstimatedCost)
+                      : Number(routeMatch?.estimatedRoadKm) > 0
+                        ? Number(routeMatch?.estimatedRoadKm) * getProductRate(rates, 'ROAD_TRANSPORT', 1.0)
+                        : 1500;
+
+                // 2. Cước chuồng bay: Lấy theo hạng chuồng và bảng giá máy bay BE
+                const airMultiplier =
+                  services?.airStall === 'PRIVATE' ? 3 : services?.airStall === 'WIDE' ? 1.5 : 1;
                 const airCost = isRoadMode
                   ? 0
-                  : services?.airStall === 'PRIVATE'
-                    ? 36000
-                    : services?.airStall === 'WIDE'
-                      ? 18000
-                      : 12000;
-                const roadCost = services?.roadArrangement === 'CUSTOMER' ? 0 : 1500;
-                const vetCost = services?.veterinaryArrangement === 'CUSTOMER' ? 0 : 450;
+                  : Number(routeMatch?.estimatedAirCost) > 0
+                    ? Number(routeMatch?.estimatedAirCost)
+                    : airMultiplier * getProductRate(rates, 'AIR_STALL', 12000);
+
+                // 3. Khám & kiểm dịch thú y: Lấy từ biểu phí thú y của BE (Exam + Test + Vaccine + Certificate)
+                const vetUnitTotal =
+                  getProductRate(rates, 'VETERINARY_EXAM', 60) +
+                  getProductRate(rates, 'VETERINARY_TEST', 30) +
+                  getProductRate(rates, 'VETERINARY_VACCINE', 20) +
+                  getProductRate(rates, 'VETERINARY_CERTIFICATE', 45);
+                const vetCost =
+                  services?.veterinaryArrangement === 'EQUITRANSIT' ? vetUnitTotal : 0;
+
+                // 4. Cách ly kiểm dịch: Lấy theo ngày (14 ngày quy chuẩn tuyến quốc tế) x đơn giá BE
+                const quarantineDays = isCrossBorder ? 14 : 0;
                 const quarantineCost =
-                  services?.quarantinePackage === 'ENHANCED' ? 1200 : 800;
-                const customsCost = 650;
+                  services?.quarantinePackage === 'ENHANCED'
+                    ? quarantineDays * getProductRate(rates, 'QUARANTINE_ENHANCED', 75)
+                    : services?.quarantinePackage === 'STANDARD'
+                      ? quarantineDays * getProductRate(rates, 'QUARANTINE_STANDARD', 50)
+                      : 0;
+
+                // 5. Hải quan & điều phối chứng từ: Lấy từ biểu phí BE (Phí điều phối + 2 tờ khai xuất/nhập)
+                const customsCost = isCrossBorder
+                  ? getProductRate(rates, 'DOCUMENT_COORDINATION', 90) +
+                    2 * getProductRate(rates, 'CUSTOMS_DECLARATION', 40)
+                  : 0;
+
+                // 6. Bảo hiểm hành trình: Lấy theo gói bảo hiểm từ biểu phí BE
                 const insuranceCost =
                   services?.insurance === 'MORTALITY'
-                    ? 350
+                    ? getProductRate(rates, 'INSURANCE_MORTALITY', 100)
                     : services?.insurance === 'COMBINED'
-                      ? 650
+                      ? getProductRate(rates, 'INSURANCE_COMBINED', 150)
                       : 0;
+
+                // 7. Chăm sóc tăng cường, grooming và lưu chuồng thêm: Lấy theo đơn giá BE
                 const extraCareCost =
-                  (services?.enhancedCare ? 250 : 0) +
-                  (services?.groomingDays || 0) * 100 +
-                  (services?.boardingNights || 0) * 150;
+                  (services?.enhancedCare ? getProductRate(rates, 'ENHANCED_CARE', 80) : 0) +
+                  (services?.groomingDays || 0) * getProductRate(rates, 'GROOMING', 25) +
+                  (services?.boardingNights || 0) * getProductRate(rates, 'BOARDING', 40);
+
+                // Tổng hợp dự tính & cọc 30%
                 const estTotal =
                   airCost +
                   roadCost +
@@ -4022,7 +4152,7 @@ export function OrderEditor({
                           : 'Tổng chi phí dự tính'}
                       </h3>
                       <span className="review-cost-top-tag">
-                        {isRoadMode ? 'Fixed Road Pricing' : 'Estimate Breakdown'}
+                        {isRoadMode ? 'Cước hành trình & Biểu phí thực tế' : 'Chi phí cước bay & Biểu phí thực tế'}
                       </span>
                     </div>
 
@@ -4054,10 +4184,9 @@ export function OrderEditor({
                           <span>🚛</span> Vận chuyển đường bộ
                         </span>
                         <span className="review-cost-val">
-                          {roadCost.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}{' '}
-                          USD
+                          {roadCost > 0
+                            ? `${roadCost.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+                            : '0.00 USD (Khách tự thuê xe)'}
                         </span>
                       </div>
 
@@ -4067,10 +4196,11 @@ export function OrderEditor({
                           <span>🩺</span> Kiểm dịch & Khám thú y
                         </span>
                         <span className="review-cost-val">
-                          {vetCost.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}{' '}
-                          USD
+                          {vetCost > 0
+                            ? `${vetCost.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+                            : services?.veterinaryArrangement === 'CUSTOMER'
+                              ? '0.00 USD (Tự sắp xếp bác sĩ)'
+                              : '0.00 USD (Chưa chọn gói EquiTransit)'}
                         </span>
                       </div>
 
@@ -4080,10 +4210,9 @@ export function OrderEditor({
                           <span>🏠</span> Lưu chuồng & Cách ly
                         </span>
                         <span className="review-cost-val">
-                          {quarantineCost.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}{' '}
-                          USD
+                          {quarantineCost > 0
+                            ? `${quarantineCost.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+                            : '0.00 USD (Không yêu cầu cách ly)'}
                         </span>
                       </div>
 
@@ -4092,7 +4221,11 @@ export function OrderEditor({
                         <span className="review-cost-desc">
                           <span>📄</span> Thủ tục hải quan & Cảng
                         </span>
-                        <span className="review-cost-val">650.00 USD</span>
+                        <span className="review-cost-val">
+                          {customsCost > 0
+                            ? `${customsCost.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+                            : '0.00 USD (Nội địa / Không phát sinh)'}
+                        </span>
                       </div>
 
                       {/* Insurance row */}
@@ -4101,10 +4234,11 @@ export function OrderEditor({
                           <span>🛡️</span> Bảo hiểm hành trình
                         </span>
                         <span className="review-cost-val">
-                          {insuranceCost.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}{' '}
-                          USD
+                          {insuranceCost > 0
+                            ? `${insuranceCost.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+                            : services?.insurance === 'EXISTING'
+                              ? '0.00 USD (Hợp đồng riêng)'
+                              : '0.00 USD (Không đăng ký bảo hiểm)'}
                         </span>
                       </div>
 

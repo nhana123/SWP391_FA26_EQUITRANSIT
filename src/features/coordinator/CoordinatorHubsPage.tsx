@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from 'react';
+import type { AddressSuggestion } from '../../shared/api/contracts';
+import { HubAddressPicker } from './HubAddressPicker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CodeChip, EmptyState } from '../../components/ui/Primitives';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { flag } from '../../shared/api/lookups';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
-import {
-  coordinatorApi,
-  type CoordinatorLocation,
-  type CoordinatorLocationRequest,
-} from './api';
+import { coordinatorApi, type CoordinatorLocation, type CoordinatorLocationRequest } from './api';
 
 export function CoordinatorHubsPage() {
   const queryClient = useQueryClient();
@@ -43,14 +41,11 @@ export function CoordinatorHubsPage() {
           <small className="eyebrow">TERMINALS & INFRASTRUCTURE · MANAGER</small>
           <h1>Company Hubs & Quarantine Barns</h1>
           <p>
-            Official operational headquarters, quarantine staging stables, and domestic feeder rates ($/km).
+            Official operational headquarters, quarantine staging stables, and domestic feeder rates
+            ($/km).
           </p>
         </div>
-        <button
-          type="button"
-          className="button primary"
-          onClick={() => setIsModalOpen(true)}
-        >
+        <button type="button" className="button primary" onClick={() => setIsModalOpen(true)}>
           + Add Company Hub
         </button>
       </header>
@@ -62,7 +57,13 @@ export function CoordinatorHubsPage() {
             placeholder="Search by hub name, code, or address..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: 260, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--line)' }}
+            style={{
+              flex: 1,
+              minWidth: 260,
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--line)',
+            }}
           />
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button
@@ -102,7 +103,13 @@ export function CoordinatorHubsPage() {
           description="Register a primary terminal or adjust your country filter."
         />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+            gap: 16,
+          }}
+        >
           {hubs.map((hub) => (
             <HubCard
               key={hub.locationId}
@@ -128,13 +135,7 @@ export function CoordinatorHubsPage() {
   );
 }
 
-function HubCard({
-  hub,
-  onDeactivated,
-}: {
-  hub: CoordinatorLocation;
-  onDeactivated: () => void;
-}) {
+function HubCard({ hub, onDeactivated }: { hub: CoordinatorLocation; onDeactivated: () => void }) {
   const deactivateMutation = useMutation({
     mutationFn: () => coordinatorApi.deleteLocation(hub.locationId),
     onSuccess: () => onDeactivated(),
@@ -152,7 +153,14 @@ function HubCard({
       }}
     >
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+        >
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 20 }}>{flag(hub.countryCode)}</span>
             <CodeChip value={hub.locationCode ?? `HUB-${hub.countryCode}`} />
@@ -203,9 +211,7 @@ function HubCard({
           </div>
           <div>
             <span style={{ color: '#64748b', display: 'block' }}>Domestic Transfer Policy:</span>
-            <strong style={{ color: '#0f766e' }}>
-              ≤100 km FREE · &gt;100 km: $2.00 / km
-            </strong>
+            <strong style={{ color: '#0f766e' }}>≤100 km FREE · &gt;100 km: $2.00 / km</strong>
           </div>
         </div>
       </div>
@@ -230,8 +236,7 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [selectedAddress, setSelectedAddress] = useState<AddressSuggestion | null>(null);
   const [rate, setRate] = useState('2.00');
   const [isPrimary, setIsPrimary] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -247,15 +252,19 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!selectedAddress || selectedAddress.countryCode.toUpperCase() !== country.toUpperCase()) {
+      setError('Find and select the hub address before saving.');
+      return;
+    }
 
     const body: CoordinatorLocationRequest = {
-      country: country.toUpperCase(),
-      code: code.trim() || `HUB-${country.toUpperCase()}`,
-      name: name.trim(),
+      countryCode: country.toUpperCase(),
+      locationCode: code.trim() || `HUB-${country.toUpperCase()}`,
+      locationName: name.trim(),
       locationType: 'HUB',
       address: address.trim() || null,
-      latitude: latitude ? Number(latitude) : null,
-      longitude: longitude ? Number(longitude) : null,
+      latitude: selectedAddress.latitude,
+      longitude: selectedAddress.longitude,
       domesticRatePerKm: Number(rate) || 1.2,
       isPrimaryHub: isPrimary,
       isActive: true,
@@ -284,14 +293,27 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         style={{
           width: '100%',
           maxWidth: 580,
+          maxHeight: '90vh',
+          overflowY: 'auto',
           background: 'white',
           borderRadius: 12,
           padding: 24,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+        >
           <h2 style={{ margin: 0, fontSize: 18 }}>Register Company Hub / Stable</h2>
-          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer' }}
+          >
             ✕
           </button>
         </div>
@@ -300,21 +322,44 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 12 }}>
-            <label style={{ width: 140, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+            <label
+              style={{
+                width: 140,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
               Country Code *
               <input
                 required
                 maxLength={2}
                 placeholder="VN"
                 value={country}
-                onChange={(e) => setCountry(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setCountry(e.target.value.toUpperCase());
+                  setSelectedAddress(null);
+                }}
                 style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
               />
             </label>
-            <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+            <label
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
               Hub Identifier Code
               <input
                 placeholder="HUB-VN-SGN"
+                maxLength={10}
+                pattern="[A-Za-z0-9_-]{1,10}"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
@@ -322,52 +367,48 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
             </label>
           </div>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
             Hub Name *
             <input
               required
               placeholder="e.g. Trụ sở EquiTransit TP.HCM (Củ Chi Quarantine Stable)"
+              maxLength={150}
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
             />
           </label>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-            Physical Address *
-            <input
-              required
-              placeholder="e.g. Ấp Bến Đình, Nhuận Đức, Củ Chi, TP. Hồ Chí Minh"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
-            />
-          </label>
+          <HubAddressPicker
+            key={country}
+            country={country}
+            value={address}
+            selected={selectedAddress}
+            onChange={(next, match) => {
+              setAddress(next);
+              setSelectedAddress(match);
+            }}
+          />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-              Latitude
-              <input
-                type="number"
-                step="any"
-                placeholder="11.0825"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
-              />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-              Longitude
-              <input
-                type="number"
-                step="any"
-                placeholder="106.5186"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
-              />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {' '}
+            <label
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
               Domestic Rate ($/km)
               <input
                 type="number"
@@ -380,20 +421,39 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
             </label>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              cursor: 'pointer',
+              marginTop: 4,
+            }}
+          >
             <input
               type="checkbox"
               checked={isPrimary}
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
-            <strong>Set as Primary National Terminal</strong> (Used for automatic 3-leg distance calculation)
+            <strong>Set as Primary National Terminal</strong> (Used for automatic 3-leg distance
+            calculation)
           </label>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-            <button type="button" className="button secondary" onClick={onClose} disabled={mutation.isPending}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={onClose}
+              disabled={mutation.isPending}
+            >
               Cancel
             </button>
-            <button type="submit" className="button primary" disabled={mutation.isPending}>
+            <button
+              type="submit"
+              className="button primary"
+              disabled={mutation.isPending || !selectedAddress}
+            >
               {mutation.isPending ? 'Registering...' : 'Save Company Hub'}
             </button>
           </div>

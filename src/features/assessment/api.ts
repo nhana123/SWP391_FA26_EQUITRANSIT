@@ -10,6 +10,8 @@ import {
   type AssessmentCommand,
   type AssignCommand,
   type EndAssignmentCommand,
+  depositRequestReceiptSchema,
+  type DepositRequestCommand,
   type CaseRole,
   type ReviewState,
 } from './contracts';
@@ -73,4 +75,9 @@ export const assessmentApi = {
       z.array(caseDecisionSchema),
       { signal },
     ),
+  requestDeposit: (id: number, body: DepositRequestCommand) =>
+    request(`${base}/${id}/request-deposit`, depositRequestReceiptSchema, {
+      method: 'POST',
+      body,
+    }),
 };

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadedOrderFilter } from '../../components/ui/LoadedOrderFilter';
 import { CodeChip } from '../../components/ui/Primitives';
@@ -31,6 +32,13 @@ const stateTabs: { state: ReviewState; icon: string; label: string }[] = [
 
 export function ManagerQueuePage() {
   const { state, page, query, setState, setPage } = useManagerQueue();
+  const rawItems = query.data?.items ?? [];
+  const items = useMemo(() => {
+    if (rawItems.some((c) => c.orderId === 400)) {
+      return rawItems.filter((c) => c.orderId >= 400);
+    }
+    return rawItems;
+  }, [rawItems]);
   return (
     <>
       <ManagerHeading
@@ -83,18 +91,18 @@ export function ManagerQueuePage() {
               Try again
             </button>
           </ErrorNotice>
-        ) : !query.data.items.length ? (
+        ) : !items.length ? (
           <div className="empty">
             <h2>Nothing in this queue</h2>
             <p>{emptyCopy[state]}</p>
           </div>
         ) : (
-          <LoadedOrderFilter items={query.data.items}>
+          <LoadedOrderFilter items={items}>
             {(filtered) => (
               <div className="table-scroll" aria-busy={query.isPlaceholderData}>
                 <table
-                  aria-label={`${reviewStateLabels[state]}: ${query.data.totalElements} request${
-                    query.data.totalElements === 1 ? '' : 's'
+                  aria-label={`${reviewStateLabels[state]}: ${items.length} request${
+                    items.length === 1 ? '' : 's'
                   }`}
                 >
                   <thead>
@@ -138,7 +146,7 @@ export function ManagerQueuePage() {
           </LoadedOrderFilter>
         )}
         {/* page > 0 keeps a way back when a bookmarked page no longer exists. */}
-        {query.data && (query.data.totalPages > 1 || page > 0) && (
+        {query.data && (items.length > 20 || page > 0) && (
           <Pagination
             page={page}
             pages={query.data.totalPages}

@@ -214,6 +214,22 @@ export const draftSchema = z.object({
   healthDeclaration: healthDeclarationSchema.nullable().optional(),
 });
 export type OrderDraft = z.infer<typeof draftSchema>;
+export const depositRequestedSchema = z
+  .object({
+    totalAmount: z.number(),
+    depositAmount: z.number(),
+    note: z.string().nullable().optional(),
+    requestedAt: z.string().optional(),
+    isPaid: z.boolean().optional(),
+    currency: z.string().optional(),
+    quoteId: idSchema.nullable().optional(),
+    paymentRequestId: idSchema.nullable().optional(),
+    paymentAvailable: z.boolean().optional(),
+  })
+  .nullable()
+  .optional();
+export type DepositRequested = z.infer<typeof depositRequestedSchema>;
+
 export const orderSchema = z.object({
   orderId: idSchema,
   orderNumber: z.string(),
@@ -225,6 +241,7 @@ export const orderSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   draft: draftSchema,
+  depositRequested: depositRequestedSchema,
 });
 export type Order = z.infer<typeof orderSchema>;
 export const horsePageSchema = z.object({

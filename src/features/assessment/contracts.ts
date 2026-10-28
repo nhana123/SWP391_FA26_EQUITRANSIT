@@ -136,6 +136,14 @@ export const snapshotSchema = z.object({
       providerName: text,
     }),
   ),
+  routeMatch: z
+    .object({
+      totalEstimatedCost: z.number().nullable().optional(),
+      estimatedRoadKm: z.number().nullable().optional(),
+      currency: text,
+    })
+    .nullable()
+    .optional(),
 });
 export type OrderSnapshot = z.infer<typeof snapshotSchema>;
 
@@ -197,4 +205,32 @@ export type EndAssignmentCommand = {
   recordVersion: string;
   operationId: string;
   reason: string;
+};
+
+export const depositRequestedSchema = z.object({
+  totalAmount: z.number(),
+  depositAmount: z.number(),
+  note: z.string().nullable().optional(),
+  requestedAt: z.string().optional(),
+  isPaid: z.boolean().optional(),
+  currency: z.string().optional(),
+  quoteId: idSchema.nullable().optional(),
+  paymentRequestId: idSchema.nullable().optional(),
+  paymentAvailable: z.boolean().optional(),
+});
+export type DepositRequested = z.infer<typeof depositRequestedSchema>;
+
+export const depositRequestReceiptSchema = z.object({
+  orderId: idSchema,
+  recordVersion: versionSchema,
+  depositRequested: depositRequestedSchema.nullable().optional(),
+});
+export type DepositRequestReceipt = z.infer<typeof depositRequestReceiptSchema>;
+
+export type DepositRequestCommand = {
+  totalAmount: number;
+  depositAmount: number;
+  currency?: string;
+  note?: string | null;
+  recordVersion: string;
 };

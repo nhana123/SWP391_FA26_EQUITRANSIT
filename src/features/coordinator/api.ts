@@ -64,11 +64,15 @@ export const coordinatorLocationSchema = z.object({
 export type CoordinatorLocation = z.infer<typeof coordinatorLocationSchema>;
 
 export const coordinatorLocationRequestSchema = z.object({
-  country: z.string().length(2, 'Country code must be 2 characters'),
-  code: z.string().max(32).optional().nullable(),
-  name: z.string().min(1, 'Name is required').max(128),
+  countryCode: z.string().length(2, 'Country code must be 2 characters'),
+  locationCode: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,10}$/)
+    .optional()
+    .nullable(),
+  locationName: z.string().min(1, 'Name is required').max(150),
   locationType: z.enum(['HUB', 'CITY', 'AIRPORT']),
-  address: z.string().max(256).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
   isPrimaryHub: z.boolean().optional().nullable(),
@@ -77,6 +81,20 @@ export const coordinatorLocationRequestSchema = z.object({
 });
 export type CoordinatorLocationRequest = z.infer<typeof coordinatorLocationRequestSchema>;
 
+function locationPayload(body: CoordinatorLocationRequest) {
+  const data = coordinatorLocationRequestSchema.parse(body);
+  const coordinate = (value: number | null | undefined) =>
+    value == null ? value : Number(value.toFixed(7));
+  return {
+    ...data,
+    latitude: coordinate(data.latitude),
+    longitude: coordinate(data.longitude),
+    domesticRatePerKm:
+      data.domesticRatePerKm == null
+        ? data.domesticRatePerKm
+        : Number(data.domesticRatePerKm.toFixed(2)),
+  };
+}
 export const coordinatorApi = {
   listRouteTemplates: (includeInactive = true, signal?: AbortSignal) =>
     request(
@@ -114,12 +132,12 @@ export const coordinatorApi = {
   createLocation: (body: CoordinatorLocationRequest) =>
     request('/api/manager/locations', coordinatorLocationSchema, {
       method: 'POST',
-      body,
+      body: locationPayload(body),
     }),
   updateLocation: (id: number, body: CoordinatorLocationRequest) =>
     request(`/api/manager/locations/${id}`, coordinatorLocationSchema, {
       method: 'PUT',
-      body,
+      body: locationPayload(body),
     }),
   deleteLocation: (id: number) =>
     request(`/api/manager/locations/${id}`, z.unknown(), {

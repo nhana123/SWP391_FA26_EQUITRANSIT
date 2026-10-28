@@ -17,6 +17,7 @@ export function useServiceRates(orderId: number) {
   return useQuery({
     queryKey: [...queryKeys.services(session.generation, orderId), 'rates'],
     queryFn: ({ signal }) => ratesApi.get(orderId, signal),
+    enabled: orderId > 0,
     retry: false,
   });
 }

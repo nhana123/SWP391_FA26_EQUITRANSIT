@@ -24,10 +24,10 @@ export const authApi = {
       body: { email },
       public: true,
     }),
-  verify: (token: string) =>
+  verify: (token: string, email?: string) =>
     request('/api/auth/verify-email', messageSchema, {
       method: 'POST',
-      body: { token },
+      body: { token, ...(email ? { email } : {}) },
       public: true,
     }),
   reset: (body: { token: string; password: string; confirmPassword: string }) =>
