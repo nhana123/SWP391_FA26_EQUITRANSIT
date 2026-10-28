@@ -2,7 +2,7 @@ import { DateTimeInput } from "../../shared/ui/DateTimeInput";
 import { PhoneInput } from "../../shared/ui/PhoneInput";
 import { Icon } from '../../components/ui/Icons';
 import { EmptyState } from '../../components/ui/Primitives';
-import { useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { serviceSections } from '../booking-services/catalog';
@@ -19,11 +19,13 @@ import { ordersApi, type SubmitCommand } from './api';
 import { useServiceRates } from '../booking-services/rates';
 import type { ServiceProduct, ServiceRate } from '../service-pricing/contracts';
 import './review.css';
+import { WORLD_COUNTRIES } from '../../shared/lib/countries';
 import {
   CATALOG_COUNTRIES,
   CATALOG_LOCATIONS,
   COUNTRY_TIMEZONES,
   routesApi,
+  type RouteCountry,
 } from './route-api';
 import {
   AddressGeocodingField,
@@ -588,7 +590,27 @@ function StepOneRouteAndMode({
     initialData: CATALOG_COUNTRIES,
     staleTime: 300_000,
   });
-  const countries = countriesQuery.data || CATALOG_COUNTRIES;
+  const countries: RouteCountry[] = useMemo(() => {
+    const list = countriesQuery.data || CATALOG_COUNTRIES;
+    const map = new Map<string, RouteCountry>();
+    for (const wc of WORLD_COUNTRIES) {
+      map.set(wc.code, {
+        countryCode: wc.code,
+        countryName: wc.name,
+        supportsRoad: ['VN', 'LA', 'CN', 'TH', 'KH', 'MM', 'MY'].includes(wc.code),
+        supportsAir: true,
+      });
+    }
+    for (const c of list) {
+      map.set(c.countryCode, {
+        countryCode: c.countryCode,
+        countryName: c.countryName,
+        supportsRoad: c.supportsRoad,
+        supportsAir: c.supportsAir,
+      });
+    }
+    return Array.from(map.values());
+  }, [countriesQuery.data]);
 
   const originCode = form.originCountryCode.trim().toUpperCase();
   const destCode = form.destinationCountryCode.trim().toUpperCase();
@@ -1442,6 +1464,46 @@ function StepOneRouteAndMode({
                   </span>
                 </div>
 
+                <div>
+                  <label
+                    htmlFor="origin-hub-select"
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#475569",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Chọn trụ sở EquiTransit tập kết:
+                  </label>
+                  <select
+                    id="origin-hub-select"
+                    aria-label="Pickup hub"
+                    value={activeOriginHubId ?? ""}
+                    onChange={(e) => change("originHubId", e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#f8fafc",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "#0f172a",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <option value="">-- Chọn trụ sở tập kết EquiTransit --</option>
+                    {originHubOptions.map((hub) => (
+                      <option key={hub.locationId} value={hub.locationId}>
+                        {hub.locationName}
+                        {hub.isRecommendedNearest ? ' ★ (Gần nhất theo địa chỉ)' : hub.isPrimaryHub ? ' (Trụ sở chính)' : ''}
+                        {hub.distanceKm != null ? ` - cách ~${hub.distanceKm} km` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {originHubOptions.map((hub) => {
                     const isSelected = hub.locationId === activeOriginHubId;
@@ -1798,6 +1860,46 @@ function StepOneRouteAndMode({
                   </span>
                 </div>
 
+                <div>
+                  <label
+                    htmlFor="dest-hub-select"
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#475569",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Chọn trụ sở EquiTransit tiếp nhận:
+                  </label>
+                  <select
+                    id="dest-hub-select"
+                    aria-label="Delivery hub"
+                    value={activeDestHubId ?? ""}
+                    onChange={(e) => change("destinationHubId", e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#f8fafc",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "#0f172a",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <option value="">-- Chọn trụ sở bàn giao EquiTransit --</option>
+                    {destHubOptions.map((hub) => (
+                      <option key={hub.locationId} value={hub.locationId}>
+                        {hub.locationName}
+                        {hub.isRecommendedNearest ? ' ★ (Gần nhất theo địa chỉ)' : hub.isPrimaryHub ? ' (Trụ sở chính)' : ''}
+                        {hub.distanceKm != null ? ` - cách ~${hub.distanceKm} km` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {destHubOptions.map((hub) => {
                     const isSelected = hub.locationId === activeDestHubId;

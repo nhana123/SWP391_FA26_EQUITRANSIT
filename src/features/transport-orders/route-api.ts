@@ -14,6 +14,8 @@ import {
   type RouteMatchResponse,
 } from '../../shared/api/contracts';
 
+export type { RouteCountry };
+
 /** Default country catalog matching supported countries with an active EquiTransit Hub */
 export const CATALOG_COUNTRIES: RouteCountry[] = [
   { countryCode: 'VN', countryName: 'Việt Nam', supportsRoad: true, supportsAir: true },

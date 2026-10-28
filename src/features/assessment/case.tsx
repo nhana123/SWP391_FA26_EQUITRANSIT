@@ -1,4 +1,5 @@
 import { OrderLifecycle } from '../../components/ui/OrderLifecycle';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/Primitives';
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -7,16 +8,23 @@ import { useSession } from '../../shared/api/session';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
 import { HISTORY_PAGE_SIZE } from './api';
-import type { AssessmentReceipt, CaseDecision, DepositRequested, ManagerCase, OrderSnapshot } from './contracts';
-import { AssignmentHistory } from './assignments';
+import type { AssessmentReceipt, CaseDecision, ManagerCase, OrderSnapshot } from './contracts';
+import { AssignmentHistory, TeamManager } from './assignments';
+import { DecisionForm } from './decision';
 import { assessmentKeys, useDecisionHistory, useManagerCase } from './hooks';
 import { ManagerHeading } from './layout';
 import { reviewStateLabels } from './pages';
+import { caseRoleLabels } from './staff';
+import { QuotationLink } from '../quotations/navigation';
+import { PaymentLink } from '../payments/pages';
+import { PrepareQuotationLink } from '../quotations/prepare-link';
+import { PlansLink } from '../plans/link';
+import { DepartureLink } from '../departure/DeparturePage';
+import { ExecutionLink } from '../execution/ExecutionPage';
 import { OrderTimeline } from '../activity-operations/OrderTimeline';
-import { AssignTeamModal } from './AssignTeamModal';
-import { QuotationDepositTable } from './QuotationDepositTable';
-import { JourneyHorseModal } from './JourneyHorseModal';
-import { ManagerCommentCard } from './ManagerCommentCard';
+import { SettlementPreviewLink } from '../settlement/navigation';
+import { GatesSummary } from '../workflow/GatesSummary';
+import { CloseOrderCard } from '../handover/CloseOrder';
 import './assessment.css';
 
 const outcomeLabels: Record<CaseDecision['decision'], string> = {
@@ -48,133 +56,107 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
     <>
       <section className="card manager-info-card">
         <h2>
-          <span>📍</span> Thông tin chuyến đi (Journey)
+          <span>📍</span> Journey (as submitted)
         </h2>
         <Details
           rows={[
-            ['Tuyến đường', `${show(r.originCountryCode)} → ${show(r.destinationCountryCode)}`],
-            ['Điểm đón', show(r.originAddress)],
-            ['Điểm giao', show(r.destinationAddress)],
+            ['Route', `${show(r.originCountryCode)} → ${show(r.destinationCountryCode)}`],
+            ['Pickup address', show(r.originAddress)],
+            ['Delivery address', show(r.destinationAddress)],
             [
-              'Ngày khởi hành dự kiến',
+              'Preferred departure',
               displayDate(r.preferredDepartureAt ?? null, r.originTimezone || undefined),
             ],
             [
-              'Hạn giao hàng',
+              'Delivery deadline',
               displayDate(r.deliveryDeadline ?? null, r.destinationTimezone || undefined),
             ],
-            ['Linh hoạt ngày', show(r.dateFlexibilityNotes)],
-            ['Loại hình nhập cảnh', show(r.importType)],
-            ['Sân bay quá cảnh', r.transitAirports?.length ? r.transitAirports.join(', ') : 'Không có'],
-            ['Người nhận', show(r.receiverName)],
-            ['SĐT người nhận', show(r.receiverPhone)],
-            ['Thẩm quyền nhận', show(r.receiverAuthority)],
-            ['Sự kiện đích', show(r.eventName)],
-            ['Thời gian sự kiện', displayDate(r.eventStartAt ?? null, r.eventTimezone || undefined)],
-            ['Yêu cầu đặc biệt', show(r.specialNeeds)],
+            ['Date flexibility', show(r.dateFlexibilityNotes)],
+            ['Import type', show(r.importType)],
+            ['Transit airports', r.transitAirports?.length ? r.transitAirports.join(', ') : 'None'],
+            ['Receiver', show(r.receiverName)],
+            ['Receiver authority', show(r.receiverAuthority)],
+            ['Event', show(r.eventName)],
+            ['Event start', displayDate(r.eventStartAt ?? null, r.eventTimezone || undefined)],
+            ['Special needs', show(r.specialNeeds)],
           ]}
         />
       </section>
-
       <section className="card manager-info-card">
         <h2>
-          <span>🐎</span> Thông tin ngựa (Horse profile)
+          <span>🐎</span> Horse (captured at submission)
         </h2>
         {h ? (
           <Details
             rows={[
-              ['Tên ngựa', h.name],
-              ['Mã chip (Microchip)', show(h.microchipId)],
-              ['Hộ chiếu (Passport)', show(h.passportNumber)],
-              ['Giới tính', show(h.sexCode)],
-              ['Cân nặng (kg)', show(h.weightKg)],
-              ['Chiều cao (cm)', show(h.heightCm)],
-              ['Bề rộng thân (cm)', show(h.bodyWidthCm)],
-              ['Thời điểm đo', displayDate(h.measuredAt ?? null)],
-              ['Ghi chú chăm sóc', show(h.handlingNotes)],
-              ['Chế độ ăn & nước', show(h.feedWaterRequirements)],
-              ['Chỉ dẫn thú y', show(h.veterinaryInstructions)],
+              ['Name', h.name],
+              ['Microchip', show(h.microchipId)],
+              ['Passport', show(h.passportNumber)],
+              ['Sex', show(h.sexCode)],
+              ['Weight (kg)', show(h.weightKg)],
+              ['Height (cm)', show(h.heightCm)],
+              ['Body width (cm)', show(h.bodyWidthCm)],
+              ['Measured at', displayDate(h.measuredAt ?? null)],
+              ['Handling', show(h.handlingNotes)],
+              ['Feed and water', show(h.feedWaterRequirements)],
+              ['Veterinary instructions', show(h.veterinaryInstructions)],
             ]}
           />
         ) : (
-          <EmptyState title="Không có thông tin ngựa trong hồ sơ này." />
+          <EmptyState title="No horse was captured in this revision." />
         )}
       </section>
-
-
+      <section className="card manager-info-card">
+        <h2>
+          <span>🛡️</span> Requested services
+        </h2>
+        <p className="muted">Requested intent only, not confirmed eligibility or price.</p>
+        {snapshot.services.length ? (
+          <div className="table-scroll">
+            <table aria-label="Requested services">
+              <thead>
+                <tr>
+                  <th scope="col">Service</th>
+                  <th scope="col">Option</th>
+                  <th scope="col">Arranged by</th>
+                  <th scope="col">Provider</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.services.map((s, i) => (
+                  <tr key={`${s.serviceCode}-${i}`}>
+                    <td>{s.serviceCode}</td>
+                    <td>{show(s.optionCode)}</td>
+                    <td>{show(s.arrangedBy)}</td>
+                    <td>{show(s.providerName)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>No service preferences were submitted.</p>
+        )}
+      </section>
     </>
   );
 }
 
-function TeamCard({
-  current,
-  onOpenModal,
-}: {
-  current: ManagerCase;
-  onOpenModal: () => void;
-}) {
-  const activeCoord = current.assignments.find((a) => a.role === 'COORDINATOR' && !a.endedAt);
-  const activeSpec = current.assignments.find((a) => a.role === 'SPECIALIST' && !a.endedAt);
-  const isSubmitted = current.orderStatus === 'SUBMITTED';
-
+function TeamView({ current }: { current: ManagerCase }) {
+  const active = current.assignments.filter((a) => a.endedAt === null);
+  if (!active.length) return null;
   return (
     <section className="card manager-info-card">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 17, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>👥</span> Nhân sự phụ trách (Case Team)
-        </h2>
-        <button
-          type="button"
-          onClick={onOpenModal}
-          style={{
-            padding: '8px 16px',
-            borderRadius: 8,
-            border: 'none',
-            backgroundColor: isSubmitted ? '#059669' : '#2563eb',
-            color: '#ffffff',
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          {isSubmitted ? '✅ Duyệt & Phân công' : '👥 Đổi nhân sự'}
-        </button>
-      </div>
-
+      <h2>Case team</h2>
       <Details
-        rows={[
-          [
-            'Điều phối viên (Coordinator)',
-            activeCoord ? (
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                Staff ID #{activeCoord.staffId}
-                {activeCoord.dueAt && <> · Hạn {displayDate(activeCoord.dueAt)}</>}
-                {activeCoord.assignmentNote && (
-                  <span className="muted"> · {activeCoord.assignmentNote}</span>
-                )}
-              </span>
-            ) : (
-              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Chưa phân công</span>
-            ),
-          ],
-          [
-            'Chuyên viên thú y (Specialist)',
-            activeSpec ? (
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                Staff ID #{activeSpec.staffId}
-                {activeSpec.dueAt && <> · Hạn {displayDate(activeSpec.dueAt)}</>}
-                {activeSpec.assignmentNote && (
-                  <span className="muted"> · {activeSpec.assignmentNote}</span>
-                )}
-              </span>
-            ) : (
-              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Chưa phân công</span>
-            ),
-          ],
-        ]}
+        rows={active.map((a) => [
+          caseRoleLabels[a.role],
+          <>
+            Staff ID {a.staffId}
+            {a.dueAt && <> · due {displayDate(a.dueAt)}</>}
+            {a.assignmentNote && <span className="muted"> · {a.assignmentNote}</span>}
+          </>,
+        ])}
       />
     </section>
   );
@@ -185,22 +167,22 @@ function DecisionHistory({ id }: { id: number }) {
   const query = useDecisionHistory(id, page);
   return (
     <section className="card manager-info-card">
-      <h3>Lịch sử quyết định (Decision history)</h3>
+      <h2>Decision history</h2>
       {query.isPending ? (
         <Loading />
       ) : query.error ? (
         <ErrorNotice error={query.error} />
       ) : !query.data.length ? (
-        <p>Chưa có quyết định nào được ghi nhận.</p>
+        <p>No decisions recorded yet.</p>
       ) : (
         <div className="table-scroll" aria-busy={query.isPlaceholderData}>
           <table aria-label="Decision history, newest first">
             <thead>
               <tr>
-                <th scope="col">Thời gian</th>
-                <th scope="col">Phiên bản ID</th>
-                <th scope="col">Quyết định</th>
-                <th scope="col">Lý do</th>
+                <th scope="col">Decided</th>
+                <th scope="col">Revision ID</th>
+                <th scope="col">Outcome</th>
+                <th scope="col">Reason</th>
               </tr>
             </thead>
             <tbody>
@@ -216,18 +198,19 @@ function DecisionHistory({ id }: { id: number }) {
           </table>
         </div>
       )}
+      {/* History is a bounded array without a total: only offer Next on a full page. */}
       {query.data && (page > 0 || query.data.length === HISTORY_PAGE_SIZE) && (
         <nav className="pagination" aria-label="Decision history pages">
           <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Trang trước
+            Newer
           </button>
-          <span>Trang {page + 1}</span>
+          <span>Page {page + 1}</span>
           <button
             type="button"
             disabled={query.data.length < HISTORY_PAGE_SIZE || query.isFetching}
             onClick={() => setPage(page + 1)}
           >
-            Trang sau
+            Older
           </button>
         </nav>
       )}
@@ -239,249 +222,150 @@ export function ManagerCasePage() {
   const id = Number(useParams().id);
   const session = useSession()!;
   const query = useManagerCase(id);
-
-  const [, setReceipt] = useState<AssessmentReceipt | null>(null);
-  const [activeDeposit, setActiveDeposit] = useState<DepositRequested | null>(null);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [isJourneyModalOpen, setIsJourneyModalOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-
+  const [receipt, setReceipt] = useState<AssessmentReceipt | null>(null);
+  const [teamChanged, setTeamChanged] = useState(false);
   const valid = Number.isSafeInteger(id) && id > 0;
 
+  // Receipts are history; re-read current case, queue, workload and history.
   const refreshAll = () =>
     queryClient.invalidateQueries({ queryKey: assessmentKeys.all(session.generation) });
-
-  async function handleAssignDone(next: AssessmentReceipt) {
+  async function refreshAfterDecision(next: AssessmentReceipt) {
     setReceipt(next);
-    setNotice(
-      next.decision?.decision === 'APPROVED'
-        ? 'Đã duyệt đơn và phân công nhân sự thành công!'
-        : 'Đã cập nhật phân công nhân sự thành công!',
-    );
+    setTeamChanged(false);
     await refreshAll();
   }
-
-  async function handleCommentDone(next: AssessmentReceipt) {
-    setReceipt(next);
+  async function refreshAfterTeamChange() {
+    setReceipt(null);
+    setTeamChanged(true);
     await refreshAll();
   }
-
-  function handleDepositRequested(_newVersion: string, data: DepositRequested) {
-    setActiveDeposit(data);
-    setNotice('Đã gửi yêu cầu đặt cọc sang cho khách hàng thành công!');
-    void refreshAll();
-  }
-
   function reload() {
     void queryClient.invalidateQueries({ queryKey: assessmentKeys.case(session.generation, id) });
   }
 
-  if (!valid) return <Notice>Đơn hàng này không khả dụng.</Notice>;
+  if (!valid) return <Notice>This request is unavailable.</Notice>;
   if (query.isPending) return <Loading />;
   if (query.error)
     return (
       <ErrorNotice error={query.error}>
-        <div style={{ marginTop: 12 }}>
-          <Link to="/manager/requests" className="btn-back-nav">
-            <span aria-hidden="true">←</span>
-            <span>Quay lại danh sách yêu cầu</span>
-          </Link>
-        </div>
+        <Link to="/manager/requests">Back to requests</Link>
       </ErrorNotice>
     );
-
   const current = query.data;
   const revision = current.revision;
-
+  const decidable =
+    current.orderStatus === 'SUBMITTED' &&
+    revision !== null &&
+    revision.revisionId === current.currentRevisionId;
   return (
     <>
       <ManagerHeading
         title={`Request ${current.orderNumber}`}
         description={
           revision
-            ? `Yêu cầu vận chuyển nộp lúc ${displayDate(revision.submittedAt)} (Lần nộp #${revision.revisionNo})`
-            : 'Chưa có thông tin nộp đơn'
+            ? `Revision ${revision.revisionNo} submitted ${displayDate(revision.submittedAt)}`
+            : 'No submitted revision'
         }
       >
-        <Link to="/manager/requests" className="btn-back-nav">
-          <span aria-hidden="true">←</span>
-          <span>Quay lại danh sách yêu cầu</span>
-        </Link>
+        <Link to="/manager/requests">Back to requests</Link>
       </ManagerHeading>
 
-      {/* Hero Stepper: Clean Order Lifecycle - Bắt đầu trực tiếp từ Submitted cho Manager */}
-      <OrderLifecycle status={current.orderStatus} forRole="MANAGER" />
+      {/* Hero Stepper & Summary Banner */}
+      <OrderLifecycle status={current.orderStatus} />
 
-      {notice && (
+      {receipt && (
         <Notice>
-          {notice}
+          Decision recorded: {receipt.decision ? outcomeLabels[receipt.decision.decision] : '—'}.
+          {receipt.decision?.decision === 'APPROVED' &&
+            ' Preparation has started; this is not payment, clearance or departure approval.'}
         </Notice>
       )}
+      {teamChanged && <Notice>Case team updated. The current team is shown below.</Notice>}
 
-      {/* TÓM TẮT NHANH HÀNH TRÌNH & NGỰA + NÚT MỞ CHI TIẾT */}
-      {revision && (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 14,
-            padding: '14px 20px',
-            marginTop: 18,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-            <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Lộ trình
-              </span>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span>📍 {show(revision.snapshot.request.originCountryCode)}</span>
-                <span style={{ color: '#94a3b8' }}>➔</span>
-                <span>🏁 {show(revision.snapshot.request.destinationCountryCode)}</span>
-              </div>
-            </div>
-
-            <div style={{ width: 1, height: 28, backgroundColor: '#e2e8f0' }} />
-
-            <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Ngựa vận chuyển
-              </span>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span>🐎 {revision.snapshot.horse ? revision.snapshot.horse.name : 'Chưa có hồ sơ ngựa'}</span>
-                {revision.snapshot.horse?.weightKg && (
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b' }}>({revision.snapshot.horse.weightKg} kg)</span>
-                )}
-              </div>
-            </div>
-
-            <div style={{ width: 1, height: 28, backgroundColor: '#e2e8f0' }} />
-
-            <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Khởi hành dự kiến
-              </span>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#334155', marginTop: 2 }}>
-                📅 {displayDate(revision.snapshot.request.preferredDepartureAt ?? null, revision.snapshot.request.originTimezone || undefined)}
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsJourneyModalOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              backgroundColor: '#1e3a8a',
-              color: '#ffffff',
-              border: '1.5px solid #1e3a8a',
-              borderRadius: 10,
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(30, 58, 138, 0.25)',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#1d4ed8';
-              e.currentTarget.style.borderColor = '#1d4ed8';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#1e3a8a';
-              e.currentTarget.style.borderColor = '#1e3a8a';
-            }}
-          >
-            <span>👁️</span> Xem chi tiết hành trình & ngựa
-          </button>
+      {/* DECISION FORM PLACED PROMINENTLY AT TOP IF DECIDABLE */}
+      {decidable && (
+        <div className="manager-decision-hero-card">
+          <DecisionForm
+            key={revision.revisionId}
+            current={current}
+            revisionId={revision.revisionId}
+            onDecided={refreshAfterDecision}
+            onReload={reload}
+          />
         </div>
       )}
 
-      {/* KHÔNG GIAN LÀM VIỆC CHÍNH - BẢNG BÁO GIÁ LÀ TRỌNG TÂM HERO */}
-      {revision ? (
-        <div style={{ marginTop: 20 }}>
-          {/* HERO FOCUS: BẢNG BÁO GIÁ ĐƠN HÀNG CHI TIẾT & NÚT YÊU CẦU ĐẶT CỌC */}
-          <QuotationDepositTable
-            orderId={current.orderId}
-            orderStatus={current.orderStatus}
-            recordVersion={current.recordVersion}
-            snapshot={revision.snapshot}
-            depositRequested={activeDeposit}
-            onDepositRequested={handleDepositRequested}
-          />
+      {/* Functional Context Actions Cluster */}
+      <div className="manager-actions-cluster actions">
+        <QuotationLink orderId={current.orderId} />
+        <SettlementPreviewLink orderId={current.orderId} />
+        <PaymentLink orderId={current.orderId} />
+        {current.orderStatus === 'APPROVED' && <PrepareQuotationLink orderId={current.orderId} />}
+        <PlansLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <DepartureLink orderId={current.orderId} orderStatus={current.orderStatus} />
+        <ExecutionLink orderId={current.orderId} orderStatus={current.orderStatus} />
+      </div>
 
-          {/* SECTION: PHÂN CÔNG NHÂN SỰ & (NẾU CẦN) GHI CHÚ/YÊU CẦU SỬA ĐƠN */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: ['SUBMITTED', 'CHANGES_REQUESTED', 'REJECTED'].includes(current.orderStatus)
-                ? 'repeat(auto-fit, minmax(360px, 1fr))'
-                : '1fr',
-              gap: 20,
-              marginTop: 20,
-            }}
-          >
-            {/* NHÂN SỰ PHỤ TRÁCH & NÚT PHÂN CÔNG / ĐỔI NHÂN SỰ */}
-            <TeamCard
-              current={current}
-              onOpenModal={() => setIsAssignModalOpen(true)}
+      <CloseOrderCard
+        orderId={current.orderId}
+        orderStatus={current.orderStatus}
+        recordVersion={current.recordVersion}
+      />
+
+      {/* TWO-COLUMN MODERN DASHBOARD GRID */}
+      <div className="manager-case-grid">
+        {/* LEFT COLUMN: PRIMARY PROFILE & SNAPSHOT */}
+        <div className="manager-grid-col-primary">
+          {revision ? (
+            <SnapshotView snapshot={revision.snapshot} />
+          ) : (
+            <Notice>No submitted revision is available for this request.</Notice>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: ADMINISTRATIVE STATUS, TEAM & HISTORY */}
+        <div className="manager-grid-col-secondary">
+          <section className="card manager-info-card">
+            <h2>
+              <span>📋</span> Request Metadata
+            </h2>
+            <Details
+              rows={[
+                [
+                  'Status',
+                  <StatusBadge status={current.orderStatus}>{current.orderStatus}</StatusBadge>,
+                ],
+                [
+                  'Current decision',
+                  current.decision ? outcomeLabels[current.decision.decision] : 'Not decided',
+                ],
+                ['Revision change reason', show(revision?.changeReason)],
+              ]}
             />
+          </section>
 
-            {/* GHI CHÚ & YÊU CẦU KHÁCH SỬA ĐƠN (CHỈ HIỆN KHI Ở BƯỚC 1 HOẶC ĐƠN BỊ TỪ CHỐI/SỬA) */}
-            <ManagerCommentCard
-              current={current}
-              onCommented={handleCommentDone}
-            />
-          </div>
+          {['APPROVED', 'IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'].includes(
+            current.orderStatus,
+          ) && <GatesSummary orderId={current.orderId} />}
 
-          {/* COLLAPSIBLE AUDIT LOGS - CHỈ HIỂN THỊ KHI CẦN TRA CỨU */}
-          <details
-            className="card manager-info-card"
-            style={{
-              cursor: 'pointer',
-              backgroundColor: '#f8fafc',
-              marginTop: 20,
-            }}
-          >
-            <summary style={{ fontWeight: 700, fontSize: 14, color: '#475569' }}>
-              📜 Xem lịch sử nhật ký & kiểm toán (Audit Logs)
+          {current.orderStatus === 'APPROVED' ? (
+            <TeamManager current={current} onChanged={refreshAfterTeamChange} onReload={reload} />
+          ) : (
+            <TeamView current={current} />
+          )}
+
+          <details className="card manager-info-card" open={!decidable}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+              📜 Timeline & Decision Logs
             </summary>
-            <div style={{ marginTop: 14, cursor: 'default' }}>
+            <div style={{ marginTop: 14 }}>
               <OrderTimeline orderId={current.orderId} />
               <DecisionHistory id={current.orderId} />
               <AssignmentHistory id={current.orderId} />
             </div>
           </details>
         </div>
-      ) : (
-        <Notice>Không có hồ sơ nộp nào cho yêu cầu này.</Notice>
-      )}
-
-      {/* POPUP MODAL CHO HÀNH TRÌNH VÀ HỒ SƠ NGỰA */}
-      {revision && (
-        <JourneyHorseModal
-          isOpen={isJourneyModalOpen}
-          onClose={() => setIsJourneyModalOpen(false)}
-          snapshot={revision.snapshot}
-        />
-      )}
-
-      {/* POPUP MODAL CHO PHÂN CÔNG NHÂN SỰ */}
-      <AssignTeamModal
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        current={current}
-        onAssigned={handleAssignDone}
-        onReload={reload}
-      />
+      </div>
     </>
   );
 }

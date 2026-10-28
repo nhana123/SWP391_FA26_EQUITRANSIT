@@ -7,6 +7,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { flag } from '../../shared/api/lookups';
 import { ErrorNotice, Loading, Notice } from '../../shared/ui/common';
 import { coordinatorApi, type CoordinatorLocation, type CoordinatorLocationRequest } from './api';
+import { WORLD_COUNTRIES } from '../../shared/lib/countries';
+import { routesApi } from '../transport-orders/route-api';
 
 export function CoordinatorHubsPage() {
   const queryClient = useQueryClient();
@@ -233,6 +235,7 @@ function HubCard({ hub, onDeactivated }: { hub: CoordinatorLocation; onDeactivat
 
 function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [country, setCountry] = useState('VN');
+  const [selectedCity, setSelectedCity] = useState('');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -240,6 +243,25 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const [rate, setRate] = useState('2.00');
   const [isPrimary, setIsPrimary] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const citiesQuery = useQuery({
+    queryKey: ['hub-cities', country],
+    queryFn: async ({ signal }) => {
+      try {
+        const list = await routesApi.locations(country, 'CITY', signal);
+        if (list && list.length > 0) {
+          return list.map((l) => l.locationName);
+        }
+      } catch {
+        // fallback
+      }
+      return [];
+    },
+    enabled: Boolean(country && country.length === 2),
+    staleTime: 300_000,
+  });
+
+  const cityOptions = citiesQuery.data || [];
 
   const mutation = useMutation({
     mutationFn: (body: CoordinatorLocationRequest) => coordinatorApi.createLocation(body),
@@ -292,7 +314,7 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         className="card"
         style={{
           width: '100%',
-          maxWidth: 580,
+          maxWidth: 620,
           maxHeight: '90vh',
           overflowY: 'auto',
           background: 'white',
@@ -321,10 +343,11 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         {error && <Notice>{error}</Notice>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <label
               style={{
-                width: 140,
+                flex: 1,
+                minWidth: 200,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
@@ -333,21 +356,76 @@ function CreateHubModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
               }}
             >
               Country Code *
-              <input
+              <select
                 required
-                maxLength={2}
-                placeholder="VN"
+                aria-label="Country Code"
                 value={country}
                 onChange={(e) => {
                   setCountry(e.target.value.toUpperCase());
+                  setSelectedCity('');
                   setSelectedAddress(null);
                 }}
-                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)' }}
-              />
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)', backgroundColor: '#ffffff' }}
+              >
+                {WORLD_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
             </label>
+
             <label
               style={{
                 flex: 1,
+                minWidth: 200,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              Thành phố (City)
+              <select
+                aria-label="City"
+                value={selectedCity}
+                disabled={citiesQuery.isPending}
+                onChange={async (e) => {
+                  const c = e.target.value;
+                  setSelectedCity(c);
+                  if (c) {
+                    setAddress(c);
+                    try {
+                      const res = await routesApi.searchAddress(c, country, 1);
+                      if (res.length > 0) {
+                        setSelectedAddress(res[0]);
+                      }
+                    } catch {
+                      // fallback
+                    }
+                  }
+                }}
+                style={{ padding: 8, borderRadius: 6, border: '1px solid var(--line)', backgroundColor: '#ffffff' }}
+              >
+                <option value="">
+                  {citiesQuery.isPending
+                    ? 'Đang tải thành phố từ bản đồ...'
+                    : cityOptions.length > 0
+                      ? `-- Chọn thành phố (${cityOptions.length} thành phố) --`
+                      : '-- Nhập địa chỉ thủ công bên dưới --'}
+                </option>
+                {cityOptions.map((cityName) => (
+                  <option key={cityName} value={cityName}>
+                    {cityName}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label
+              style={{
+                width: 140,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
