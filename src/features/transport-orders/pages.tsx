@@ -2,7 +2,7 @@ import { DateTimeInput } from "../../shared/ui/DateTimeInput";
 import { PhoneInput } from "../../shared/ui/PhoneInput";
 import { Icon } from '../../components/ui/Icons';
 import { EmptyState } from '../../components/ui/Primitives';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { serviceSections } from '../booking-services/catalog';
@@ -19,7 +19,6 @@ import { ordersApi, type SubmitCommand } from './api';
 import { useServiceRates } from '../booking-services/rates';
 import type { ServiceProduct, ServiceRate } from '../service-pricing/contracts';
 import './review.css';
-import { WORLD_COUNTRIES } from '../../shared/lib/countries';
 import {
   CATALOG_COUNTRIES,
   CATALOG_LOCATIONS,
@@ -590,27 +589,8 @@ function StepOneRouteAndMode({
     initialData: CATALOG_COUNTRIES,
     staleTime: 300_000,
   });
-  const countries: RouteCountry[] = useMemo(() => {
-    const list = countriesQuery.data || CATALOG_COUNTRIES;
-    const map = new Map<string, RouteCountry>();
-    for (const wc of WORLD_COUNTRIES) {
-      map.set(wc.code, {
-        countryCode: wc.code,
-        countryName: wc.name,
-        supportsRoad: ['VN', 'LA', 'CN', 'TH', 'KH', 'MM', 'MY'].includes(wc.code),
-        supportsAir: true,
-      });
-    }
-    for (const c of list) {
-      map.set(c.countryCode, {
-        countryCode: c.countryCode,
-        countryName: c.countryName,
-        supportsRoad: c.supportsRoad,
-        supportsAir: c.supportsAir,
-      });
-    }
-    return Array.from(map.values());
-  }, [countriesQuery.data]);
+    // Customer only sees countries with active EquiTransit Hubs served by /api/lookups/countries
+  const countries: RouteCountry[] = countriesQuery.data || CATALOG_COUNTRIES;
 
   const originCode = form.originCountryCode.trim().toUpperCase();
   const destCode = form.destinationCountryCode.trim().toUpperCase();
