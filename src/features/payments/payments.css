@@ -394,6 +394,267 @@
   max-width: 560px;
 }
 
+/* VNPAY Alert Banners */
+.vnpay-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.vnpay-alert-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.vnpay-alert-body strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.vnpay-alert-body p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.vnpay-alert-success {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #14532d;
+}
+
+.vnpay-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+/* VNPAY Sandbox Checkout Card */
+.vnpay-checkout-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #edf4fc 100%);
+  border: 2px solid #0284c7;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.08);
+}
+
+.vnpay-card-header h4 {
+  font-size: 1.25rem;
+  color: #0c4a6e;
+  margin: 10px 0 6px;
+  font-weight: 700;
+}
+
+.vnpay-badge-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.vnpay-logo-badge {
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vnpay-sandbox-pill {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid #fde68a;
+}
+
+.vnpay-desc {
+  font-size: 0.88rem;
+  color: #334155;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.vnpay-amount-box {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vnpay-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.vnpay-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.vnpay-val-usd {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.vnpay-vnd-row {
+  padding-top: 6px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.vnpay-val-vnd {
+  font-size: 1.15rem;
+  color: #0284c7;
+  font-weight: 800;
+}
+
+.vnpay-inline-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.vnpay-action-row {
+  margin-bottom: 20px;
+}
+
+.vnpay-cta-btn {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.vnpay-cta-btn:hover:not(:disabled) {
+  background: #0369a1 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+.vnpay-cta-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Sandbox Test Card Helper */
+.vnpay-testcard-helper {
+  background: #ffffff;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.testcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.testcard-note {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.testcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.testcard-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.testcard-item.tc-highlight {
+  grid-column: span 2;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.tc-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.tc-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.tc-otp {
+  color: #059669;
+  letter-spacing: 0.1em;
+}
+
+.tc-copy-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e40af;
+  letter-spacing: 0.05em;
+}
+
+.copy-btn.small {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 768px) {
+  .testcard-item.tc-highlight {
+    grid-column: span 1;
+  }
+}
+
 @media (max-width: 768px) {
   .deposit-portal-header {
     flex-direction: column;

@@ -124,10 +124,23 @@ export function SnapshotView({ snapshot }: { snapshot: OrderSnapshot }) {
   );
 }
 
-function TeamCard({ current, onOpenModal }: { current: ManagerCase; onOpenModal: () => void }) {
+function TeamCard({
+  current,
+  activeDeposit,
+  onOpenModal,
+}: {
+  current: ManagerCase;
+  activeDeposit: DepositRequested | null;
+  onOpenModal: () => void;
+}) {
   const activeCoord = current.assignments.find((a) => a.role === 'COORDINATOR' && !a.endedAt);
   const activeSpec = current.assignments.find((a) => a.role === 'SPECIALIST' && !a.endedAt);
   const isSubmitted = current.orderStatus === 'SUBMITTED';
+  const hasTeam = !!(activeCoord || activeSpec);
+  const isDepositPaid =
+    activeDeposit?.isPaid ||
+    ['IN_PREPARATION', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED'].includes(current.orderStatus);
+  const isAwaitingDeposit = current.orderStatus === 'APPROVED' && !hasTeam && !isDepositPaid;
 
   return (
     <section className="card manager-info-card">
@@ -154,23 +167,96 @@ function TeamCard({ current, onOpenModal }: { current: ManagerCase; onOpenModal:
         <button
           type="button"
           onClick={onOpenModal}
+          disabled={isAwaitingDeposit}
+          title={
+            isAwaitingDeposit
+              ? 'Khách hàng đang thực hiện đặt cọc 30%. Quyền phân công sẽ mở sau khi cọc thành công.'
+              : undefined
+          }
           style={{
             padding: '8px 16px',
             borderRadius: 8,
             border: 'none',
-            backgroundColor: isSubmitted ? '#059669' : '#2563eb',
+            backgroundColor: isSubmitted
+              ? '#059669'
+              : isAwaitingDeposit
+                ? '#94a3b8'
+                : hasTeam
+                  ? '#2563eb'
+                  : '#059669',
             color: '#ffffff',
             fontWeight: 600,
             fontSize: 14,
-            cursor: 'pointer',
+            cursor: isAwaitingDeposit ? 'not-allowed' : 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
           }}
         >
-          {isSubmitted ? '✅ Duyệt & Phân công' : '👥 Đổi nhân sự'}
+          {isSubmitted
+            ? '✅ Duyệt & Phân công'
+            : isAwaitingDeposit
+              ? '🔒 Chờ khách thanh toán cọc'
+              : hasTeam
+                ? '👥 Đổi nhân sự'
+                : '👥 Phân công nhân sự'}
         </button>
       </div>
+
+      {isAwaitingDeposit && (
+        <div
+          style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginBottom: 14,
+          }}
+        >
+          <strong
+            style={{
+              color: '#b45309',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span>⏳</span> Đang chờ khách hàng thanh toán cọc 30%
+          </strong>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#92400e', lineHeight: 1.4 }}>
+            Quản lý đã duyệt đơn và ban hành báo giá. Hệ thống đang chờ khách hàng thanh toán tiền
+            cọc 30% ({activeDeposit ? `${activeDeposit.depositAmount} ${activeDeposit.currency || 'USD'}` : 'theo báo giá'}) qua VNPAY hoặc chuyển khoản ngân hàng. Sau khi tiền cọc được xác nhận vào sổ cái, chức năng phân công nhân sự sẽ tự động mở khóa.
+          </p>
+        </div>
+      )}
+
+      {isDepositPaid && !hasTeam && (
+        <div
+          style={{
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginBottom: 14,
+          }}
+        >
+          <strong
+            style={{
+              color: '#166534',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span>✔</span> Đã nhận tiền cọc 30% — Sẵn sàng phân công nhân sự
+          </strong>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#15803d', lineHeight: 1.4 }}>
+            Khách hàng đã hoàn tất thanh toán cọc. Vui lòng bấm <strong>Phân công nhân sự</strong> để chỉ định Điều phối viên (Coordinator) và Chuyên viên thú y (Specialist) tiếp quản lộ trình.
+          </p>
+        </div>
+      )}
 
       <Details
         rows={[
@@ -526,7 +612,11 @@ export function ManagerCasePage() {
             }}
           >
             {/* NHÂN SỰ PHỤ TRÁCH & NÚT PHÂN CÔNG / ĐỔI NHÂN SỰ */}
-            <TeamCard current={current} onOpenModal={() => setIsAssignModalOpen(true)} />
+            <TeamCard
+              current={current}
+              activeDeposit={activeDeposit}
+              onOpenModal={() => setIsAssignModalOpen(true)}
+            />
 
             {/* GHI CHÚ & YÊU CẦU KHÁCH SỬA ĐƠN (CHỈ HIỆN KHI Ở BƯỚC 1 HOẶC ĐƠN BỊ TỪ CHỐI/SỬA) */}
             <ManagerCommentCard current={current} onCommented={handleCommentDone} />

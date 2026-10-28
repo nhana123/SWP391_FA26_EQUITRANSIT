@@ -200,6 +200,16 @@ export type AssignCommand = {
   assignmentNote: string | null;
 };
 
+/** Post-deposit complete team assignment command. */
+export type AssignTeamCommand = {
+  recordVersion: string;
+  operationId: string;
+  specialistId: number;
+  coordinatorId: number;
+  dueAt?: string | null;
+  assignmentNote?: string | null;
+};
+
 /** BE EndCaseAssignmentRequest. */
 export type EndAssignmentCommand = {
   recordVersion: string;

@@ -9,6 +9,7 @@ import {
   caseStaffPageSchema,
   type AssessmentCommand,
   type AssignCommand,
+  type AssignTeamCommand,
   type EndAssignmentCommand,
   depositRequestReceiptSchema,
   type DepositRequestCommand,
@@ -46,6 +47,8 @@ export const assessmentApi = {
   getCase: (id: number, signal?: AbortSignal) => request(`${base}/${id}`, caseSchema, { signal }),
   decide: (id: number, body: AssessmentCommand) =>
     request(`${base}/${id}/decisions`, assessmentReceiptSchema, { method: 'POST', body }),
+  assignTeam: (id: number, body: AssignTeamCommand) =>
+    request(`${base}/${id}/assign-team`, assessmentReceiptSchema, { method: 'POST', body }),
   assign: (id: number, role: CaseRole, body: AssignCommand) =>
     request(`${base}/${id}/assignments/${role}`, assessmentReceiptSchema, {
       method: 'PUT',

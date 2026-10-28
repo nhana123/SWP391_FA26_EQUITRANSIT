@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { displayDate } from '../../shared/lib/validation';
 import type { Overview, ProofReceipt, Receipt } from './contracts';
 import { PaymentActionForm, type ActionSpec } from './ActionForm';
 import { PaymentLedger } from './Ledger';
 import { reportAction, refundAction } from './customer-actions';
 import type { EvidenceOption } from './Proof';
+import { vnpayApi } from './vnpay-api';
 
 export type WorkspaceProps = {
   orderId: number;
@@ -72,9 +74,22 @@ export function LedgerPager({
 }
 export function CustomerPayments(props: WorkspaceProps) {
   const { data, orderId, readError, paging, backTo, refresh } = props;
+  const [params] = useSearchParams();
   const [panel, setPanel] = useState<'report' | 'refund' | null>(null);
   const [notice, setNotice] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [vnpayLoading, setVnpayLoading] = useState(false);
+  const [vnpayError, setVnpayError] = useState<string | null>(null);
+
+  const vnpStatus = params.get('vnp_status');
+  const vnpResponseCode = params.get('vnp_ResponseCode');
+
+  useEffect(() => {
+    if (vnpStatus === 'success' || vnpResponseCode === '00') {
+      void refresh();
+    }
+  }, [vnpStatus, vnpResponseCode, refresh]);
+
   const evidence = useEvidence(data);
   const spec: ActionSpec | null =
     panel === 'report'
@@ -114,8 +129,31 @@ export function CustomerPayments(props: WorkspaceProps) {
       ? Math.max(0, dueNum - paidNum).toFixed(2)
       : totalDue;
 
+  const depositAmountNum = Number(remainingDue !== '0.00' ? remainingDue : totalDue);
+  const amountVnd = Math.round(depositAmountNum * 25400);
+
   const pendingReports = data.reports.filter((r) => r.status === 'SUBMITTED');
   const transferCode = `EQUITRANSIT ${orderId} COC`;
+
+  async function handleVNPayCheckout() {
+    if (isSettled || vnpayLoading) return;
+    setVnpayLoading(true);
+    setVnpayError(null);
+    try {
+      const res = await vnpayApi.checkout(orderId, depositAmountNum, 'DEPOSIT');
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        setVnpayError('Không nhận được liên kết thanh toán từ VNPAY.');
+        setVnpayLoading(false);
+      }
+    } catch (err) {
+      setVnpayError(
+        err instanceof Error ? err.message : 'Lỗi kết nối cổng thanh toán VNPAY. Vui lòng thử lại.',
+      );
+      setVnpayLoading(false);
+    }
+  }
 
   return (
     <>
@@ -144,6 +182,25 @@ export function CustomerPayments(props: WorkspaceProps) {
             )}
           </div>
         </div>
+
+        {/* VNPAY Callback Status Alert */}
+        {vnpStatus === 'success' || vnpResponseCode === '00' ? (
+          <div className="vnpay-alert vnpay-alert-success" role="status">
+            <div className="vnpay-alert-icon">🎉</div>
+            <div className="vnpay-alert-body">
+              <strong>Thanh toán trực tuyến VNPAY thành công!</strong>
+              <p>Hệ thống đã ghi nhận khoản tiền cọc 30% cho đơn hàng #{orderId}. Đơn hàng hiện đang sẵn sàng để quản lý phân công điều phối viên và chuyên viên thủ tục.</p>
+            </div>
+          </div>
+        ) : vnpStatus === 'failed' || (vnpResponseCode && vnpResponseCode !== '00') ? (
+          <div className="vnpay-alert vnpay-alert-error" role="alert">
+            <div className="vnpay-alert-icon">⚠️</div>
+            <div className="vnpay-alert-body">
+              <strong>Giao dịch qua VNPAY không thành công hoặc đã bị hủy (Mã phản hồi: {vnpResponseCode || 'Error'}).</strong>
+              <p>Quý khách có thể thử thanh toán lại bằng VNPAY hoặc chuyển khoản qua tài khoản ngân hàng chính thức bên dưới.</p>
+            </div>
+          </div>
+        ) : null}
 
         {/* State Banner */}
         <div
@@ -205,6 +262,93 @@ export function CustomerPayments(props: WorkspaceProps) {
             <small className="stat-hint">Hạn chót giữ chỗ</small>
           </div>
         </div>
+
+        {/* VNPAY Sandbox Instant Payment Box */}
+        {!isSettled && (
+          <div className="vnpay-checkout-card">
+            <div className="vnpay-card-header">
+              <div className="vnpay-badge-group">
+                <span className="vnpay-logo-badge">VNPAY-QR / ATM</span>
+                <span className="vnpay-sandbox-pill">🧪 Môi trường Sandbox Test</span>
+              </div>
+              <h4>Cổng Thanh toán Trực tuyến VNPAY</h4>
+              <p className="vnpay-desc">
+                Thanh toán tức thì bằng thẻ ATM nội địa (NCB, Vietcombank, Techcombank...), quét mã VNPAY-QR hoặc thẻ quốc tế. Giao dịch được xác thực tự động trong vài giây.
+              </p>
+            </div>
+
+            <div className="vnpay-amount-box">
+              <div className="vnpay-amount-row">
+                <span className="vnpay-label">Số tiền cọc cần thanh toán:</span>
+                <span className="vnpay-val-usd">{depositAmountNum} {currency}</span>
+              </div>
+              <div className="vnpay-amount-row vnpay-vnd-row">
+                <span className="vnpay-label">Quy đổi tương đương (tỷ giá 25.400 VND/USD):</span>
+                <strong className="vnpay-val-vnd">{amountVnd.toLocaleString('vi-VN')} VND</strong>
+              </div>
+            </div>
+
+            {vnpayError && (
+              <div className="vnpay-inline-error">
+                <span>⚠️ {vnpayError}</span>
+              </div>
+            )}
+
+            <div className="vnpay-action-row">
+              <button
+                type="button"
+                className="button primary vnpay-cta-btn"
+                onClick={handleVNPayCheckout}
+                disabled={vnpayLoading || isSettled}
+              >
+                {vnpayLoading ? (
+                  <span>⏳ Đang kết nối tới VNPAY...</span>
+                ) : (
+                  <span>💳 Thanh toán Cọc ngay qua VNPAY ({amountVnd.toLocaleString('vi-VN')} đ) →</span>
+                )}
+              </button>
+            </div>
+
+            {/* Test NCB Card Quick Helper for Sandbox */}
+            <div className="vnpay-testcard-helper">
+              <div className="testcard-header">
+                <strong>💳 Thẻ ATM Test VNPAY Sandbox (Ngân hàng NCB)</strong>
+                <span className="testcard-note">Sử dụng để thanh toán thử nghiệm:</span>
+              </div>
+              <div className="testcard-grid">
+                <div className="testcard-item">
+                  <span className="tc-label">Ngân hàng:</span>
+                  <span className="tc-value">NCB</span>
+                </div>
+                <div className="testcard-item tc-highlight">
+                  <span className="tc-label">Số thẻ test:</span>
+                  <div className="tc-copy-group">
+                    <code className="tc-code">9704198526191432198</code>
+                    <button
+                      type="button"
+                      className="button copy-btn small"
+                      onClick={() => handleCopy('9704198526191432198', 'card')}
+                    >
+                      {copiedKey === 'card' ? '✓ Đã chép' : '📋 Chép thẻ'}
+                    </button>
+                  </div>
+                </div>
+                <div className="testcard-item">
+                  <span className="tc-label">Tên chủ thẻ:</span>
+                  <span className="tc-value">NGUYEN VAN A</span>
+                </div>
+                <div className="testcard-item">
+                  <span className="tc-label">Ngày phát hành:</span>
+                  <span className="tc-value">07/15</span>
+                </div>
+                <div className="testcard-item">
+                  <span className="tc-label">Mật khẩu OTP:</span>
+                  <span className="tc-value tc-otp">123456</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Official Bank Account Details */}
         <div className="bank-account-box">

@@ -56,7 +56,7 @@ export function AssignTeamModal({
       nextErrors.note = `Ghi chú tối đa ${MAX_TEXT} ký tự.`;
     }
 
-    if (!isSubmitted && !reason.trim()) {
+    if (!isSubmitted && (activeCoord || activeSpec) && !reason.trim()) {
       nextErrors.reason = 'Vui lòng nhập lý do điều chỉnh nhân sự.';
     }
 
@@ -82,8 +82,20 @@ export function AssignTeamModal({
         });
         await onAssigned(receipt);
         onClose();
+      } else if (!activeCoord && !activeSpec) {
+        // Initial post-deposit team assignment via dedicated /assign-team endpoint
+        const receipt = await assessmentApi.assignTeam(current.orderId, {
+          recordVersion: current.recordVersion,
+          operationId: crypto.randomUUID(),
+          specialistId: Number(specId),
+          coordinatorId: Number(coordId),
+          dueAt: optional(dueAt),
+          assignmentNote: optional(note),
+        });
+        await onAssigned(receipt);
+        onClose();
       } else {
-        // Order is APPROVED, update assignments
+        // Order is APPROVED with existing team, update assignments
         let lastReceipt: AssessmentReceipt | null = null;
         if (!activeCoord || activeCoord.staffId !== Number(coordId)) {
           lastReceipt = await assessmentApi.assign(current.orderId, 'COORDINATOR', {

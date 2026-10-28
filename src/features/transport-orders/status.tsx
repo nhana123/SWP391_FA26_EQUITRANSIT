@@ -414,16 +414,33 @@ export function RequestDetailPage() {
   if (query.isPending) return <Loading />;
   if (query.error) return <ErrorNotice error={query.error} />;
   const isDraft = query.data.orderStatus === 'DRAFT';
+  const isPostDepositExecution = [
+    'IN_PREPARATION',
+    'CONFIRMED',
+    'IN_TRANSIT',
+    'DELIVERED',
+    'COMPLETED',
+  ].includes(query.data.orderStatus);
+
   return (
     <>
       <OrderLifecycle status={query.data.orderStatus} />
-      {!isDraft && <CustomerDepositNotice order={query.data} />}
       {!isDraft && <BookingFlowDepositPanel order={query.data} />}
       <AssessmentPanel order={query.data} />
-      <CustomerLegalChecklist orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
+      {isPostDepositExecution && (
+        <CustomerLegalChecklist
+          orderId={query.data.orderId}
+          orderStatus={query.data.orderStatus}
+        />
+      )}
       <div className="actions">
         <QuotationLink orderId={query.data.orderId} />
-        <ComplianceLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
+        {isPostDepositExecution && (
+          <ComplianceLink
+            orderId={query.data.orderId}
+            orderStatus={query.data.orderStatus}
+          />
+        )}
         <ExecutionLink orderId={query.data.orderId} orderStatus={query.data.orderStatus} />
         <SettlementPreviewLink orderId={query.data.orderId} />
         <PaymentLink orderId={query.data.orderId} />
