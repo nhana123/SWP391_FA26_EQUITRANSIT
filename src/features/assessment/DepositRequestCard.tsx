@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice } from '../../shared/ui/common';
 import { assessmentApi } from './api';
@@ -34,8 +34,11 @@ export function DepositRequestCard({
   const [error, setError] = useState<unknown>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Sync if parent updates depositRequested
-  useEffect(() => {
+  // Sync state if depositRequested or snapshotCost changes across renders
+  const syncKey = `${depositRequested?.requestedAt ?? ''}_${depositRequested?.totalAmount ?? ''}_${snapshotCost ?? ''}`;
+  const [prevSyncKey, setPrevSyncKey] = useState<string>(syncKey);
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey);
     if (depositRequested) {
       setTotal(depositRequested.totalAmount);
       setDeposit(depositRequested.depositAmount);
@@ -44,7 +47,7 @@ export function DepositRequestCard({
       setTotal(snapshotCost);
       setDeposit(Math.round(snapshotCost * 0.3 * 100) / 100);
     }
-  }, [depositRequested, snapshotCost]);
+  }
 
   function handleTotalChange(val: number) {
     setTotal(val);

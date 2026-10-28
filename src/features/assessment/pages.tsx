@@ -32,13 +32,13 @@ const stateTabs: { state: ReviewState; icon: string; label: string }[] = [
 
 export function ManagerQueuePage() {
   const { state, page, query, setState, setPage } = useManagerQueue();
-  const rawItems = query.data?.items ?? [];
   const items = useMemo(() => {
+    const rawItems = query.data?.items ?? [];
     if (rawItems.some((c) => c.orderId === 400)) {
       return rawItems.filter((c) => c.orderId >= 400);
     }
     return rawItems;
-  }, [rawItems]);
+  }, [query.data?.items]);
   return (
     <>
       <ManagerHeading

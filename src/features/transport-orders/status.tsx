@@ -58,14 +58,14 @@ export function RequestsPage() {
     placeholderData: keepPreviousData,
   });
 
-  const rawItems = query.data?.items ?? [];
   const items = useMemo(() => {
+    const rawItems = query.data?.items ?? [];
     // Hide older requests created before order 400 when order 400 is present
     if (rawItems.some((o) => o.orderId === 400)) {
       return rawItems.filter((o) => o.orderId >= 400);
     }
     return rawItems;
-  }, [rawItems]);
+  }, [query.data?.items]);
   const totalCount = items.length;
   const draftCount = items.filter((o) => o.orderStatus === 'DRAFT').length;
   const inTransitCount = items.filter((o) => o.orderStatus === 'IN_TRANSIT').length;

@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { displayDate } from '../../shared/lib/validation';
 import { ErrorNotice, Loading } from '../../shared/ui/common';
 import { assessmentApi } from './api';
@@ -161,7 +161,8 @@ export function QuotationDepositTable({
     // 7. Grooming
     const groomIntent = snapshot.services.find((s) => s.serviceCode === 'GROOMING');
     if (groomIntent && groomIntent.optionCode !== 'NONE') {
-      const days = Number((groomIntent as Record<string, any>).requestedInputs?.requestedDays) || 2;
+      const groomRecord = groomIntent as unknown as { requestedInputs?: { requestedDays?: number | string } };
+      const days = Number(groomRecord.requestedInputs?.requestedDays) || 2;
       lines.push({
         code: 'GROOMING',
         name: 'Nhân viên chăm sóc chuyên nghiệp (Grooming)',
@@ -177,7 +178,8 @@ export function QuotationDepositTable({
     // 8. Boarding
     const boardIntent = snapshot.services.find((s) => s.serviceCode === 'BOARDING');
     if (boardIntent && boardIntent.optionCode !== 'NONE') {
-      const nights = Number((boardIntent as Record<string, any>).requestedInputs?.requestedNights) || 1;
+      const boardRecord = boardIntent as unknown as { requestedInputs?: { requestedNights?: number | string } };
+      const nights = Number(boardRecord.requestedInputs?.requestedNights) || 1;
       lines.push({
         code: 'BOARDING',
         name: 'Lưu chuồng tạm thời (Extra Boarding)',
@@ -232,7 +234,11 @@ export function QuotationDepositTable({
   const [error, setError] = useState<unknown>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Sync state if depositRequested or quotes update across renders
+  const syncKey = `${depositRequested?.requestedAt ?? ''}_${formalQuote?.quote?.version ?? ''}_${computedTotal}`;
+  const [prevSyncKey, setPrevSyncKey] = useState<string>(syncKey);
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey);
     if (depositRequested) {
       setTotal(depositRequested.totalAmount);
       setDeposit(depositRequested.depositAmount);
@@ -245,7 +251,7 @@ export function QuotationDepositTable({
       setTotal(computedTotal);
       setDeposit(Math.round(computedTotal * 0.3 * 100) / 100);
     }
-  }, [depositRequested, formalQuote, computedTotal, hasRichFormalQuote]);
+  }
 
   function applyPercent(pct: number) {
     setDeposit(Math.round(total * (pct / 100) * 100) / 100);
