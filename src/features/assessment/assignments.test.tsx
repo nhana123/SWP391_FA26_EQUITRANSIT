@@ -3,7 +3,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { ManagerCasePage } from './case';
+import { TeamManager, AssignmentHistory } from './assignments';
+import { useManagerCase, assessmentKeys } from './hooks';
+import { useSession } from '../../shared/api/session';
+import { useState } from 'react';
 import { assessmentApi } from './api';
 import type { AssessmentReceipt, CaseAssignment, ManagerCase } from './contracts';
 import { ApiError } from '../../shared/api/client';
@@ -103,12 +106,34 @@ beforeEach(() => {
     totalPages: 1,
   });
 });
+function TeamHarness() {
+  const query = useManagerCase(7);
+  const session = useSession()!;
+  const [changed, setChanged] = useState(false);
+  if (!query.data) return null;
+  return (
+    <>
+      {changed && <p>Case team updated</p>}
+      <TeamManager
+        current={query.data}
+        onChanged={async () => {
+          setChanged(true);
+          await queryClient.invalidateQueries({ queryKey: assessmentKeys.all(session.generation) });
+        }}
+        onReload={() => {
+          void query.refetch();
+        }}
+      />
+      <AssignmentHistory id={7} />
+    </>
+  );
+}
 function mount() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/manager/requests/7']}>
         <Routes>
-          <Route path="/manager/requests/:id" element={<ManagerCasePage />} />
+          <Route path="/manager/requests/:id" element={<TeamHarness />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
